@@ -1,0 +1,120 @@
+# BIMCalc Business Risk Flags Configuration
+#
+# Flags are evaluated during matching to detect mismatches and risks.
+# Severity levels:
+# - Critical-Veto: Blocks auto-accept, disables "Accept" button in UI
+# - Advisory: Warns but allows accept with mandatory annotation
+
+flags:
+  UnitConflict:
+    severity: Critical-Veto
+    description: "Item and price have different units (m vs ea, etc.)"
+    condition: "item.unit != price.unit"
+    message: "Item unit '{item.unit}' does not match price unit '{price.unit}'"
+
+  SizeMismatch:
+    severity: Critical-Veto
+    description: "Physical dimensions differ beyond tolerance"
+    condition: |
+      (item.width_mm is not None and price.width_mm is not None and
+       abs(item.width_mm - price.width_mm) > config.size_tolerance_mm) or
+      (item.height_mm is not None and price.height_mm is not None and
+       abs(item.height_mm - price.height_mm) > config.size_tolerance_mm) or
+      (item.dn_mm is not None and price.dn_mm is not None and
+       abs(item.dn_mm - price.dn_mm) > config.dn_tolerance_mm)
+    message: "Item dimensions differ by more than {config.size_tolerance_mm}mm"
+
+  AngleMismatch:
+    severity: Critical-Veto
+    description: "Angle differs beyond tolerance (common for elbows: 45°, 90°)"
+    condition: |
+      item.angle_deg is not None and price.angle_deg is not None and
+      abs(item.angle_deg - price.angle_deg) > config.angle_tolerance_deg
+    message: "Angle differs by more than {config.angle_tolerance_deg}° ({item.angle_deg}° vs {price.angle_deg}°)"
+
+  MaterialConflict:
+    severity: Critical-Veto
+    description: "Materials differ after normalization"
+    condition: |
+      item.material is not None and price.material is not None and
+      normalize(item.material) != normalize(price.material)
+    message: "Material mismatch: {item.material} vs {price.material}"
+    examples:
+      - "Steel vs Copper"
+      - "Galvanized vs Stainless Steel"
+      - "PVC vs CPVC"
+
+  ClassMismatch:
+    severity: Critical-Veto
+    description: "Classification codes differ (should rarely occur due to blocking)"
+    condition: "item.classification_code != price.classification_code"
+    message: "Classification codes differ: {item.classification_code} vs {price.classification_code}"
+
+  StalePrice:
+    severity: Advisory
+    description: "Price data is over 1 year old"
+    condition: "price.last_updated < (today() - timedelta(days=365))"
+    message: "Price is over 1 year old (last updated: {price.last_updated:%Y-%m-%d})"
+    action_required: "Verify price is still valid or update from vendor"
+
+  CurrencyMismatch:
+    severity: Advisory
+    description: "Price is in non-EUR currency"
+    condition: "price.currency != 'EUR'"
+    message: "Non-EUR pricing ({price.currency}) requires manual conversion"
+    action_required: "Provide exchange rate or convert to EUR"
+
+  VATUnclear:
+    severity: Advisory
+    description: "VAT rate not specified in price data"
+    condition: "price.vat_rate is None"
+    message: "VAT rate not specified in price data"
+    action_required: "Confirm VAT status (inclusive/exclusive, rate)"
+
+  VendorNote:
+    severity: Advisory
+    description: "Vendor has provided a note (discontinued, lead time, etc.)"
+    condition: "price.vendor_note is not None and len(price.vendor_note) > 0"
+    message: "Vendor note: {price.vendor_note}"
+    action_required: "Review vendor note and confirm procurement viability"
+    examples:
+      - "Discontinued - replacement available"
+      - "12-week lead time"
+      - "Minimum order quantity: 100"
+      - "Requires special order"
+
+# Flag evaluation order (all flags evaluated, multiple can coexist)
+evaluation_order:
+  - UnitConflict
+  - ClassMismatch
+  - SizeMismatch
+  - AngleMismatch
+  - MaterialConflict
+  - StalePrice
+  - CurrencyMismatch
+  - VATUnclear
+  - VendorNote
+
+# UI enforcement rules
+ui_rules:
+  critical_veto:
+    accept_button_enabled: false
+    background_color: "#ffebee"  # Light red
+    icon: "⛔"
+    required_action: "Fix underlying issue or override with supervisor approval"
+
+  advisory:
+    accept_button_enabled: true
+    annotation_required: true
+    background_color: "#fff3e0"  # Light orange
+    icon: "⚠️"
+    required_action: "Provide written justification before accepting"
+
+# Auto-routing invariants
+auto_routing:
+  # Auto-accept ONLY if both conditions met:
+  conditions:
+    - confidence >= config.auto_accept_min_confidence  # Default 85%
+    - len(flags) == 0  # Zero flags (Critical-Veto OR Advisory)
+  # Any flag presence blocks auto-accept
+  any_flag_blocks: true

@@ -1,0 +1,244 @@
+{% extends "base.html" %}
+
+{% block title %}Ingest Files - BIMCalc{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Ingest Schedules & Price Books</h1>
+    <p>Upload CSV or XLSX files to populate the database</p>
+</div>
+
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+    <!-- Revit Schedules -->
+    <div class="card">
+        <div class="card-header">📋 Revit Schedules</div>
+        <form id="schedules-form" enctype="multipart/form-data">
+            <div class="form-group">
+                <label>CSV or XLSX File</label>
+                <input type="file" name="file" accept=".csv,.xlsx" required />
+                <small class="text-muted">Export from Revit with Family, Type, Category, Quantity columns</small>
+            </div>
+
+            <div class="form-group">
+                <label>Organization ID</label>
+                <input type="text" name="org" value="{{ org_id }}" required />
+            </div>
+
+            <div class="form-group">
+                <label>Project ID</label>
+                <input type="text" name="project" value="{{ project_id }}" required />
+            </div>
+
+            <button type="submit" class="btn btn-primary">Upload Schedule</button>
+        </form>
+
+        <div id="schedules-result" style="margin-top: 1rem;"></div>
+    </div>
+
+    <!-- Price Books -->
+    <div class="card">
+        <div class="card-header">💰 Price Books</div>
+        <form id="prices-form" enctype="multipart/form-data">
+            <div class="form-group">
+                <label>CSV or XLSX File</label>
+                <input type="file" name="file" accept=".csv,.xlsx" required />
+                <small class="text-muted">Vendor catalog with SKU, Description, Unit Price columns</small>
+            </div>
+
+            <div class="form-group">
+                <label>Vendor Classification Mapping</label>
+                <select name="vendor" id="vendor-select" required>
+                    <option value="default">Default (Generic Mapping)</option>
+                    <option value="glamox">Glamox (Lighting Vendor)</option>
+                    <option value="abb">ABB (Electrical Components)</option>
+                    <option value="custom">Custom Vendor (No Mapping)</option>
+                </select>
+                <small class="text-muted">
+                    Select vendor to apply classification code translation (CMM)
+                </small>
+            </div>
+
+            <div class="form-group">
+                <label style="display: flex; align-items: center; gap: 0.5rem;">
+                    <input type="checkbox" name="use_cmm" id="use-cmm-checkbox" checked style="width: auto; margin: 0;" />
+                    <span>Enable Classification Mapping Module (CMM)</span>
+                </label>
+                <small class="text-muted">
+                    CMM translates vendor-specific codes to canonical OmniClass/UniClass codes
+                </small>
+            </div>
+
+            <button type="submit" class="btn btn-primary">Upload Price Book</button>
+        </form>
+
+        <div id="prices-result" style="margin-top: 1rem;"></div>
+    </div>
+</div>
+
+<!-- CMM Explanation -->
+<div class="card" style="margin-top: 2rem;">
+    <div class="card-header">ℹ️ Classification Mapping Module (CMM)</div>
+    <div style="line-height: 1.8;">
+        <p><strong>What is CMM?</strong></p>
+        <p>The Classification Mapping Module translates vendor-specific classification codes to BIMCalc's canonical OmniClass/UniClass codes.
+        This eliminates the need to manually edit vendor Excel files before import.</p>
+
+        <p style="margin-top: 1rem;"><strong>How it works:</strong></p>
+        <ol style="margin-left: 1.5rem; margin-top: 0.5rem;">
+            <li>Upload raw vendor price book (no preprocessing needed)</li>
+            <li>Select vendor from dropdown (e.g., "glamox", "abb", "default")</li>
+            <li>CMM loads <code>config/vendors/config_vendor_{vendor}_classification_map.yaml</code></li>
+            <li>YAML rules match vendor rows and translate codes</li>
+            <li>Original values preserved in <code>vendor_note</code> field for audit trail</li>
+        </ol>
+
+        <p style="margin-top: 1rem;"><strong>Example YAML rule:</strong></p>
+        <pre style="background: #f7fafc; padding: 1rem; border-radius: 0.375rem; overflow-x: auto; font-size: 0.875rem;">- match:
+    Containment: ES_CONTMNT
+    Description1: Ladder
+    Description2: Elbow 90deg
+    Width: 200mm
+  map_to:
+    canonical_code: L-ELB90-W200-D50-GALV
+    classification_code: "2650"
+    internal_group: ES_CONTMNT</pre>
+
+        <p style="margin-top: 1rem;"><strong>Benefits:</strong></p>
+        <ul style="margin-left: 1.5rem; margin-top: 0.5rem;">
+            <li><strong>No manual editing</strong>: Import vendor catalogs as-is</li>
+            <li><strong>Scalable onboarding</strong>: Add new vendors by creating YAML files</li>
+            <li><strong>Audit trail</strong>: Original data preserved, translation logged</li>
+            <li><strong>Statistics tracking</strong>: See mapped vs. unmapped ratios</li>
+        </ul>
+
+        <p style="margin-top: 1rem;"><strong>Adding custom vendors:</strong></p>
+        <ol style="margin-left: 1.5rem; margin-top: 0.5rem;">
+            <li>Create <code>config/vendors/config_vendor_yourvendor_classification_map.yaml</code></li>
+            <li>Define match rules based on vendor columns</li>
+            <li>Select "yourvendor" from dropdown when uploading</li>
+        </ol>
+
+        <p style="margin-top: 1rem; color: #718096; font-size: 0.875rem;">
+            ℹ️ <strong>Tip:</strong> If a vendor file has no custom mapping, rows pass through unchanged (unmapped).
+            You can still manually map items in the Review UI.
+        </p>
+    </div>
+</div>
+
+<!-- Expected Format Guide -->
+<div class="card" style="margin-top: 2rem;">
+    <div class="card-header">Expected File Formats</div>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+        <div>
+            <h3 style="margin-bottom: 0.5rem;">Revit Schedule (CSV/XLSX)</h3>
+            <pre style="background: #f7fafc; padding: 1rem; border-radius: 0.375rem; overflow-x: auto; font-size: 0.875rem;">Family,Type,Category,Quantity,Unit
+Cable Tray - Ladder,Elbow 90deg 200x50mm,Cable Tray,10,ea
+Pipe - Supply Water,90 Elbow DN50,Pipes,20,ea</pre>
+        </div>
+        <div>
+            <h3 style="margin-bottom: 0.5rem;">Price Book (CSV/XLSX)</h3>
+            <pre style="background: #f7fafc; padding: 1rem; border-radius: 0.375rem; overflow-x: auto; font-size: 0.875rem;">SKU,Description,Classification Code,Unit Price,Unit,Currency,VAT Rate
+CT-200-90,Cable Tray Elbow 90deg,2650,45.50,ea,EUR,0.23
+PIPE-DN50-90,Pipe Elbow DN50,2211,32.00,ea,EUR,0.23</pre>
+            <p style="margin-top: 0.5rem; color: #718096; font-size: 0.875rem;">
+                <strong>Or with vendor-specific codes</strong> (CMM will translate):
+            </p>
+            <pre style="background: #f7fafc; padding: 1rem; border-radius: 0.375rem; overflow-x: auto; font-size: 0.875rem;">Containment,Description1,Description2,Width,Unit Price
+ES_CONTMNT,Ladder,Elbow 90deg,200mm,45.50
+ES_CONTMNT,Tray,Straight,300mm,35.00</pre>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function parseUploadResponse(response) {
+    if (response.ok) {
+        return response.json();
+    }
+
+    let errorMessage = `Upload failed (${response.status})`;
+    try {
+        const errorData = await response.clone().json();
+        errorMessage = errorData.message || errorData.detail || errorMessage;
+    } catch (_) {
+        try {
+            const textFallback = await response.text();
+            if (textFallback) {
+                errorMessage = textFallback;
+            }
+        } catch (_) {
+            // Ignore secondary parsing issues
+        }
+    }
+
+    throw new Error(errorMessage);
+}
+
+// Upload Schedules
+document.getElementById('schedules-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const form = e.target;
+    const formData = new FormData(form);
+    const resultDiv = document.getElementById('schedules-result');
+
+    resultDiv.innerHTML = '<div class="message message-info">Uploading...</div>';
+
+    try {
+        const response = await fetch('/ingest/schedules', {
+            method: 'POST',
+            body: formData
+        });
+
+        const result = await parseUploadResponse(response);
+
+        if (result.success) {
+            resultDiv.innerHTML = `<div class="message message-success"><strong>Success!</strong><br/>${result.message}</div>`;
+            form.reset();
+
+            // Redirect to items page after 2 seconds
+            setTimeout(() => {
+                window.location.href = `/items?org=${formData.get('org')}&project=${formData.get('project')}`;
+            }, 2000);
+        } else {
+            const message = result.message || result.detail || 'Upload failed. Please review your file and try again.';
+            resultDiv.innerHTML = `<div class="message message-error"><strong>Error:</strong><br/>${message}</div>`;
+        }
+    } catch (error) {
+        resultDiv.innerHTML = `<div class="message message-error"><strong>Error:</strong><br/>${error.message}</div>`;
+    }
+});
+
+// Upload Prices
+document.getElementById('prices-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const form = e.target;
+    const formData = new FormData(form);
+    const resultDiv = document.getElementById('prices-result');
+
+    resultDiv.innerHTML = '<div class="message message-info">Uploading...</div>';
+
+    try {
+        const response = await fetch('/ingest/prices', {
+            method: 'POST',
+            body: formData
+        });
+
+        const result = await parseUploadResponse(response);
+
+        if (result.success) {
+            resultDiv.innerHTML = `<div class="message message-success"><strong>Success!</strong><br/>${result.message}</div>`;
+            form.reset();
+        } else {
+            const message = result.message || result.detail || 'Upload failed. Please review your file and try again.';
+            resultDiv.innerHTML = `<div class="message message-error"><strong>Error:</strong><br/>${message}</div>`;
+        }
+    } catch (error) {
+        resultDiv.innerHTML = `<div class="message message-error"><strong>Error:</strong><br/>${error.message}</div>`;
+    }
+});
+</script>
+{% endblock %}

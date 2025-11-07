@@ -1,0 +1,21 @@
+Family,Type,Category,Quantity,Unit,Mark,Comments
+Cable Tray - Ladder,Elbow 90deg 200x50mm Galvanized,Cable Tray,12,ea,CT-001,Main distribution route
+Cable Tray - Ladder,Straight 200x50mm Galvanized 3000mm,Cable Tray,45,ea,CT-002,Standard sections
+Cable Tray - Ladder,Elbow 45deg 300x50mm Galvanized,Cable Tray,8,ea,CT-003,Angle changes
+Cable Tray - Ladder,Tee 200x50mm Galvanized,Cable Tray,6,ea,CT-004,Branch points
+Cable Tray - Ladder,Reducer 300x50 to 200x50 Galvanized,Cable Tray,4,ea,CT-005,Size transitions
+Pipe - MEP Fabrication,90 Elbow DN50 Galvanized,Pipes,24,ea,P-001,Water supply
+Pipe - MEP Fabrication,Straight DN50 Galvanized 6000mm,Pipes,120,m,P-002,Main runs
+Pipe - MEP Fabrication,90 Elbow DN100 Galvanized,Pipes,18,ea,P-003,Drain lines
+Pipe - MEP Fabrication,Tee DN50 Galvanized,Pipes,15,ea,P-004,Branch connections
+Pipe - MEP Fabrication,45 Elbow DN50 Galvanized,Pipes,10,ea,P-005,Offset connections
+Conduit - Rigid,90 Elbow 25mm PVC,Conduit,30,ea,C-001,Power distribution
+Conduit - Rigid,Straight 25mm PVC 3000mm,Conduit,85,ea,C-002,Standard runs
+Conduit - Rigid,Coupling 25mm PVC,Conduit,40,ea,C-003,Joiners
+Duct - Rectangular,Elbow 90deg 300x200mm Galvanized,Ducts,10,ea,D-001,Air supply
+Duct - Rectangular,Straight 300x200mm Galvanized 1200mm,Ducts,32,ea,D-002,Main trunk
+Cable Tray - Perforated,Elbow 90deg 150x50mm Stainless,Cable Tray,6,ea,CT-006,Clean room area
+Pipe - Copper,90 Elbow DN32 Copper Type K,Pipes,20,ea,P-006,Domestic water
+Pipe - Copper,Straight DN32 Copper Type K,Pipes,80,m,P-007,Hot water loops
+Lighting Fixture,LED Panel 600x600 40W,Lighting,120,ea,L-001,Office ceiling
+Lighting Fixture,LED Downlight 150mm 12W,Lighting,85,ea,L-002,Corridor lighting

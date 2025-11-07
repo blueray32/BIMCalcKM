@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+
+{% block title %}Items - BIMCalc{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Revit Items</h1>
+    <p>Browsing {{ total }} items from {{ project_id }} in {{ org_id }}</p>
+</div>
+
+<!-- Summary Stats -->
+<div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); margin-bottom: 1.5rem;">
+    <div class="stat-card primary">
+        <div class="label">Total Items</div>
+        <div class="value" style="font-size: 2rem;">{{ total }}</div>
+    </div>
+    <div class="stat-card success">
+        <div class="label">Current Page</div>
+        <div class="value" style="font-size: 2rem;">{{ page }} / {{ total_pages }}</div>
+    </div>
+    <div class="stat-card info">
+        <div class="label">Per Page</div>
+        <div class="value" style="font-size: 2rem;">{{ per_page }}</div>
+    </div>
+</div>
+
+<!-- Items Table -->
+<div class="card">
+    <div class="card-header">📦 Revit Items</div>
+
+    {% if items %}
+    <table>
+        <thead>
+            <tr>
+                <th>Family</th>
+                <th>Type</th>
+                <th>Category</th>
+                <th>Classification</th>
+                <th>Canonical Key</th>
+                <th>Quantity</th>
+                <th>Unit</th>
+                <th>Dimensions</th>
+                <th>Created</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in items %}
+            <tr>
+                <td><strong>{{ item.family }}</strong></td>
+                <td>{{ item.type_name }}</td>
+                <td>
+                    <span class="badge badge-info">{{ item.category or "N/A" }}</span>
+                </td>
+                <td>
+                    {% if item.classification_code %}
+                    <span class="badge badge-success">{{ item.classification_code }}</span>
+                    {% else %}
+                    <span class="badge" style="background: #e2e8f0; color: #718096;">Unknown</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if item.canonical_key %}
+                    <code style="font-size: 0.75rem; color: #4a5568;">{{ item.canonical_key[:40] }}{% if item.canonical_key|length > 40 %}...{% endif %}</code>
+                    {% else %}
+                    <span style="color: #cbd5e0;">-</span>
+                    {% endif %}
+                </td>
+                <td style="text-align: right;">{{ item.quantity or "-" }}</td>
+                <td>{{ item.unit or "-" }}</td>
+                <td>
+                    {% if item.width_mm or item.height_mm or item.dn_mm %}
+                    <small style="color: #718096;">
+                        {% if item.width_mm and item.height_mm %}
+                        {{ item.width_mm }}×{{ item.height_mm }}mm
+                        {% elif item.dn_mm %}
+                        DN{{ item.dn_mm }}
+                        {% endif %}
+                        {% if item.angle_deg %}
+                        ∠{{ item.angle_deg }}°
+                        {% endif %}
+                    </small>
+                    {% else %}
+                    <span style="color: #cbd5e0;">-</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <small style="color: #a0aec0;">
+                        {{ item.created_at.strftime("%Y-%m-%d %H:%M") if item.created_at else "-" }}
+                    </small>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <!-- Pagination -->
+    {% if total_pages > 1 %}
+    <div class="pagination">
+        {% if page > 1 %}
+        <a href="/items?org={{ org_id }}&project={{ project_id }}&page=1">« First</a>
+        <a href="/items?org={{ org_id }}&project={{ project_id }}&page={{ page - 1 }}">‹ Prev</a>
+        {% endif %}
+
+        {% for p in range([1, page - 2]|max, [total_pages, page + 2]|min + 1) %}
+            {% if p == page %}
+            <span class="active">{{ p }}</span>
+            {% else %}
+            <a href="/items?org={{ org_id }}&project={{ project_id }}&page={{ p }}">{{ p }}</a>
+            {% endif %}
+        {% endfor %}
+
+        {% if page < total_pages %}
+        <a href="/items?org={{ org_id }}&project={{ project_id }}&page={{ page + 1 }}">Next ›</a>
+        <a href="/items?org={{ org_id }}&project={{ project_id }}&page={{ total_pages }}">Last »</a>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    {% else %}
+    <div class="message message-info" style="margin: 1rem;">
+        <strong>No items found</strong><br/>
+        Upload a Revit schedule via <a href="/ingest?org={{ org_id }}&project={{ project_id }}">Ingest</a> to get started.
+    </div>
+    {% endif %}
+</div>
+
+<!-- Item Details Legend -->
+<div class="card">
+    <div class="card-header">ℹ️ Understanding Items</div>
+    <div style="line-height: 1.8;">
+        <p><strong>Canonical Key</strong>: Normalized, project-agnostic identifier used for matching across projects</p>
+        <p><strong>Classification Code</strong>: OmniClass/UniClass code from trust hierarchy (family → curated map → category → heuristics)</p>
+        <p><strong>Dimensions</strong>: Parsed from family/type names (width×height for cable trays, DN for pipes, angle for elbows)</p>
+        <p><strong>Material</strong>: Extracted material property (galvanized, stainless, PVC, etc.)</p>
+    </div>
+</div>
+
+{% endblock %}

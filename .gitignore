@@ -1,0 +1,15 @@
+__pycache__/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+.env
+.DS_Store
+.claude/
+examples/BIMCalc/
+*.db
+dist/
+build/
+*.pyc
+*.pyo
+*.sqlite

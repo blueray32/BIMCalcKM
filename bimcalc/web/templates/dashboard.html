@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - BIMCalc{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Project Dashboard</h1>
+    <p>Overview of {{ project_id }} in {{ org_id }}</p>
+</div>
+
+<!-- Statistics Cards -->
+<div class="stats-grid">
+    <div class="stat-card primary">
+        <div class="label">Revit Items</div>
+        <div class="value">{{ items_count }}</div>
+        <div class="description">Total items from schedules</div>
+    </div>
+
+    <div class="stat-card success">
+        <div class="label">Price Catalog</div>
+        <div class="value">{{ prices_count }}</div>
+        <div class="description">Available price items</div>
+    </div>
+
+    <div class="stat-card warning">
+        <div class="label">Awaiting Review</div>
+        <div class="value">{{ review_count }}</div>
+        <div class="description">Items requiring approval</div>
+    </div>
+
+    <div class="stat-card danger">
+        <div class="label">Active Mappings</div>
+        <div class="value">{{ mappings_count }}</div>
+        <div class="description">Approved matches</div>
+    </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="card">
+    <div class="card-header">Quick Actions</div>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+        <a href="/review?org={{ org_id }}&project={{ project_id }}" class="btn btn-primary" style="text-align: center; padding: 1.5rem;">
+            📋 Review Items<br/>
+            <small style="font-weight: normal; opacity: 0.8;">{{ review_count }} pending</small>
+        </a>
+        <a href="/ingest?org={{ org_id }}&project={{ project_id }}" class="btn btn-primary" style="text-align: center; padding: 1.5rem;">
+            📤 Upload Files<br/>
+            <small style="font-weight: normal; opacity: 0.8;">Schedules & prices</small>
+        </a>
+        <a href="/match?org={{ org_id }}&project={{ project_id }}" class="btn btn-primary" style="text-align: center; padding: 1.5rem;">
+            🔍 Run Matching<br/>
+            <small style="font-weight: normal; opacity: 0.8;">Find price matches</small>
+        </a>
+        <a href="/reports?org={{ org_id }}&project={{ project_id }}" class="btn btn-primary" style="text-align: center; padding: 1.5rem;">
+            📊 Generate Report<br/>
+            <small style="font-weight: normal; opacity: 0.8;">Cost reports</small>
+        </a>
+    </div>
+</div>
+
+<!-- Recent Activity Placeholder -->
+<div class="card">
+    <div class="card-header">Workflow Status</div>
+    <div style="padding: 1rem 0;">
+        {% if items_count == 0 %}
+        <div class="message message-info">
+            <strong>Getting Started</strong><br/>
+            1. Upload a Revit schedule (CSV/XLSX) via <a href="/ingest?org={{ org_id }}&project={{ project_id }}">Ingest</a><br/>
+            2. Upload price books if needed<br/>
+            3. Run <a href="/match?org={{ org_id }}&project={{ project_id }}">Matching</a> to find prices<br/>
+            4. Review and approve matches in <a href="/review?org={{ org_id }}&project={{ project_id }}">Review</a><br/>
+            5. Generate cost reports
+        </div>
+        {% elif review_count > 0 %}
+        <div class="message message-warning">
+            <strong>Action Required</strong><br/>
+            You have {{ review_count }} items waiting for review. <a href="/review?org={{ org_id }}&project={{ project_id }}">Review now →</a>
+        </div>
+        {% else %}
+        <div class="message message-success">
+            <strong>All Caught Up!</strong><br/>
+            No items requiring review. Your project is ready for reporting.
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

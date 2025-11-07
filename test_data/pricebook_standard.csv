@@ -1,0 +1,21 @@
+SKU,Description,Classification Code,Unit Price,Unit,Currency,VAT Rate,Width,Height,DN,Angle,Material,Vendor Note
+CT-L-200-90-GALV,Cable Tray Ladder Elbow 90deg 200x50 Galvanized,2650,45.50,ea,EUR,0.23,200,50,,,Galvanized,Standard stock item
+CT-L-200-00-GALV,Cable Tray Ladder Straight 200x50 Galvanized,2650,32.00,ea,EUR,0.23,200,50,,,Galvanized,Per 3m length
+CT-L-300-45-GALV,Cable Tray Ladder Elbow 45deg 300x50 Galvanized,2650,52.00,ea,EUR,0.23,300,50,,45,Galvanized,
+CT-L-200-TEE-GALV,Cable Tray Ladder Tee 200x50 Galvanized,2650,48.00,ea,EUR,0.23,200,50,,,Galvanized,
+CT-L-300-200-RED,Cable Tray Ladder Reducer 300x50-200x50,2650,38.50,ea,EUR,0.23,300,50,,,Galvanized,
+PIPE-DN50-90-GALV,Pipe Elbow 90deg DN50 Galvanized,2211,28.00,ea,EUR,0.23,,,50,90,Galvanized,
+PIPE-DN50-00-GALV,Pipe Straight DN50 Galvanized,2211,15.50,m,EUR,0.23,,,50,,Galvanized,Per meter
+PIPE-DN100-90-GALV,Pipe Elbow 90deg DN100 Galvanized,2211,42.00,ea,EUR,0.23,,,100,90,Galvanized,
+PIPE-DN50-TEE-GALV,Pipe Tee DN50 Galvanized,2211,32.00,ea,EUR,0.23,,,50,,Galvanized,
+PIPE-DN50-45-GALV,Pipe Elbow 45deg DN50 Galvanized,2211,26.00,ea,EUR,0.23,,,50,45,Galvanized,
+COND-25-90-PVC,Conduit Elbow 90deg 25mm PVC,2655,8.50,ea,EUR,0.23,25,,,,PVC,
+COND-25-00-PVC,Conduit Straight 25mm PVC,2655,4.20,ea,EUR,0.23,25,,,,PVC,Per 3m length
+COND-25-COUP-PVC,Conduit Coupling 25mm PVC,2655,2.80,ea,EUR,0.23,25,,,,PVC,
+DUCT-300-90-GALV,Duct Elbow 90deg 300x200 Galvanized,2342,68.00,ea,EUR,0.23,300,200,,,Galvanized,
+DUCT-300-00-GALV,Duct Straight 300x200 Galvanized,2342,45.00,ea,EUR,0.23,300,200,,,Galvanized,Per 1.2m
+CT-P-150-90-SS,Cable Tray Perforated Elbow 90deg 150x50 SS,2650,72.00,ea,EUR,0.23,150,50,,,Stainless,Premium material
+PIPE-DN32-90-CU,Pipe Elbow 90deg DN32 Copper Type K,2211,35.00,ea,EUR,0.23,,,32,90,Copper,
+PIPE-DN32-00-CU,Pipe Straight DN32 Copper Type K,2211,22.50,m,EUR,0.23,,,32,,Copper,Per meter
+LIGHT-600-LED-40W,LED Panel 600x600 40W 4000K,2356,85.00,ea,EUR,0.23,600,600,,,Aluminum,5yr warranty
+LIGHT-150-DL-12W,LED Downlight 150mm 12W 3000K,2356,42.00,ea,EUR,0.23,150,,,,Aluminum,IP44 rated

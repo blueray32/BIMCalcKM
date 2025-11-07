@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>BIMCalc Review</title>
+    <style>
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        margin: 0;
+        padding: 0;
+        background-color: #f4f6f8;
+      }
+      header {
+        background: #141b2d;
+        color: #fff;
+        padding: 1rem 2rem;
+      }
+      main {
+        padding: 2rem;
+        max-width: 1200px;
+        margin: auto;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        background: #fff;
+        border-radius: 8px;
+        overflow: hidden;
+      }
+      th,
+      td {
+        padding: 0.75rem 1rem;
+        border-bottom: 1px solid #ececec;
+      }
+      th {
+        text-align: left;
+        background: #fafafa;
+        font-size: 0.9rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+      tr:last-child td {
+        border-bottom: none;
+      }
+      .critical {
+        color: #b42318;
+        font-weight: 600;
+      }
+      .badge {
+        display: inline-block;
+        padding: 0.15rem 0.5rem;
+        border-radius: 999px;
+        font-size: 0.75rem;
+        margin-right: 0.25rem;
+      }
+      .badge-critical {
+        background: #fee4e2;
+        color: #b42318;
+      }
+      .badge-advisory {
+        background: #fef3c7;
+        color: #92400e;
+      }
+      form {
+        display: flex;
+        gap: 0.5rem;
+      }
+      textarea {
+        flex: 1;
+        resize: vertical;
+        min-height: 2.5rem;
+        border-radius: 4px;
+        border: 1px solid #d1d5db;
+        padding: 0.4rem;
+        font-family: inherit;
+      }
+      button {
+        background: #2563eb;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        padding: 0.5rem 1rem;
+        cursor: pointer;
+      }
+      button[disabled] {
+        background: #cbd5f5;
+        cursor: not-allowed;
+      }
+      .filters {
+        margin-bottom: 1rem;
+        display: flex;
+        gap: 1rem;
+        align-items: center;
+      }
+      select {
+        padding: 0.4rem 0.6rem;
+        border-radius: 4px;
+        border: 1px solid #d1d5db;
+      }
+      .empty {
+        text-align: center;
+        padding: 2rem;
+        background: #fff;
+        border-radius: 8px;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>BIMCalc Review &middot; {{ project_id }} ({{ org_id }})</h1>
+    </header>
+    <main>
+      <div class="filters">
+        <form method="get">
+          <input type="hidden" name="org" value="{{ org_id }}" />
+          <input type="hidden" name="project" value="{{ project_id }}" />
+          <label>
+            Flag filter
+            <select name="flag" onchange="this.form.submit()">
+              {% set flags = [
+                ("All", "all"),
+                ("Unit Conflict", "Unit Conflict"),
+                ("Size Mismatch", "Size Mismatch"),
+                ("Angle Mismatch", "Angle Mismatch"),
+                ("Material Conflict", "Material Conflict"),
+                ("Class Mismatch", "Class Mismatch"),
+                ("Stale Price", "StalePrice"),
+                ("Currency/VAT", "CurrencyMismatch"),
+                ("VAT Unclear", "VATUnclear"),
+                ("Vendor Note", "VendorNote")
+              ] %}
+              {% for label, value in flags %}
+              <option value="{{ value }}" {% if flag_filter==value %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+          </label>
+          <label>
+            Severity
+            <select name="severity" onchange="this.form.submit()">
+              <option value="all" {% if severity_filter=='all' %}selected{% endif %}>All</option>
+              <option value="Critical-Veto" {% if severity_filter=='Critical-Veto' %}selected{% endif %}>Critical</option>
+              <option value="Advisory" {% if severity_filter=='Advisory' %}selected{% endif %}>Advisory</option>
+            </select>
+          </label>
+          <label style="display: flex; align-items: center; gap: 0.3rem;">
+            <input
+              type="checkbox"
+              name="unmapped_only"
+              {% if unmapped_only %}checked{% endif %}
+              onchange="this.form.submit()"
+              style="width: auto; margin: 0;"
+            />
+            <span>Unmapped Only</span>
+          </label>
+        </form>
+      </div>
+
+      {% if records %}
+      <table>
+        <thead>
+          <tr>
+            <th>Item</th>
+            <th>Candidate</th>
+            <th>Confidence</th>
+            <th>Flags</th>
+            <th>Annotation & Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for record in records %}
+          <tr>
+            <td>
+              <strong>{{ record.item.family }}</strong><br />
+              <small>{{ record.item.type_name }}</small>
+            </td>
+            <td>
+              {% if record.price %}
+              {{ record.price.sku }}<br />
+              <small>{{ record.price.description }}</small>
+              {% else %}
+              <em>No candidate</em>
+              {% endif %}
+            </td>
+            <td>{{ "%.0f"|format(record.confidence_score) }}%</td>
+            <td>
+              {% if record.flags %}
+                {% for flag in record.flags %}
+                  <span class="badge {% if flag.is_critical %}badge-critical{% else %}badge-advisory{% endif %}">
+                    {{ flag.type }}
+                  </span>
+                {% endfor %}
+              {% else %}
+                —
+              {% endif %}
+            </td>
+            <td>
+              <form method="post" action="/approve">
+                <input type="hidden" name="match_result_id" value="{{ record.match_result_id }}" />
+                <input type="hidden" name="org" value="{{ org_id }}" />
+                <input type="hidden" name="project" value="{{ project_id }}" />
+                <textarea name="annotation" placeholder="Annotation (required for advisory)"></textarea>
+                <button type="submit" {% if record.has_critical_flags or not record.price %}disabled{% endif %}>
+                  Approve
+                </button>
+              </form>
+              {% if record.has_critical_flags %}
+              <p class="critical">Resolve critical flags before approving.</p>
+              {% elif not record.price %}
+              <p>No candidate price available.</p>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div class="empty">
+        <h3>No items waiting for review 🎉</h3>
+        <p>Run `bimcalc match` to generate new review tasks.</p>
+      </div>
+      {% endif %}
+    </main>
+  </body>
+</html>

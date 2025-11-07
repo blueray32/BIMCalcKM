@@ -1,0 +1,11 @@
+SKU,Description,Classification Code,Unit Price,Unit,Currency,VAT Rate,Width,Height,DN,Angle,Material,Vendor Note
+CT-200x50-90,Cable Tray Ladder Elbow 90° 200x50mm Galvanized,2650,45.50,ea,EUR,0.23,200,50,,90,galvanized_steel,Standard delivery 3-5 days
+CT-200x50-45,Cable Tray Ladder Elbow 45° 200x50mm Galvanized,2650,42.00,ea,EUR,0.23,200,50,,45,galvanized_steel,Standard delivery 3-5 days
+CT-200x50-3000,Cable Tray Ladder Straight 3000mm 200x50mm Galvanized,2650,125.00,ea,EUR,0.23,200,50,,,galvanized_steel,Standard delivery 3-5 days
+CT-300x60-90,Cable Tray Ladder Elbow 90° 300x60mm Galvanized,2650,58.00,ea,EUR,0.23,300,60,,90,galvanized_steel,Standard delivery 3-5 days
+LF-600-LED-40W,LED Panel 600x600 40W 4000K,2603,125.00,ea,EUR,0.23,600,600,,,aluminum,5 year warranty
+LF-600-LED-50W,LED Panel 600x600 50W 4000K,2603,145.00,ea,EUR,0.23,600,600,,,aluminum,5 year warranty
+PIPE-CU-DN50-90,Copper Pipe Elbow 90° DN50,2211,28.50,ea,EUR,0.23,,,50,90,copper,Pressure rated 10 bar
+PIPE-CU-DN50-TEE,Copper Pipe Tee DN50,2211,32.00,ea,EUR,0.23,,,50,,copper,Pressure rated 10 bar
+PIPE-CU-DN50-STR,Copper Pipe Straight 3000mm DN50,2211,85.00,ea,EUR,0.23,,,50,,copper,Pressure rated 10 bar
+DUCT-200x100-90,Rectangular Duct Elbow 90° 200x100mm,2650,42.00,ea,EUR,0.23,200,100,,90,galvanized_steel,Standard delivery 3-5 days

@@ -1,0 +1,206 @@
+{% extends "base.html" %}
+
+{% block title %}Audit Trail - BIMCalc{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Audit Trail</h1>
+    <p>Complete decision history for {{ project_id }} in {{ org_id }}</p>
+</div>
+
+<!-- Summary Stats -->
+<div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); margin-bottom: 1.5rem;">
+    <div class="stat-card primary">
+        <div class="label">Total Records</div>
+        <div class="value" style="font-size: 2rem;">{{ total }}</div>
+        <div class="description">All match decisions</div>
+    </div>
+    <div class="stat-card info">
+        <div class="label">Current Page</div>
+        <div class="value" style="font-size: 2rem;">{{ page }} / {{ total_pages }}</div>
+    </div>
+    <div class="stat-card success">
+        <div class="label">Per Page</div>
+        <div class="value" style="font-size: 2rem;">{{ per_page }}</div>
+    </div>
+</div>
+
+<!-- Audit Records Table -->
+<div class="card">
+    <div class="card-header">📜 Decision Audit Log (Most Recent First)</div>
+
+    {% if audit_records %}
+    <table>
+        <thead>
+            <tr>
+                <th>Timestamp</th>
+                <th>Item</th>
+                <th>Decision</th>
+                <th>Confidence</th>
+                <th>Matched Price</th>
+                <th>Flags</th>
+                <th>Reason</th>
+                <th>Actor</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for match, item in audit_records %}
+            <tr>
+                <td>
+                    <small style="color: #4a5568; white-space: nowrap;">
+                        {{ match.timestamp.strftime("%Y-%m-%d") }}<br/>
+                        {{ match.timestamp.strftime("%H:%M:%S") }}
+                    </small>
+                </td>
+                <td>
+                    <strong>{{ item.family }}</strong><br/>
+                    <small style="color: #718096;">{{ item.type_name }}</small><br/>
+                    <code style="font-size: 0.7rem; color: #a0aec0;">{{ item.canonical_key[:30] }}...</code>
+                </td>
+                <td>
+                    {% if match.decision == 'auto-approved' %}
+                    <span class="badge badge-success">✓ Auto-Approved</span>
+                    {% elif match.decision == 'user-approved' %}
+                    <span class="badge badge-success">✓ User Approved</span>
+                    {% elif match.decision == 'manual-review' %}
+                    <span class="badge badge-advisory">⏳ Manual Review</span>
+                    {% elif match.decision == 'no-match' %}
+                    <span class="badge badge-critical">✗ No Match</span>
+                    {% else %}
+                    <span class="badge" style="background: #e2e8f0; color: #718096;">{{ match.decision }}</span>
+                    {% endif %}
+                </td>
+                <td style="text-align: center;">
+                    {% if match.confidence_score %}
+                    <span class="badge {% if match.confidence_score >= 85 %}badge-success{% elif match.confidence_score >= 70 %}badge-advisory{% else %}badge-critical{% endif %}">
+                        {{ "%.1f"|format(match.confidence_score) }}%
+                    </span>
+                    {% else %}
+                    <span style="color: #cbd5e0;">-</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if match.price_item_id %}
+                    <small style="color: #4a5568;">
+                        Price ID: <code>{{ match.price_item_id }}</code>
+                    </small>
+                    {% else %}
+                    <span style="color: #cbd5e0;">No match</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if match.flags %}
+                    <div style="display: flex; flex-direction: column; gap: 0.25rem;">
+                        {% for flag in match.flags %}
+                        <span class="badge {% if flag.severity == 'CRITICAL_VETO' %}badge-critical{% else %}badge-advisory{% endif %}" style="font-size: 0.7rem;">
+                            {{ flag.type.replace('_', ' ').title() }}
+                        </span>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <span class="badge badge-success">✓ None</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if match.reason %}
+                    <small style="color: #718096; font-size: 0.8rem;">
+                        {{ match.reason[:60] }}{% if match.reason|length > 60 %}...{% endif %}
+                    </small>
+                    {% else %}
+                    <span style="color: #cbd5e0;">-</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <small style="color: #4a5568;">{{ match.created_by or "system" }}</small>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <!-- Pagination -->
+    {% if total_pages > 1 %}
+    <div class="pagination">
+        {% if page > 1 %}
+        <a href="/audit?org={{ org_id }}&project={{ project_id }}&page=1">« First</a>
+        <a href="/audit?org={{ org_id }}&project={{ project_id }}&page={{ page - 1 }}">‹ Prev</a>
+        {% endif %}
+
+        {% for p in range([1, page - 2]|max, [total_pages, page + 2]|min + 1) %}
+            {% if p == page %}
+            <span class="active">{{ p }}</span>
+            {% else %}
+            <a href="/audit?org={{ org_id }}&project={{ project_id }}&page={{ p }}">{{ p }}</a>
+            {% endif %}
+        {% endfor %}
+
+        {% if page < total_pages %}
+        <a href="/audit?org={{ org_id }}&project={{ project_id }}&page={{ page + 1 }}">Next ›</a>
+        <a href="/audit?org={{ org_id }}&project={{ project_id }}&page={{ total_pages }}">Last »</a>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    {% else %}
+    <div class="message message-info" style="margin: 1rem;">
+        <strong>No audit records found</strong><br/>
+        Run the <a href="/match?org={{ org_id }}&project={{ project_id }}">Matching Pipeline</a> to create audit entries.
+    </div>
+    {% endif %}
+</div>
+
+<!-- Audit Trail Explanation -->
+<div class="card">
+    <div class="card-header">ℹ️ Understanding the Audit Trail</div>
+    <div style="line-height: 1.8;">
+        <p><strong>Purpose:</strong></p>
+        <p>The audit trail provides a complete, immutable record of every matching decision made by BIMCalc.
+        This ensures full transparency and enables compliance with financial audit requirements.</p>
+
+        <p style="margin-top: 1rem;"><strong>Key Fields:</strong></p>
+        <ul style="margin-left: 1.5rem; margin-top: 0.5rem;">
+            <li><strong>Timestamp</strong>: Exact date and time of the decision (UTC)</li>
+            <li><strong>Decision</strong>: auto-approved (high confidence), manual-review (medium/low), user-approved, no-match</li>
+            <li><strong>Confidence</strong>: Composite score from fuzzy matching + attribute alignment</li>
+            <li><strong>Flags</strong>: Risk indicators (CRITICAL_VETO blocks auto-approval, ADVISORY requires acknowledgment)</li>
+            <li><strong>Reason</strong>: Human-readable explanation of why this decision was made</li>
+            <li><strong>Actor</strong>: Who/what made the decision (system, web-ui, cli, username)</li>
+        </ul>
+
+        <p style="margin-top: 1rem;"><strong>Decision Types:</strong></p>
+        <ul style="margin-left: 1.5rem; margin-top: 0.5rem;">
+            <li><span class="badge badge-success">Auto-Approved</span>: High confidence (≥85%), no flags, instant mapping created</li>
+            <li><span class="badge badge-advisory">Manual Review</span>: Medium/low confidence or flags present, requires human approval</li>
+            <li><span class="badge badge-success">User Approved</span>: Human explicitly approved a manual-review item</li>
+            <li><span class="badge badge-critical">No Match</span>: No suitable candidates found</li>
+        </ul>
+
+        <p style="margin-top: 1rem;"><strong>Flag Severities:</strong></p>
+        <ul style="margin-left: 1.5rem; margin-top: 0.5rem;">
+            <li><span class="badge badge-critical">CRITICAL_VETO</span>: Blocks auto-approval (unit conflict, size/angle mismatch, material mismatch, category mismatch)</li>
+            <li><span class="badge badge-advisory">ADVISORY</span>: Requires explicit acknowledgment (stale price, currency ambiguity, vendor note)</li>
+        </ul>
+
+        <p style="margin-top: 1rem;"><strong>Compliance Features:</strong></p>
+        <ul style="margin-left: 1.5rem; margin-top: 0.5rem;">
+            <li>Every € in a report traces back to a specific audit entry</li>
+            <li>Audit records are never deleted or modified (append-only log)</li>
+            <li>Temporal queries enable "as-of" reporting for any point in time</li>
+            <li>All decisions include <code>created_by</code> attribution for accountability</li>
+        </ul>
+    </div>
+</div>
+
+<!-- Export Options -->
+<div class="card">
+    <div class="card-header">📥 Export Audit Trail</div>
+    <div style="padding: 1rem;">
+        <p>To export the complete audit trail for compliance or analysis:</p>
+        <pre style="background: #f7fafc; padding: 1rem; border-radius: 0.375rem; margin-top: 0.5rem; overflow-x: auto;"><code>python -m bimcalc.cli export-audit --org {{ org_id }} --project {{ project_id }} --output audit_trail.csv</code></pre>
+        <p style="margin-top: 1rem; color: #718096; font-size: 0.875rem;">
+            This will export all match results with full details including flags, reasons, and timestamps.
+        </p>
+    </div>
+</div>
+
+{% endblock %}

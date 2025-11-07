@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+
+{% block title %}Reports - BIMCalc{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Cost Reports</h1>
+    <p>Generate temporal cost reports for {{ project_id }} in {{ org_id }}</p>
+</div>
+
+<!-- Generate Report Form -->
+<div class="card">
+    <div class="card-header">📊 Generate Cost Report</div>
+    <form id="report-form" style="max-width: 600px;">
+        <div class="form-group">
+            <label>As-of Date & Time</label>
+            <input
+                type="datetime-local"
+                name="as_of"
+                id="as_of_input"
+                class="form-control"
+                step="1"
+            />
+            <small class="text-muted">
+                Leave blank for current time. This determines which mapping version to use (SCD Type-2).
+            </small>
+        </div>
+
+        <div class="form-group">
+            <label>Export Format</label>
+            <select name="format" id="format_select">
+                <option value="csv">CSV (Excel compatible)</option>
+                <option value="xlsx">XLSX (Excel native)</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <button type="submit" class="btn btn-primary">
+                📥 Generate & Download Report
+            </button>
+            <button type="button" class="btn" onclick="setCurrentTime()" style="margin-left: 0.5rem;">
+                🕐 Use Current Time
+            </button>
+        </div>
+    </form>
+
+    <div id="status-message" style="margin-top: 1rem;"></div>
+</div>
+
+<!-- Report Information -->
+<div class="card">
+    <div class="card-header">ℹ️ About Temporal Reports</div>
+    <div style="line-height: 1.8;">
+        <p><strong>What is temporal reporting?</strong></p>
+        <p>BIMCalc uses <strong>SCD Type-2</strong> (Slowly Changing Dimensions) to maintain a complete history of all mapping decisions.
+        This means you can generate reports "as of" any point in time, seeing exactly which prices were active at that moment.</p>
+
+        <p style="margin-top: 1rem;"><strong>Use cases:</strong></p>
+        <ul style="margin-left: 1.5rem; margin-top: 0.5rem;">
+            <li>Compare costs between different project phases</li>
+            <li>Audit historical pricing decisions</li>
+            <li>Reproduce past reports exactly (same inputs + same timestamp = same result)</li>
+            <li>Track how your cost estimates evolved over time</li>
+        </ul>
+
+        <p style="margin-top: 1rem;"><strong>Report columns:</strong></p>
+        <ul style="margin-left: 1.5rem; margin-top: 0.5rem;">
+            <li><code>family</code>, <code>type</code> - Revit element identification</li>
+            <li><code>canonical_key</code> - Normalized, project-agnostic identifier</li>
+            <li><code>classification_code</code> - OmniClass/UniClass code</li>
+            <li><code>sku</code>, <code>description</code> - Matched price item</li>
+            <li><code>quantity</code>, <code>unit</code> - From Revit schedule</li>
+            <li><code>unit_net</code>, <code>total_net</code> - Prices excluding VAT</li>
+            <li><code>total_gross</code> - Final price including VAT ({{ "23%" if vat_rate == 0.23 else vat_rate }})</li>
+            <li><code>mapping_version</code>, <code>mapping_timestamp</code> - Audit trail</li>
+        </ul>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Set current time as default
+    function setCurrentTime() {
+        const now = new Date();
+        // Format: YYYY-MM-DDTHH:mm:ss
+        const formatted = now.toISOString().slice(0, 19);
+        document.getElementById('as_of_input').value = formatted;
+    }
+
+    // Set current time on page load
+    setCurrentTime();
+
+    // Handle form submission
+    document.getElementById('report-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const statusDiv = document.getElementById('status-message');
+        statusDiv.innerHTML = '<div class="message message-info">⏳ Generating report...</div>';
+
+        const asOf = document.getElementById('as_of_input').value;
+        const format = document.getElementById('format_select').value;
+
+        // Build download URL
+        const params = new URLSearchParams({
+            org: '{{ org_id }}',
+            project: '{{ project_id }}',
+            format: format
+        });
+
+        if (asOf) {
+            params.append('as_of', asOf);
+        }
+
+        const url = `/reports/generate?${params.toString()}`;
+
+        try {
+            // Trigger download
+            window.location.href = url;
+
+            // Show success message
+            setTimeout(() => {
+                statusDiv.innerHTML = '<div class="message message-success">✅ Report generated! Check your downloads folder.</div>';
+            }, 500);
+        } catch (error) {
+            statusDiv.innerHTML = `<div class="message message-error">❌ Error: ${error.message}</div>`;
+        }
+    });
+</script>
+{% endblock %}

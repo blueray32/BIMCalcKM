@@ -1,0 +1,136 @@
+# BIMCalc Classification Trust Hierarchy Configuration
+#
+# Trust order (stop at first match):
+# 1. Explicit Override (priority 100) - Omniclass/Uniformat fields
+# 2. Curated Manual List (priority 90) - Manually maintained mappings
+# 3. Revit Category + System Type (priority 70) - Revit built-in metadata
+# 4. Fallback Heuristics (priority 50) - Keyword pattern matching
+# 5. Unknown (priority 0) - Requires manual review
+
+trust_levels:
+  - name: ExplicitOverride
+    priority: 100
+    fields: [omniclass_code, uniformat_code]
+    description: "User or system explicitly provides classification code"
+
+  - name: CuratedList
+    priority: 90
+    source: config/curated_classifications.csv
+    match_on: [family, type_name]
+    description: "Manually curated mappings for common families"
+
+  - name: RevitCategorySystem
+    priority: 70
+    description: "Revit Category + System Type heuristics"
+    rules:
+      # HVAC Systems
+      - category: "Mechanical Equipment"
+        system_type: "HVAC"
+        classification_code: 2301
+      - category: "Air Terminals"
+        classification_code: 2302
+      - category: "Ducts"
+        classification_code: 2302
+      - category: "Duct Fittings"
+        classification_code: 2302
+      - category: "Duct Accessories"
+        classification_code: 2302
+
+      # Plumbing Systems
+      - category: "Mechanical Equipment"
+        system_type: "Plumbing"
+        classification_code: 2211
+      - category: "Plumbing Fixtures"
+        classification_code: 2211
+      - category: "Pipes"
+        system_type: "Domestic Hot Water"
+        classification_code: 2211
+      - category: "Pipes"
+        system_type: "Domestic Cold Water"
+        classification_code: 2211
+      - category: "Pipes"
+        system_type: "Sanitary"
+        classification_code: 2212
+      - category: "Pipe Fittings"
+        classification_code: 2215
+      - category: "Pipe Accessories"
+        classification_code: 2215
+
+      # Electrical Systems
+      - category: "Electrical Equipment"
+        classification_code: 2601
+      - category: "Electrical Fixtures"
+        classification_code: 2603
+      - category: "Lighting Fixtures"
+        classification_code: 2603
+      - category: "Lighting Devices"
+        classification_code: 2603
+      - category: "Data Devices"
+        classification_code: 2701
+      - category: "Communication Devices"
+        classification_code: 2701
+      - category: "Fire Alarm Devices"
+        classification_code: 2801
+
+      # Cable Management
+      - category: "Cable Tray"
+        classification_code: 2650
+      - category: "Cable Tray Fittings"
+        classification_code: 2650
+      - category: "Conduit"
+        classification_code: 2650
+      - category: "Conduit Fittings"
+        classification_code: 2650
+      - category: "Electrical Containment"
+        classification_code: 2650
+
+  - name: FallbackHeuristics
+    priority: 50
+    description: "Keyword pattern matching in family/type names"
+    rules:
+      # HVAC keywords
+      - family_contains: ["duct", "diffuser", "grille", "register", "vav"]
+        classification_code: 2302
+      - family_contains: ["ahu", "air handling", "fan coil", "boiler", "chiller"]
+        classification_code: 2301
+
+      # Plumbing keywords
+      - family_contains: ["valve", "fitting", "elbow", "tee", "reducer"]
+        classification_code: 2215
+      - family_contains: ["pump", "water heater", "tank"]
+        classification_code: 2301
+      - family_contains: ["sink", "toilet", "urinal", "shower", "faucet"]
+        classification_code: 2211
+
+      # Electrical keywords
+      - family_contains: ["light", "luminaire", "lamp", "fixture"]
+        classification_code: 2603
+      - family_contains: ["socket", "outlet", "receptacle", "switch"]
+        classification_code: 2601
+      - family_contains: ["panel", "switchboard", "distribution"]
+        classification_code: 2601
+      - family_contains: ["tray", "containment", "ladder"]
+        classification_code: 2650
+      - family_contains: ["fire alarm", "smoke detector", "heat detector"]
+        classification_code: 2801
+
+  - name: Unknown
+    priority: 0
+    classification_code: 9999
+    requires_manual_review: true
+    description: "Fallback for unclassifiable items"
+
+# Classification code reference (Uniformat Level 3)
+# This is a subset for BIMCalc MVP - expand as needed
+classification_codes:
+  2211: "Plumbing Fixtures"
+  2212: "Sanitary Waste"
+  2215: "Pipe Fittings & Valves"
+  2301: "HVAC Equipment"
+  2302: "HVAC Distribution (Ducts & Air Terminals)"
+  2601: "Electrical Power Distribution"
+  2603: "Lighting & Branch Wiring"
+  2650: "Cable Management (Trays & Conduit)"
+  2701: "Communications & Data"
+  2801: "Fire Detection & Alarm"
+  9999: "Unknown (Requires Manual Classification)"

@@ -1,0 +1,10 @@
+# Maps Revit category/system or standard codes to internal codes
+# Internal codes: 62 Small Power, 63 Lighting, 66 Containment, 67 Fire Alarm, 68 Security, 70 RCPs
+categories:
+  "Cable Trays": 66
+  "Electrical Fixtures": 63
+  "Lighting Fixtures": 63
+  "Piping": 64
+curated_families:
+  "MK Twin Socket Outlet": 62
+  "Cable Tray Ladder": 66

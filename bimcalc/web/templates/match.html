@@ -1,0 +1,166 @@
+{% extends "base.html" %}
+
+{% block title %}Run Matching - BIMCalc{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Run Matching Pipeline</h1>
+    <p>Trigger matching to find price items for your Revit items</p>
+</div>
+
+<div class="card">
+    <div class="card-header">Configure Matching</div>
+    <form id="match-form">
+        <div class="form-group">
+            <label>Organization ID</label>
+            <input type="text" name="org" value="{{ org_id }}" required />
+        </div>
+
+        <div class="form-group">
+            <label>Project ID</label>
+            <input type="text" name="project" value="{{ project_id }}" required />
+        </div>
+
+        <div class="form-group">
+            <label>Limit (Optional)</label>
+            <input type="number" name="limit" placeholder="Leave empty to match all items" min="1" />
+            <small class="text-muted">Process only the first N items (for testing)</small>
+        </div>
+
+        <button type="submit" class="btn btn-primary">🔍 Run Matching</button>
+    </form>
+
+    <div id="match-status" style="margin-top: 1.5rem;"></div>
+    <div id="match-results" style="margin-top: 1.5rem;"></div>
+</div>
+
+<!-- How It Works -->
+<div class="card" style="margin-top: 2rem;">
+    <div class="card-header">How Matching Works</div>
+    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.5rem; text-align: center;">
+        <div>
+            <div style="font-size: 3rem; margin-bottom: 0.5rem;">🔍</div>
+            <h4 style="margin-bottom: 0.5rem;">Classification</h4>
+            <p class="text-muted" style="font-size: 0.875rem;">Items classified by trust hierarchy (OmniClass, Uniformat, Revit Category)</p>
+        </div>
+        <div>
+            <div style="font-size: 3rem; margin-bottom: 0.5rem;">📊</div>
+            <h4 style="margin-bottom: 0.5rem;">Blocking</h4>
+            <p class="text-muted" style="font-size: 0.875rem;">Candidate pool filtered by classification code (20× faster)</p>
+        </div>
+        <div>
+            <div style="font-size: 3rem; margin-bottom: 0.5rem;">⚖️</div>
+            <h4 style="margin-bottom: 0.5rem;">Fuzzy Matching</h4>
+            <p class="text-muted" style="font-size: 0.875rem;">RapidFuzz scoring on description, size, angle, material</p>
+        </div>
+        <div>
+            <div style="font-size: 3rem; margin-bottom: 0.5rem;">✅</div>
+            <h4 style="margin-bottom: 0.5rem;">Auto-Routing</h4>
+            <p class="text-muted" style="font-size: 0.875rem;">High confidence (≥85%) + no flags → auto-accept<br/>Otherwise → manual review</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('match-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const form = e.target;
+    const formData = new FormData(form);
+    const limitValue = formData.get('limit');
+    if (!limitValue) {
+        formData.delete('limit');
+    }
+    const statusDiv = document.getElementById('match-status');
+    const resultsDiv = document.getElementById('match-results');
+
+    statusDiv.innerHTML = '<div class="message message-info"><strong>Running matching pipeline...</strong><br/>This may take a few moments.</div>';
+    resultsDiv.innerHTML = '';
+
+    try {
+        const response = await fetch('/match/run', {
+            method: 'POST',
+            body: formData
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            statusDiv.innerHTML = `<div class="message message-success"><strong>Matching Complete!</strong><br/>${result.message}</div>`;
+
+            // Display results table
+            const autoAccepted = result.results.filter(r => r.decision === 'auto-accepted').length;
+            const manualReview = result.results.filter(r => r.decision === 'manual-review').length;
+            const rejected = result.results.filter(r => r.decision === 'rejected').length;
+
+            let html = `
+                <div class="stats-grid">
+                    <div class="stat-card success">
+                        <div class="label">Auto-Accepted</div>
+                        <div class="value">${autoAccepted}</div>
+                    </div>
+                    <div class="stat-card warning">
+                        <div class="label">Manual Review</div>
+                        <div class="value">${manualReview}</div>
+                    </div>
+                    <div class="stat-card danger">
+                        <div class="label">Rejected</div>
+                        <div class="value">${rejected}</div>
+                    </div>
+                </div>
+
+                <table style="margin-top: 1.5rem;">
+                    <thead>
+                        <tr>
+                            <th>Item</th>
+                            <th>Decision</th>
+                            <th>Confidence</th>
+                            <th>Flags</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            result.results.forEach(r => {
+                const badgeClass =
+                    r.decision === 'auto-accepted' ? 'badge-success' :
+                    r.decision === 'manual-review' ? 'badge-advisory' :
+                    'badge-critical';
+
+                const flags = r.flags.length > 0 ? r.flags.join(', ') : '—';
+
+                html += `
+                    <tr>
+                        <td>${r.item}</td>
+                        <td><span class="badge ${badgeClass}">${r.decision}</span></td>
+                        <td>${r.confidence.toFixed(0)}%</td>
+                        <td>${flags}</td>
+                    </tr>
+                `;
+            });
+
+            html += '</tbody></table>';
+
+            if (manualReview > 0) {
+                html += `
+                    <div style="margin-top: 1.5rem; text-align: center;">
+                        <a href="/review?org=${formData.get('org')}&project=${formData.get('project')}" class="btn btn-primary">
+                            Review ${manualReview} Items →
+                        </a>
+                    </div>
+                `;
+            }
+
+            resultsDiv.innerHTML = html;
+
+        } else {
+            statusDiv.innerHTML = `<div class="message message-error"><strong>Error:</strong><br/>${result.message}</div>`;
+        }
+    } catch (error) {
+        statusDiv.innerHTML = `<div class="message message-error"><strong>Error:</strong><br/>${error.message}</div>`;
+    }
+});
+</script>
+{% endblock %}

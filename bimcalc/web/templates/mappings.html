@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+
+{% block title %}Mappings - BIMCalc{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Active Mappings</h1>
+    <p>Viewing {{ total }} active mappings for {{ org_id }} (SCD Type-2)</p>
+</div>
+
+<!-- Summary Stats -->
+<div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); margin-bottom: 1.5rem;">
+    <div class="stat-card success">
+        <div class="label">Active Mappings</div>
+        <div class="value" style="font-size: 2rem;">{{ total }}</div>
+        <div class="description">end_ts IS NULL</div>
+    </div>
+    <div class="stat-card info">
+        <div class="label">Current Page</div>
+        <div class="value" style="font-size: 2rem;">{{ page }} / {{ total_pages }}</div>
+    </div>
+    <div class="stat-card primary">
+        <div class="label">Per Page</div>
+        <div class="value" style="font-size: 2rem;">{{ per_page }}</div>
+    </div>
+</div>
+
+<!-- Mappings Table -->
+<div class="card">
+    <div class="card-header">🔗 Canonical Key → Price Item Mappings</div>
+
+    {% if mappings %}
+    <table>
+        <thead>
+            <tr>
+                <th>Canonical Key</th>
+                <th>→</th>
+                <th>Price Item</th>
+                <th>SKU</th>
+                <th>Classification</th>
+                <th>Unit Price (NET)</th>
+                <th>Created By</th>
+                <th>Active Since</th>
+                <th>Version</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for mapping, price_item in mappings %}
+            <tr>
+                <td>
+                    <code style="font-size: 0.75rem; color: #4a5568;">
+                        {{ mapping.canonical_key[:50] }}{% if mapping.canonical_key|length > 50 %}...{% endif %}
+                    </code>
+                </td>
+                <td style="text-align: center; color: #48bb78; font-size: 1.5rem;">→</td>
+                <td>
+                    <strong>{{ price_item.description }}</strong><br/>
+                    <small style="color: #718096;">{{ price_item.vendor_id or "default" }}</small>
+                </td>
+                <td>
+                    <code>{{ price_item.sku }}</code>
+                </td>
+                <td>
+                    {% if price_item.classification_code %}
+                    <span class="badge badge-success">{{ price_item.classification_code }}</span>
+                    {% else %}
+                    <span class="badge" style="background: #e2e8f0; color: #718096;">N/A</span>
+                    {% endif %}
+                </td>
+                <td style="text-align: right;">
+                    <strong>€{{ "%.2f"|format(price_item.unit_price_net) }}</strong>
+                    {% if price_item.currency != "EUR" %}
+                    <small style="color: #f56565;">({{ price_item.currency }})</small>
+                    {% endif %}
+                </td>
+                <td>
+                    <small style="color: #4a5568;">{{ mapping.created_by or "system" }}</small>
+                </td>
+                <td>
+                    <small style="color: #a0aec0;">
+                        {{ mapping.start_ts.strftime("%Y-%m-%d %H:%M") if mapping.start_ts else "-" }}
+                    </small>
+                </td>
+                <td>
+                    <span class="badge badge-info">v{{ mapping.version }}</span>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <!-- Pagination -->
+    {% if total_pages > 1 %}
+    <div class="pagination">
+        {% if page > 1 %}
+        <a href="/mappings?org={{ org_id }}&page=1">« First</a>
+        <a href="/mappings?org={{ org_id }}&page={{ page - 1 }}">‹ Prev</a>
+        {% endif %}
+
+        {% for p in range([1, page - 2]|max, [total_pages, page + 2]|min + 1) %}
+            {% if p == page %}
+            <span class="active">{{ p }}</span>
+            {% else %}
+            <a href="/mappings?org={{ org_id }}&page={{ p }}">{{ p }}</a>
+            {% endif %}
+        {% endfor %}
+
+        {% if page < total_pages %}
+        <a href="/mappings?org={{ org_id }}&page={{ page + 1 }}">Next ›</a>
+        <a href="/mappings?org={{ org_id }}&page={{ total_pages }}">Last »</a>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    {% else %}
+    <div class="message message-info" style="margin: 1rem;">
+        <strong>No active mappings found</strong><br/>
+        Approve items in <a href="/review?org={{ org_id }}">Review</a> to create mappings.
+    </div>
+    {% endif %}
+</div>
+
+<!-- Mapping Memory Explanation -->
+<div class="card">
+    <div class="card-header">ℹ️ About Mapping Memory (SCD Type-2)</div>
+    <div style="line-height: 1.8;">
+        <p><strong>What is SCD Type-2?</strong></p>
+        <p>BIMCalc uses <strong>Slowly Changing Dimensions Type-2</strong> to maintain a complete audit trail of all mapping decisions.
+        When you approve a new price for a canonical key, the system:</p>
+
+        <ol style="margin-left: 1.5rem; margin-top: 0.5rem; line-height: 2;">
+            <li>Closes the current mapping by setting <code>end_ts = now()</code></li>
+            <li>Creates a new mapping row with <code>start_ts = now()</code> and <code>end_ts = NULL</code></li>
+            <li>Increments the version number</li>
+        </ol>
+
+        <p style="margin-top: 1rem;"><strong>Key benefits:</strong></p>
+        <ul style="margin-left: 1.5rem; margin-top: 0.5rem;">
+            <li><strong>Complete history</strong>: Never lose information about past decisions</li>
+            <li><strong>Temporal queries</strong>: Generate reports "as of" any point in time</li>
+            <li><strong>Auditability</strong>: Track who changed what and when</li>
+            <li><strong>Reproducibility</strong>: Same inputs + same timestamp = same result</li>
+        </ul>
+
+        <p style="margin-top: 1rem;"><strong>Active vs. Historical:</strong></p>
+        <ul style="margin-left: 1.5rem; margin-top: 0.5rem;">
+            <li><strong>Active</strong>: <code>end_ts IS NULL</code> (shown in this table)</li>
+            <li><strong>Historical</strong>: <code>end_ts IS NOT NULL</code> (see Audit page)</li>
+        </ul>
+
+        <p style="margin-top: 1rem;"><strong>Invariant:</strong> Only <strong>one active row</strong> per <code>(org_id, canonical_key)</code></p>
+    </div>
+</div>
+
+{% endblock %}

@@ -1,0 +1,14 @@
+Containment,Description1,Description2,Width,Depth,Finish,Unit Price,Currency,SKU
+ES_CONTMNT,Ladder,Elbow 90deg,200mm,50mm,Galvanized,45.50,EUR,VENDOR-CT-001
+ES_CONTMNT,Ladder,Straight,200mm,50mm,Galvanized,32.00,EUR,VENDOR-CT-002
+ES_CONTMNT,Ladder,Elbow 45deg,300mm,50mm,Galvanized,52.00,EUR,VENDOR-CT-003
+ES_CONTMNT,Ladder,Tee Junction,200mm,50mm,Galvanized,48.00,EUR,VENDOR-CT-004
+ES_CONTMNT,Ladder,Reducer,300mm,50mm,Galvanized,38.50,EUR,VENDOR-CT-005
+PIPE_SYS,Elbow,90 Degree,DN50,,Galvanized,28.00,EUR,VENDOR-P-001
+PIPE_SYS,Straight,Standard,DN50,,Galvanized,15.50,EUR,VENDOR-P-002
+PIPE_SYS,Elbow,90 Degree,DN100,,Galvanized,42.00,EUR,VENDOR-P-003
+PIPE_SYS,Tee,Equal Branch,DN50,,Galvanized,32.00,EUR,VENDOR-P-004
+PIPE_SYS,Elbow,45 Degree,DN50,,Galvanized,26.00,EUR,VENDOR-P-005
+ES_CONTMNT,Perforated,Elbow 90deg,150mm,50mm,Stainless Steel,72.00,EUR,VENDOR-CT-006
+PIPE_SYS,Elbow,90 Degree,DN32,,Copper,35.00,EUR,VENDOR-P-006
+PIPE_SYS,Straight,Standard,DN32,,Copper,22.50,EUR,VENDOR-P-007

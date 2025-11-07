@@ -1,0 +1,7 @@
+item_id,family,type,category,quantity,unit,canonical_key,sku,description,unit_price,currency,vat_rate,matched_by,match_reason,total_net,total_gross,unit_price_formatted,total_net_formatted,total_gross_formatted,vat_rate_formatted
+4d7f9487-4631-4545-a91a-03ad913cc0c1,Cable Tray - Ladder,Elbow 45deg 200x50mm,Cable Tray,5.0,ea,,,,,,,,,,,,,,
+2410616d-3162-4f85-b8f0-03eed178a02c,Cable Tray - Ladder,Elbow 90deg 200x50mm,Cable Tray,10.0,ea,,,,,,,,,,,,,,
+7216bde5-9dd7-49f4-acaa-5b4744354767,Cable Tray - Ladder,Straight 3000mm 200x50mm,Cable Tray,15.0,ea,,,,,,,,,,,,,,
+48a07117-c870-44c7-b383-1091adc30e2c,LED Panel,600x600 40W,Lighting Fixtures,25.0,ea,,,,,,,,,,,,,,
+34486bd1-033b-4ff2-a667-8e45b612624e,Pipe - Supply Water,90 Elbow DN50,Pipes,20.0,ea,,,,,,,,,,,,,,
+e710e35b-8361-4689-bd82-a29a6166188a,Pipe - Supply Water,Tee DN50,Pipes,12.0,ea,,,,,,,,,,,,,,

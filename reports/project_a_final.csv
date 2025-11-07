@@ -1,0 +1,7 @@
+item_id,family,type,category,quantity,unit,canonical_key,sku,description,unit_price,currency,vat_rate,matched_by,match_reason,total_net,total_gross,unit_price_formatted,total_net_formatted,total_gross_formatted,vat_rate_formatted
+4d7f9487-4631-4545-a91a-03ad913cc0c1,Cable Tray - Ladder,Elbow 45deg 200x50mm,Cable Tray,5.0,ea,5d0c8f5a4f6b8852,CT-200x50-45,Cable Tray Ladder Elbow 45° 200x50mm Galvanized,42.0,EUR,0.23,cli,auto-accept,210.0,258.3,"€42,00","€210,00","€258,30",23%
+2410616d-3162-4f85-b8f0-03eed178a02c,Cable Tray - Ladder,Elbow 90deg 200x50mm,Cable Tray,10.0,ea,4ab92e53d5890d4b,CT-200x50-90,Cable Tray Ladder Elbow 90° 200x50mm Galvanized,45.5,EUR,0.23,cli,auto-accept,455.0,559.65,"€45,50","€455,00","€559,65",23%
+7216bde5-9dd7-49f4-acaa-5b4744354767,Cable Tray - Ladder,Straight 3000mm 200x50mm,Cable Tray,15.0,ea,8f928188cd5aec01,CT-200x50-3000,Cable Tray Ladder Straight 3000mm 200x50mm Galvanized,125.0,EUR,0.23,cli,auto-accept,1875.0,2306.25,"€125,00","€1.875,00","€2.306,25",23%
+48a07117-c870-44c7-b383-1091adc30e2c,LED Panel,600x600 40W,Lighting Fixtures,25.0,ea,42974e2d33485e64,,,,,,,,,,,,,
+34486bd1-033b-4ff2-a667-8e45b612624e,Pipe - Supply Water,90 Elbow DN50,Pipes,20.0,ea,27df6cff13c21311,,,,,,,,,,,,,
+e710e35b-8361-4689-bd82-a29a6166188a,Pipe - Supply Water,Tee DN50,Pipes,12.0,ea,e99aa5f2e2798abe,,,,,,,,,,,,,

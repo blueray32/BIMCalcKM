@@ -1,0 +1,141 @@
+# BIMCalc Vendor Classification Mapping (CMM)
+# Vendor: default
+# Purpose: Translate vendor-specific classification codes to BIMCalc canonical codes
+#
+# Structure:
+#   - match: Dict of fields that must match for this rule to apply
+#     map_to: Dict of canonical fields to populate
+#     priority: Optional (lower = higher priority, default 100)
+
+# Cable Tray - Ladder variants
+- match:
+    Containment: ES_CONTMNT
+    Description1: Ladder
+    Description2: Fixed Bolt
+    Width: 90mm
+    Depth: 100mm
+    Finish: Stainless Steel
+  map_to:
+    canonical_code: L-FB90-W90-D100-SS
+    internal_group: ES_CONTMNT
+    short: 6620
+    classification_code: "2650"  # Uniformat: Cable Tray
+
+- match:
+    Containment: ES_CONTMNT
+    Description1: Ladder
+    Description2: Elbow 90deg
+    Width: 200mm
+    Depth: 50mm
+    Finish: Galvanized
+  map_to:
+    canonical_code: L-ELB90-W200-D50-GALV
+    internal_group: ES_CONTMNT
+    short: 6620
+    classification_code: "2650"
+
+- match:
+    Containment: ES_CONTMNT
+    Description1: Ladder
+    Description2: Length
+    Width: 300mm
+    Depth: 100mm
+    Finish: Galvanized
+  map_to:
+    canonical_code: L-LEN-W300-D100-GALV
+    internal_group: ES_CONTMNT
+    short: 6620
+    classification_code: "2650"
+
+# Cable Tray - Basket variants
+- match:
+    Containment: ES_CONTMNT
+    Description1: Basket
+    Description2: Length
+    Width: 450mm
+    Depth: 55mm
+    Finish: Zinc Plated
+  map_to:
+    canonical_code: B-LEN-W450-D55-ZP
+    internal_group: ES_CONTMNT
+    short: 6620
+    classification_code: "2650"
+
+- match:
+    Containment: ES_CONTMNT
+    Description1: Basket
+    Description2: Elbow 90deg
+    Width: 300mm
+    Depth: 60mm
+    Finish: Galvanized
+  map_to:
+    canonical_code: B-ELB90-W300-D60-GALV
+    internal_group: ES_CONTMNT
+    short: 6620
+    classification_code: "2650"
+
+# General Cable Tray fallback (when specific dimensions not matched)
+- match:
+    Containment: ES_CONTMNT
+    Description1: Cable Tray
+  map_to:
+    canonical_code: CT-GENERIC
+    internal_group: ES_CONTMNT
+    short: 6620
+    classification_code: "2650"
+  priority: 200  # Lower priority (higher number) - only if more specific rules don't match
+
+# Lighting - LED Panel variants
+- match:
+    Description1: LED Panel
+    Width: 600mm
+    Height: 600mm
+  map_to:
+    canonical_code: LED-600X600-STD
+    classification_code: "2603"  # Uniformat: Lighting fixtures
+  priority: 50
+
+- match:
+    Description1: LED Panel
+    Description2: Standard
+    Width: 600mm
+    Height: 600mm
+  map_to:
+    canonical_code: LED-600X600-40W
+    classification_code: "2603"
+
+# Pipes - Supply Water
+- match:
+    System Type: Supply Water
+    Description1: 90 Elbow
+    DN: DN50
+  map_to:
+    canonical_code: PIPE-SW-ELB90-DN50
+    classification_code: "2211"  # Uniformat: Piping
+
+- match:
+    System Type: Supply Water
+    Description1: Straight
+    DN: DN50
+  map_to:
+    canonical_code: PIPE-SW-STR-DN50
+    classification_code: "2211"
+
+# Generic MEP fallbacks for common families
+- match:
+    Family: Cable Tray - Ladder
+  map_to:
+    classification_code: "2650"
+  priority: 300
+
+- match:
+    Family: Pipe - Supply Water
+  map_to:
+    classification_code: "2211"
+  priority: 300
+
+- match:
+    Category: Lighting Fixtures
+  map_to:
+    classification_code: "2603"
+  priority: 300

@@ -1,0 +1,29 @@
+Metadata-Version: 2.4
+Name: bimcalc
+Version: 0.1.0
+Summary: BIMCalc — classification-first BIM cost matching with mapping memory and risk flags
+Author: BIMCalc Team
+Requires-Python: >=3.11
+Requires-Dist: pydantic>=2.8
+Requires-Dist: pandas>=2.2
+Requires-Dist: typer>=0.12
+Requires-Dist: rapidfuzz>=3.9
+Requires-Dist: rich>=13.7
+Requires-Dist: PyYAML>=6.0
+Requires-Dist: sqlalchemy[asyncio]>=2.0
+Requires-Dist: asyncpg>=0.29
+Requires-Dist: aiosqlite>=0.19
+Requires-Dist: python-dotenv>=1.0
+Requires-Dist: openpyxl>=3.1
+Requires-Dist: textual>=0.50
+Requires-Dist: fastapi>=0.110
+Requires-Dist: uvicorn>=0.27
+Requires-Dist: Jinja2>=3.1
+Requires-Dist: python-multipart>=0.0.9
+Provides-Extra: dev
+Requires-Dist: pytest>=8.2; extra == "dev"
+Requires-Dist: pytest-cov>=5.0; extra == "dev"
+Requires-Dist: mypy>=1.11; extra == "dev"
+Requires-Dist: ruff>=0.6.9; extra == "dev"
+Requires-Dist: black>=24.8; extra == "dev"
+Requires-Dist: types-PyYAML; extra == "dev"

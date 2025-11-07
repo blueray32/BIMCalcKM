@@ -1,0 +1,202 @@
+{% extends "base.html" %}
+
+{% block title %}Statistics - BIMCalc{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Project Statistics</h1>
+    <p>Analytics dashboard for {{ project_id }} in {{ org_id }}</p>
+</div>
+
+<!-- Cost Summary -->
+<div class="stats-grid">
+    <div class="stat-card primary">
+        <div class="label">Total Items</div>
+        <div class="value">{{ total_items }}</div>
+        <div class="description">From Revit schedules</div>
+    </div>
+
+    <div class="stat-card success">
+        <div class="label">Matched Items</div>
+        <div class="value">{{ matched_items }}</div>
+        <div class="description">{{ "%.1f"|format((matched_items / total_items * 100) if total_items > 0 else 0) }}% matched</div>
+    </div>
+
+    <div class="stat-card warning">
+        <div class="label">Total Cost (NET)</div>
+        <div class="value">€{{ "{:,.2f}".format(total_net) }}</div>
+        <div class="description">Excluding VAT</div>
+    </div>
+
+    <div class="stat-card danger">
+        <div class="label">Total Cost (GROSS)</div>
+        <div class="value">€{{ "{:,.2f}".format(total_gross) }}</div>
+        <div class="description">Including VAT (23%)</div>
+    </div>
+</div>
+
+<!-- Match Decision Breakdown -->
+<div class="card">
+    <div class="card-header">📊 Match Decision Breakdown</div>
+
+    {% if match_stats %}
+    <table>
+        <thead>
+            <tr>
+                <th>Decision</th>
+                <th>Count</th>
+                <th>Percentage</th>
+                <th>Avg. Confidence</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for stat in match_stats %}
+            <tr>
+                <td>
+                    <strong>{{ stat.decision.replace('-', ' ').title() }}</strong>
+                </td>
+                <td style="text-align: right;">
+                    <strong>{{ stat.count }}</strong>
+                </td>
+                <td>
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                        <div style="
+                            width: 100px;
+                            height: 20px;
+                            background: #e2e8f0;
+                            border-radius: 4px;
+                            overflow: hidden;
+                        ">
+                            <div style="
+                                width: {{ (stat.count / total_items * 100) if total_items > 0 else 0 }}%;
+                                height: 100%;
+                                background: {% if stat.decision == 'auto-approved' %}#48bb78{% elif stat.decision == 'manual-review' %}#ed8936{% else %}#cbd5e0{% endif %};
+                            "></div>
+                        </div>
+                        <span>{{ "%.1f"|format((stat.count / total_items * 100) if total_items > 0 else 0) }}%</span>
+                    </div>
+                </td>
+                <td style="text-align: center;">
+                    {% if stat.avg_confidence %}
+                    <span class="badge {% if stat.avg_confidence >= 85 %}badge-success{% elif stat.avg_confidence >= 70 %}badge-advisory{% else %}badge-critical{% endif %}">
+                        {{ "%.1f"|format(stat.avg_confidence) }}%
+                    </span>
+                    {% else %}
+                    <span style="color: #cbd5e0;">N/A</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if stat.decision == 'auto-approved' %}
+                    <span class="badge badge-success">✓ Approved</span>
+                    {% elif stat.decision == 'manual-review' %}
+                    <span class="badge badge-advisory">⏳ Pending</span>
+                    {% elif stat.decision == 'user-approved' %}
+                    <span class="badge badge-success">✓ User Approved</span>
+                    {% else %}
+                    <span class="badge" style="background: #e2e8f0; color: #718096;">{{ stat.decision }}</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="message message-info" style="margin: 1rem;">
+        <strong>No matching results yet</strong><br/>
+        Run the <a href="/match?org={{ org_id }}&project={{ project_id }}">Matching Pipeline</a> to see statistics.
+    </div>
+    {% endif %}
+</div>
+
+<!-- Confidence Distribution -->
+<div class="card">
+    <div class="card-header">📈 Confidence Score Distribution</div>
+    <div style="padding: 1rem;">
+        {% if match_stats %}
+        <p><strong>Understanding Confidence Scores:</strong></p>
+        <ul style="margin-left: 1.5rem; margin-top: 0.5rem; line-height: 1.8;">
+            <li><strong>High (85-100%)</strong>: Auto-approved, no manual review needed</li>
+            <li><strong>Medium (70-84%)</strong>: Requires manual review</li>
+            <li><strong>Low (0-69%)</strong>: Multiple candidates, user must decide</li>
+        </ul>
+
+        <p style="margin-top: 1rem;"><strong>Factors affecting confidence:</strong></p>
+        <ul style="margin-left: 1.5rem; margin-top: 0.5rem; line-height: 1.8;">
+            <li>Fuzzy string match score (RapidFuzz)</li>
+            <li>Physical attribute alignment (dimensions, material, angle)</li>
+            <li>Classification code match</li>
+            <li>Unit consistency</li>
+            <li>Presence of risk flags (unit conflict, size mismatch, etc.)</li>
+        </ul>
+        {% else %}
+        <p class="text-muted">No data available yet.</p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Cost Breakdown by Category -->
+<div class="card">
+    <div class="card-header">💰 Cost Breakdown</div>
+    <div style="padding: 1rem;">
+        {% if total_net > 0 %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Component</th>
+                    <th>Amount (€)</th>
+                    <th>Percentage</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Subtotal (NET)</strong></td>
+                    <td style="text-align: right;">€{{ "{:,.2f}".format(total_net) }}</td>
+                    <td style="text-align: right;">100.0%</td>
+                </tr>
+                <tr>
+                    <td>VAT (23%)</td>
+                    <td style="text-align: right;">€{{ "{:,.2f}".format(total_gross - total_net) }}</td>
+                    <td style="text-align: right;">23.0%</td>
+                </tr>
+                <tr style="border-top: 2px solid #2d3748;">
+                    <td><strong>Total (GROSS)</strong></td>
+                    <td style="text-align: right;"><strong>€{{ "{:,.2f}".format(total_gross) }}</strong></td>
+                    <td style="text-align: right;"><strong>123.0%</strong></td>
+                </tr>
+            </tbody>
+        </table>
+
+        <p style="margin-top: 1.5rem; color: #718096; font-size: 0.875rem;">
+            ℹ️ <strong>Note:</strong> VAT rate and currency can be configured in <code>.env</code>
+            (<code>VAT_RATE</code>, <code>VAT_INCLUDED</code>, <code>DEFAULT_CURRENCY</code>)
+        </p>
+        {% else %}
+        <div class="message message-info">
+            <strong>No cost data available</strong><br/>
+            Match items and approve mappings to see cost breakdown.
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="card">
+    <div class="card-header">⚡ Quick Actions</div>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; padding: 1rem;">
+        <a href="/match?org={{ org_id }}&project={{ project_id }}" class="btn btn-primary" style="text-align: center; padding: 1rem;">
+            🔍 Re-run Matching
+        </a>
+        <a href="/review?org={{ org_id }}&project={{ project_id }}" class="btn btn-primary" style="text-align: center; padding: 1rem;">
+            📋 Review Pending Items
+        </a>
+        <a href="/reports?org={{ org_id }}&project={{ project_id }}" class="btn btn-success" style="text-align: center; padding: 1rem;">
+            📊 Generate Report
+        </a>
+        <a href="/audit?org={{ org_id }}&project={{ project_id }}" class="btn" style="text-align: center; padding: 1rem; background: #e2e8f0; color: #2d3748;">
+            📜 View Audit Trail
+        </a>
+    </div>
+</div>
+
+{% endblock %}

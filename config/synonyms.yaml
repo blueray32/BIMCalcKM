@@ -1,0 +1,99 @@
+# Synonym Configuration for BIMCalc Enhanced Normalization
+# This file defines canonical forms for materials, manufacturers, units, and abbreviations
+
+# Material Synonyms
+# Format: [canonical_form, synonym1, synonym2, ...]
+materials:
+  - ["stainless_steel", "SS", "stainless", "stainless steel", "inox", "INOX", "316", "304"]
+  - ["galvanized_steel", "GS", "galv", "galvanized", "galvanised", "zinc coated", "hot dip galvanized", "HDG"]
+  - ["carbon_steel", "CS", "carbon steel", "mild steel", "black steel"]
+  - ["copper", "Cu", "copper", "CU"]
+  - ["pvc", "PVC", "poly", "plastic", "polyvinyl chloride"]
+  - ["aluminum", "Al", "aluminium", "aluminum", "alloy"]
+  - ["brass", "brass", "bronze"]
+  - ["cast_iron", "CI", "cast iron", "ductile iron", "DI"]
+
+# Manufacturer Synonyms
+# Normalize manufacturer names to canonical form
+manufacturers:
+  - ["victaulic", "Victaulic", "Victaulic Company", "Victaulic Corp", "Victaulic Manufacturing"]
+  - ["grundfos", "Grundfos", "Grundfos Pumps", "Grundfos Group"]
+  - ["siemens", "Siemens", "Siemens AG", "Siemens Building Technologies"]
+  - ["honeywell", "Honeywell", "Honeywell International"]
+  - ["trane", "Trane", "Trane Technologies", "Trane Inc"]
+  - ["carrier", "Carrier", "Carrier Corporation", "Carrier Global"]
+  - ["armstrong", "Armstrong", "Armstrong International", "Armstrong Fluid Technology"]
+  - ["danfoss", "Danfoss", "Danfoss A/S"]
+
+# Unit Synonyms
+# Normalize unit abbreviations to standard form
+units:
+  - ["m", "m", "meter", "metre", "meters", "metres", "M"]
+  - ["ea", "ea", "each", "unit", "piece", "pcs", "pc", "EA", "nr", "no"]
+  - ["m2", "m2", "m²", "sqm", "square meter", "square metre", "sq m", "M2"]
+  - ["m3", "m3", "m³", "cum", "cubic meter", "cubic metre", "cu m", "M3"]
+  - ["kg", "kg", "kilogram", "KG", "kilo"]
+  - ["l", "l", "liter", "litre", "L"]
+  - ["mm", "mm", "millimeter", "millimetre", "MM"]
+
+# Common Abbreviations
+# Expand abbreviations to full terms for better matching
+abbreviations:
+  DN: "diameter_nominal"
+  OD: "outer_diameter"
+  ID: "inner_diameter"
+  THK: "thickness"
+  WT: "wall_thickness"
+  DIA: "diameter"
+  DIAM: "diameter"
+  TEMP: "temperature"
+  MAX: "maximum"
+  MIN: "minimum"
+  STD: "standard"
+  SCH: "schedule"
+  NPS: "nominal_pipe_size"
+  BWG: "birmingham_wire_gauge"
+  SWG: "standard_wire_gauge"
+  ANSI: "american_national_standards_institute"
+  ISO: "international_organization_for_standardization"
+  EN: "european_norm"
+  BS: "british_standard"
+  DIN: "deutsches_institut_fur_normung"
+
+# Classification Helpers (optional - for future use)
+# Map common keywords to classification codes
+classification_keywords:
+  hvac_equipment:
+    - ["2301", "hvac", "mechanical equipment", "air handling", "ahu", "rtu", "vav"]
+
+  ductwork:
+    - ["2302", "duct", "ducting", "air duct", "diffuser", "grille", "damper"]
+
+  piping:
+    - ["2211", "pipe", "piping", "plumbing"]
+
+  pipe_fittings:
+    - ["2215", "fitting", "elbow", "tee", "reducer", "coupling", "valve"]
+
+  electrical:
+    - ["2601", "electrical", "cable", "conduit", "panel", "switchboard"]
+
+# Size Tolerance Configuration
+tolerances:
+  size_mm: 10  # ±10mm for dimension matching
+  angle_deg: 5  # ±5° for angle matching
+
+# Confidence Weights
+# Adjust these to tune matching behavior
+confidence_weights:
+  family: 0.30
+  type: 0.25
+  material: 0.15
+  size: 0.15
+  unit: 0.10
+  angle: 0.05
+
+# Bonuses for exact matches
+confidence_bonuses:
+  exact_dimensions: 5  # +5 points for 1mm precision
+  material_and_unit_match: 5  # +5 points for both material and unit matching
