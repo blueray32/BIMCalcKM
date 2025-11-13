@@ -1,225 +1,366 @@
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>BIMCalc Review</title>
-    <style>
-      body {
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-        margin: 0;
-        padding: 0;
-        background-color: #f4f6f8;
-      }
-      header {
-        background: #141b2d;
-        color: #fff;
-        padding: 1rem 2rem;
-      }
-      main {
-        padding: 2rem;
-        max-width: 1200px;
-        margin: auto;
-      }
-      table {
-        width: 100%;
-        border-collapse: collapse;
-        background: #fff;
-        border-radius: 8px;
-        overflow: hidden;
-      }
-      th,
-      td {
-        padding: 0.75rem 1rem;
-        border-bottom: 1px solid #ececec;
-      }
-      th {
-        text-align: left;
-        background: #fafafa;
-        font-size: 0.9rem;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-      }
-      tr:last-child td {
-        border-bottom: none;
-      }
-      .critical {
-        color: #b42318;
-        font-weight: 600;
-      }
-      .badge {
-        display: inline-block;
-        padding: 0.15rem 0.5rem;
-        border-radius: 999px;
-        font-size: 0.75rem;
-        margin-right: 0.25rem;
-      }
-      .badge-critical {
-        background: #fee4e2;
-        color: #b42318;
-      }
-      .badge-advisory {
-        background: #fef3c7;
-        color: #92400e;
-      }
-      form {
-        display: flex;
-        gap: 0.5rem;
-      }
-      textarea {
-        flex: 1;
-        resize: vertical;
-        min-height: 2.5rem;
-        border-radius: 4px;
-        border: 1px solid #d1d5db;
-        padding: 0.4rem;
-        font-family: inherit;
-      }
-      button {
-        background: #2563eb;
-        color: white;
-        border: none;
-        border-radius: 4px;
-        padding: 0.5rem 1rem;
-        cursor: pointer;
-      }
-      button[disabled] {
-        background: #cbd5f5;
-        cursor: not-allowed;
-      }
-      .filters {
-        margin-bottom: 1rem;
-        display: flex;
-        gap: 1rem;
-        align-items: center;
-      }
-      select {
-        padding: 0.4rem 0.6rem;
-        border-radius: 4px;
-        border: 1px solid #d1d5db;
-      }
-      .empty {
-        text-align: center;
-        padding: 2rem;
-        background: #fff;
-        border-radius: 8px;
-      }
-    </style>
-  </head>
-  <body>
-    <header>
-      <h1>BIMCalc Review &middot; {{ project_id }} ({{ org_id }})</h1>
-    </header>
-    <main>
-      <div class="filters">
-        <form method="get">
-          <input type="hidden" name="org" value="{{ org_id }}" />
-          <input type="hidden" name="project" value="{{ project_id }}" />
-          <label>
-            Flag filter
-            <select name="flag" onchange="this.form.submit()">
-              {% set flags = [
-                ("All", "all"),
-                ("Unit Conflict", "Unit Conflict"),
-                ("Size Mismatch", "Size Mismatch"),
-                ("Angle Mismatch", "Angle Mismatch"),
-                ("Material Conflict", "Material Conflict"),
-                ("Class Mismatch", "Class Mismatch"),
-                ("Stale Price", "StalePrice"),
-                ("Currency/VAT", "CurrencyMismatch"),
-                ("VAT Unclear", "VATUnclear"),
-                ("Vendor Note", "VendorNote")
-              ] %}
-              {% for label, value in flags %}
-              <option value="{{ value }}" {% if flag_filter==value %}selected{% endif %}>{{ label }}</option>
-              {% endfor %}
-            </select>
-          </label>
-          <label>
-            Severity
-            <select name="severity" onchange="this.form.submit()">
-              <option value="all" {% if severity_filter=='all' %}selected{% endif %}>All</option>
-              <option value="Critical-Veto" {% if severity_filter=='Critical-Veto' %}selected{% endif %}>Critical</option>
-              <option value="Advisory" {% if severity_filter=='Advisory' %}selected{% endif %}>Advisory</option>
-            </select>
-          </label>
-          <label style="display: flex; align-items: center; gap: 0.3rem;">
-            <input
-              type="checkbox"
-              name="unmapped_only"
-              {% if unmapped_only %}checked{% endif %}
-              onchange="this.form.submit()"
-              style="width: auto; margin: 0;"
-            />
-            <span>Unmapped Only</span>
-          </label>
-        </form>
-      </div>
+{% extends "base.html" %}
 
-      {% if records %}
-      <table>
+{% block title %}Review - BIMCalc{% endblock %}
+
+{% block extra_styles %}
+<style>
+    /* Loading overlay */
+    .loading-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 9999;
+        align-items: center;
+        justify-content: center;
+    }
+    .loading-overlay.active {
+        display: flex;
+    }
+    .loading-spinner {
+        width: 50px;
+        height: 50px;
+        border: 4px solid #f3f3f3;
+        border-top: 4px solid #4299e1;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+
+    /* Enhanced form controls */
+    select:focus, input[type="text"]:focus, input[type="checkbox"]:focus {
+        outline: 2px solid #4299e1;
+        outline-offset: 2px;
+    }
+
+    /* Improved button states */
+    button:not(:disabled):hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    button:not(:disabled):active {
+        transform: translateY(0);
+    }
+
+    /* Annotation validation styles */
+    input.annotation-required {
+        border-color: #f56565 !important;
+        background-color: #fff5f5;
+    }
+
+    .annotation-hint {
+        font-size: 0.75rem;
+        color: #718096;
+        margin-top: 0.25rem;
+    }
+
+    .annotation-error {
+        font-size: 0.75rem;
+        color: #f56565;
+        margin-top: 0.25rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Loading Overlay -->
+<div id="loadingOverlay" class="loading-overlay" role="alert" aria-live="polite" aria-label="Loading">
+    <div class="loading-spinner"></div>
+</div>
+
+<div class="page-header">
+    <h1>🔍 Review Queue</h1>
+    <p>Review and approve suggested price matches for {{ project_id }}</p>
+</div>
+
+<!-- Filters -->
+<div class="card" style="margin-bottom: 1.5rem;">
+    <div class="card-header">Filters</div>
+    <div class="card-body">
+        <form method="get" id="filterForm" style="display: flex; gap: 1rem; align-items: flex-end; flex-wrap: wrap;">
+            <input type="hidden" name="org" value="{{ org_id }}" />
+            <input type="hidden" name="project" value="{{ project_id }}" />
+
+            <div>
+                <label for="flagFilter" style="display: block; margin-bottom: 0.25rem; font-size: 0.875rem; font-weight: 600; color: #4a5568;">Flag Filter</label>
+                <select
+                    id="flagFilter"
+                    name="flag"
+                    onchange="handleFilterChange(this)"
+                    aria-label="Filter by flag type"
+                    style="padding: 0.5rem; border: 1px solid #cbd5e0; border-radius: 0.375rem; min-width: 150px; cursor: pointer;">
+                    {% set flags = [
+                        ("All", "all"),
+                        ("Unit Conflict", "Unit Conflict"),
+                        ("Size Mismatch", "Size Mismatch"),
+                        ("Angle Mismatch", "Angle Mismatch"),
+                        ("Material Conflict", "Material Conflict"),
+                        ("Class Mismatch", "Class Mismatch"),
+                        ("Stale Price", "StalePrice"),
+                        ("Currency/VAT", "CurrencyMismatch"),
+                        ("VAT Unclear", "VATUnclear"),
+                        ("Vendor Note", "VendorNote")
+                    ] %}
+                    {% for label, value in flags %}
+                    <option value="{{ value }}" {% if flag_filter==value %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div>
+                <label for="severityFilter" style="display: block; margin-bottom: 0.25rem; font-size: 0.875rem; font-weight: 600; color: #4a5568;">Severity</label>
+                <select
+                    id="severityFilter"
+                    name="severity"
+                    onchange="handleFilterChange(this)"
+                    aria-label="Filter by severity level"
+                    style="padding: 0.5rem; border: 1px solid #cbd5e0; border-radius: 0.375rem; min-width: 150px; cursor: pointer;">
+                    <option value="all" {% if severity_filter=='all' %}selected{% endif %}>All</option>
+                    <option value="Critical-Veto" {% if severity_filter=='Critical-Veto' %}selected{% endif %}>Critical</option>
+                    <option value="Advisory" {% if severity_filter=='Advisory' %}selected{% endif %}>Advisory</option>
+                </select>
+            </div>
+
+            <div>
+                <label style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem; cursor: pointer;">
+                    <input
+                        id="unmappedFilter"
+                        type="checkbox"
+                        name="unmapped_only"
+                        {% if unmapped_only %}checked{% endif %}
+                        onchange="handleFilterChange(this)"
+                        aria-label="Show only unmapped items"
+                        style="width: auto; margin: 0; cursor: pointer;"
+                    />
+                    <span style="font-size: 0.875rem; font-weight: 600; color: #4a5568;">Unmapped Only</span>
+                </label>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% if records %}
+<div class="card">
+    <div class="card-header">{{ records|length }} Items Pending Review</div>
+    <table>
         <thead>
-          <tr>
-            <th>Item</th>
-            <th>Candidate</th>
-            <th>Confidence</th>
-            <th>Flags</th>
-            <th>Annotation & Action</th>
-          </tr>
+            <tr>
+                <th>Item</th>
+                <th>Candidate Match</th>
+                <th>Confidence</th>
+                <th>Flags</th>
+                <th>Action</th>
+            </tr>
         </thead>
         <tbody>
-          {% for record in records %}
-          <tr>
-            <td>
-              <strong>{{ record.item.family }}</strong><br />
-              <small>{{ record.item.type_name }}</small>
-            </td>
-            <td>
-              {% if record.price %}
-              {{ record.price.sku }}<br />
-              <small>{{ record.price.description }}</small>
-              {% else %}
-              <em>No candidate</em>
-              {% endif %}
-            </td>
-            <td>{{ "%.0f"|format(record.confidence_score) }}%</td>
-            <td>
-              {% if record.flags %}
-                {% for flag in record.flags %}
-                  <span class="badge {% if flag.is_critical %}badge-critical{% else %}badge-advisory{% endif %}">
-                    {{ flag.type }}
-                  </span>
-                {% endfor %}
-              {% else %}
-                —
-              {% endif %}
-            </td>
-            <td>
-              <form method="post" action="/approve">
-                <input type="hidden" name="match_result_id" value="{{ record.match_result_id }}" />
-                <input type="hidden" name="org" value="{{ org_id }}" />
-                <input type="hidden" name="project" value="{{ project_id }}" />
-                <textarea name="annotation" placeholder="Annotation (required for advisory)"></textarea>
-                <button type="submit" {% if record.has_critical_flags or not record.price %}disabled{% endif %}>
-                  Approve
-                </button>
-              </form>
-              {% if record.has_critical_flags %}
-              <p class="critical">Resolve critical flags before approving.</p>
-              {% elif not record.price %}
-              <p>No candidate price available.</p>
-              {% endif %}
-            </td>
-          </tr>
-          {% endfor %}
+            {% for record in records %}
+            <tr>
+                <td>
+                    <strong style="color: #2d3748;">{{ record.item.family }}</strong><br />
+                    <small style="color: #718096;">{{ record.item.type_name }}</small>
+                </td>
+                <td>
+                    {% if record.price %}
+                    <strong>{{ record.price.sku }}</strong><br />
+                    <small style="color: #718096;">{{ record.price.description }}</small>
+                    {% else %}
+                    <span style="color: #cbd5e0;">No candidate</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if record.confidence_score >= 90 %}
+                    <span class="badge badge-success">{{ "%.0f"|format(record.confidence_score) }}%</span>
+                    {% elif record.confidence_score >= 70 %}
+                    <span class="badge badge-warning">{{ "%.0f"|format(record.confidence_score) }}%</span>
+                    {% else %}
+                    <span class="badge badge-danger">{{ "%.0f"|format(record.confidence_score) }}%</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if record.flags %}
+                    {% for flag in record.flags %}
+                    {% if flag.severity == "Critical-Veto" %}
+                    <span class="badge badge-danger">{{ flag.type }}</span>
+                    {% else %}
+                    <span class="badge badge-warning">{{ flag.type }}</span>
+                    {% endif %}
+                    {% endfor %}
+                    {% else %}
+                    <span style="color: #cbd5e0;">—</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% set has_critical = record.flags and record.flags|selectattr("severity", "equalto", "Critical-Veto")|list %}
+                    {% set has_advisory = record.flags and record.flags|selectattr("severity", "equalto", "Advisory")|list %}
+                    <form
+                        method="post"
+                        action="/review/approve"
+                        class="approval-form"
+                        data-has-advisory="{{ 'true' if has_advisory else 'false' }}"
+                        onsubmit="return validateApprovalForm(this)"
+                        style="display: flex; flex-direction: column; gap: 0.5rem;">
+                        <input type="hidden" name="match_result_id" value="{{ record.match_result_id }}" />
+                        <input type="hidden" name="org" value="{{ org_id }}" />
+                        <input type="hidden" name="project" value="{{ project_id }}" />
+                        <input type="hidden" name="flag" value="{{ flag_filter }}" />
+                        <input type="hidden" name="severity" value="{{ severity_filter }}" />
+                        <input type="hidden" name="unmapped_only" value="{{ 'on' if unmapped_only else '' }}" />
+
+                        <div style="display: flex; gap: 0.5rem; align-items: flex-start;">
+                            <div style="flex: 1;">
+                                <input
+                                    type="text"
+                                    name="annotation"
+                                    class="annotation-input"
+                                    placeholder="{% if has_advisory %}Annotation required for advisory flags{% else %}Optional annotation{% endif %}"
+                                    aria-label="Annotation for approval"
+                                    {% if has_advisory %}required{% endif %}
+                                    style="width: 100%; padding: 0.5rem; border: 1px solid #cbd5e0; border-radius: 0.375rem; font-size: 0.875rem;"
+                                />
+                                <div class="annotation-message" style="min-height: 1rem;"></div>
+                            </div>
+                            <button
+                                type="submit"
+                                {% if has_critical %}
+                                disabled
+                                title="Cannot approve - Critical flags present"
+                                aria-disabled="true"
+                                style="background: #cbd5e0; cursor: not-allowed; border: none; padding: 0.5rem 1rem; border-radius: 0.375rem; font-weight: 600; transition: all 0.2s;"
+                                {% else %}
+                                aria-label="Approve this item"
+                                style="background: #48bb78; color: white; border: none; padding: 0.5rem 1rem; border-radius: 0.375rem; cursor: pointer; font-weight: 600; transition: all 0.2s;"
+                                {% endif %}
+                            >
+                                Approve
+                            </button>
+                        </div>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
         </tbody>
-      </table>
-      {% else %}
-      <div class="empty">
-        <h3>No items waiting for review 🎉</h3>
-        <p>Run `bimcalc match` to generate new review tasks.</p>
-      </div>
-      {% endif %}
-    </main>
-  </body>
-</html>
+    </table>
+</div>
+{% else %}
+<div class="card">
+    <div class="card-body" style="text-align: center; padding: 3rem; color: #718096;">
+        <div style="font-size: 3rem; margin-bottom: 1rem;">✅</div>
+        <h3 style="margin-bottom: 0.5rem; color: #2d3748;">No Items to Review</h3>
+        <p>All items have been processed or no items match the current filters.</p>
+        {% if unmapped_only %}
+        <p style="margin-top: 1rem;">
+            <a href="/review?org={{ org_id }}&project={{ project_id }}" style="color: #4299e1; text-decoration: underline;">
+                Clear filters to see all items
+            </a>
+        </p>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Show loading indicator
+    function showLoading() {
+        document.getElementById('loadingOverlay').classList.add('active');
+    }
+
+    // Hide loading indicator
+    function hideLoading() {
+        document.getElementById('loadingOverlay').classList.remove('active');
+    }
+
+    // Handle filter changes with loading feedback
+    function handleFilterChange(element) {
+        showLoading();
+        element.form.submit();
+    }
+
+    // Validate approval form
+    function validateApprovalForm(form) {
+        const hasAdvisory = form.getAttribute('data-has-advisory') === 'true';
+        const annotationInput = form.querySelector('.annotation-input');
+        const messageDiv = form.querySelector('.annotation-message');
+        const annotation = annotationInput.value.trim();
+
+        // Clear previous validation messages
+        messageDiv.innerHTML = '';
+        annotationInput.classList.remove('annotation-required');
+
+        // Validate annotation for advisory flags
+        if (hasAdvisory && !annotation) {
+            messageDiv.innerHTML = '<div class="annotation-error">⚠ Annotation required for advisory flags</div>';
+            annotationInput.classList.add('annotation-required');
+            annotationInput.focus();
+            return false;
+        }
+
+        // Show loading indicator during submission
+        showLoading();
+        return true;
+    }
+
+    // Add real-time validation feedback
+    document.addEventListener('DOMContentLoaded', function() {
+        const forms = document.querySelectorAll('.approval-form');
+
+        forms.forEach(form => {
+            const hasAdvisory = form.getAttribute('data-has-advisory') === 'true';
+            const annotationInput = form.querySelector('.annotation-input');
+            const messageDiv = form.querySelector('.annotation-message');
+
+            if (hasAdvisory && annotationInput) {
+                annotationInput.addEventListener('input', function() {
+                    const value = this.value.trim();
+                    messageDiv.innerHTML = '';
+                    this.classList.remove('annotation-required');
+
+                    if (value.length > 0) {
+                        messageDiv.innerHTML = '<div class="annotation-hint">✓ Annotation provided</div>';
+                    }
+                });
+
+                annotationInput.addEventListener('blur', function() {
+                    const value = this.value.trim();
+                    if (!value) {
+                        messageDiv.innerHTML = '<div class="annotation-hint">Annotation required for advisory flags</div>';
+                    }
+                });
+            }
+        });
+
+        // Show hint when page loads
+        forms.forEach(form => {
+            const hasAdvisory = form.getAttribute('data-has-advisory') === 'true';
+            if (hasAdvisory) {
+                const messageDiv = form.querySelector('.annotation-message');
+                const annotationInput = form.querySelector('.annotation-input');
+                if (!annotationInput.value.trim()) {
+                    messageDiv.innerHTML = '<div class="annotation-hint">Required for advisory flags</div>';
+                }
+            }
+        });
+    });
+
+    // Hide loading on page load (in case back button was used)
+    window.addEventListener('pageshow', function(event) {
+        hideLoading();
+    });
+
+    // Keyboard accessibility for forms
+    document.addEventListener('keydown', function(e) {
+        // Allow Enter to submit forms when focus is on inputs
+        if (e.key === 'Enter' && e.target.classList.contains('annotation-input')) {
+            e.target.form.requestSubmit();
+        }
+    });
+</script>
+{% endblock %}

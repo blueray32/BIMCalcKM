@@ -17,6 +17,7 @@ from sqlalchemy import func, select
 
 from bimcalc.config import get_config
 from bimcalc.db.connection import get_session
+from bimcalc.db.match_results import record_match_result
 from bimcalc.db.models import ItemMappingModel, ItemModel, MatchResultModel, PriceItemModel
 from bimcalc.ingestion.pricebooks import ingest_pricebook
 from bimcalc.ingestion.schedules import ingest_schedule
@@ -164,6 +165,9 @@ async def approve_item(
     annotation: Optional[str] = Form(None),
     org: Optional[str] = Form(None),
     project: Optional[str] = Form(None),
+    flag: Optional[str] = Form(None),
+    severity: Optional[str] = Form(None),
+    unmapped_only: Optional[str] = Form(None),
 ):
     """Approve a review item and create mapping."""
     org_id, project_id = _get_org_project(None, org, project)
@@ -174,7 +178,15 @@ async def approve_item(
             raise HTTPException(status_code=404, detail="Review item not found")
         await approve_review_record(session, record, created_by="web-ui", annotation=annotation)
 
+    # Preserve filter state in redirect
     redirect_url = f"/review?org={org_id}&project={project_id}"
+    if flag:
+        redirect_url += f"&flag={flag}"
+    if severity:
+        redirect_url += f"&severity={severity}"
+    if unmapped_only:
+        redirect_url += f"&unmapped_only={unmapped_only}"
+
     return RedirectResponse(redirect_url, status_code=303)
 
 
@@ -348,6 +360,9 @@ async def run_matching(
             item_model.canonical_key = item.canonical_key
             item_model.classification_code = item.classification_code
 
+            # Persist match result to database
+            await record_match_result(session, item_model.id, match_result)
+
             results.append({
                 "item": f"{item.family} / {item.type_name}",
                 "decision": match_result.decision.value,
@@ -355,7 +370,7 @@ async def run_matching(
                 "flags": [f.type for f in match_result.flags],
             })
 
-        # Commit any canonical/classification updates before returning
+        # Commit all changes (canonical keys and match results)
         await session.commit()
 
         return {
