@@ -68,7 +68,7 @@
                     {% endif %}
                 </td>
                 <td style="text-align: right;">
-                    <strong>€{{ "%.2f"|format(price_item.unit_price_net) }}</strong>
+                    <strong>€{{ "%.2f"|format(price_item.unit_price) }}</strong>
                     {% if price_item.currency != "EUR" %}
                     <small style="color: #f56565;">({{ price_item.currency }})</small>
                     {% endif %}
