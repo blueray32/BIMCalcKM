@@ -24,4 +24,6 @@ RUN pip install --upgrade pip && \
 
 COPY . ./
 
+EXPOSE 8001
+
 CMD ["bash"]
