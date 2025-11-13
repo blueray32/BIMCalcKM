@@ -64,7 +64,7 @@ from bimcalc.web.app_enhanced import app as web_app
 @web_cli.command("serve")
 def web_serve(
     host: str = typer.Option("0.0.0.0", help="Host to bind"),
-    port: int = typer.Option(8000, help="Port to bind"),
+    port: int = typer.Option(8001, help="Port to bind"),
     reload: bool = typer.Option(False, help="Enable autoreload (dev only)"),
 ):
     """Run FastAPI-powered web UI."""
