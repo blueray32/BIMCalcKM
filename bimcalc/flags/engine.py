@@ -35,7 +35,13 @@ def compute_flags(item_attrs: Any, price_attrs: Any) -> list[Flag]:
     matching = cfg.matching
     flags: list[Flag] = []
 
+    # Extract project context for enhanced error messages (Finding #16)
+    item_context = _build_item_context(item_attrs)
+
     def flag(flag_type: str, severity: FlagSeverity, message: str) -> None:
+        # Enhance message with project context
+        if item_context:
+            message = f"{message} [{item_context}]"
         flags.append(Flag(type=flag_type, severity=severity, message=message))
 
     unit_item = _normalize_str(_get(item_attrs, "unit"))
@@ -200,6 +206,44 @@ def _as_datetime(value: Any) -> Optional[datetime]:
         except ValueError:
             return None
     return None
+
+
+def _build_item_context(item_attrs: Any) -> str:
+    """Build context string from item attributes for enhanced error messages.
+
+    Extracts project_id, org_id, family, type_name to provide debugging context.
+
+    Args:
+        item_attrs: Item attributes (model, dict, or object)
+
+    Returns:
+        Context string like "org:acme project:demo Cable Tray:Elbow 90"
+        Returns empty string if no context available
+
+    Example:
+        >>> attrs = {"org_id": "acme", "project_id": "demo", "family": "Cable Tray", "type_name": "Elbow 90"}
+        >>> _build_item_context(attrs)
+        'org:acme project:demo Cable Tray:Elbow 90'
+    """
+    parts = []
+
+    org_id = _get(item_attrs, "org_id")
+    if org_id:
+        parts.append(f"org:{org_id}")
+
+    project_id = _get(item_attrs, "project_id")
+    if project_id:
+        parts.append(f"project:{project_id}")
+
+    family = _get(item_attrs, "family")
+    type_name = _get(item_attrs, "type_name")
+
+    if family and type_name:
+        parts.append(f"{family}:{type_name}")
+    elif family:
+        parts.append(family)
+
+    return " ".join(parts)
 
 
 def _detect_size_mismatch(

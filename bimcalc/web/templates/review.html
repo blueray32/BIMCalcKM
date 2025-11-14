@@ -103,6 +103,7 @@
                         ("Angle Mismatch", "Angle Mismatch"),
                         ("Material Conflict", "Material Conflict"),
                         ("Class Mismatch", "Class Mismatch"),
+                        ("Classification Mismatch", "Classification Mismatch"),
                         ("Stale Price", "StalePrice"),
                         ("Currency/VAT", "CurrencyMismatch"),
                         ("VAT Unclear", "VATUnclear"),
@@ -165,11 +166,24 @@
                 <td>
                     <strong style="color: #2d3748;">{{ record.item.family }}</strong><br />
                     <small style="color: #718096;">{{ record.item.type_name }}</small>
+                    {% if record.item.classification_code %}
+                    <br /><span class="badge" style="background: #edf2f7; color: #4a5568; margin-top: 0.25rem;">Class: {{ record.item.classification_code }}</span>
+                    {% endif %}
                 </td>
                 <td>
                     {% if record.price %}
-                    <strong>{{ record.price.sku }}</strong><br />
-                    <small style="color: #718096;">{{ record.price.description }}</small>
+                    <div style="display: flex; align-items: flex-start; gap: 0.5rem;">
+                        <div style="flex: 1;">
+                            <strong>{{ record.price.sku }}</strong><br />
+                            <small style="color: #718096;">{{ record.price.description }}</small>
+                            {% if record.price.classification_code %}
+                            <br /><span class="badge" style="background: #edf2f7; color: #4a5568; margin-top: 0.25rem;">Class: {{ record.price.classification_code }}</span>
+                            {% endif %}
+                        </div>
+                        {% if record.is_escape_hatch_match %}
+                        <span class="badge" style="background: #fed7d7; color: #c53030; font-weight: 600; white-space: nowrap;" title="Out-of-class match via escape-hatch">⚠ Out-of-Class</span>
+                        {% endif %}
+                    </div>
                     {% else %}
                     <span style="color: #cbd5e0;">No candidate</span>
                     {% endif %}

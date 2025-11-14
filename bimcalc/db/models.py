@@ -21,6 +21,7 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    text,
 )
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
@@ -80,11 +81,23 @@ class ItemModel(Base):
 
 
 class PriceItemModel(Base):
-    """Vendor price catalog item."""
+    """Vendor price catalog item with SCD Type-2 history tracking.
+
+    Implements full Slowly Changing Dimension Type-2 for auditable price history.
+    Each price change creates a new record, preserving complete timeline.
+    """
 
     __tablename__ = "price_items"
 
     id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+
+    # Multi-tenant scoping (CRITICAL for org isolation)
+    org_id: Mapped[str] = mapped_column(Text, nullable=False, index=True)
+
+    # Composite business key (org_id + item_code + region)
+    item_code: Mapped[str] = mapped_column(Text, nullable=False, index=True)
+    region: Mapped[str] = mapped_column(Text, nullable=False, index=True)
+
     classification_code: Mapped[int] = mapped_column(
         Integer, nullable=False, index=True
     )  # Required for blocking
@@ -105,8 +118,22 @@ class PriceItemModel(Base):
     angle_deg: Mapped[Optional[float]] = mapped_column()
     material: Mapped[Optional[str]] = mapped_column(Text)
 
+    # Governance fields (data provenance & integrity)
+    source_name: Mapped[str] = mapped_column(Text, nullable=False, index=True)
+    source_currency: Mapped[str] = mapped_column(String(3), nullable=False)
+    original_effective_date: Mapped[Optional[datetime]] = mapped_column(TIMESTAMP(timezone=True))
+
+    # SCD Type-2 temporal fields
+    valid_from: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True), nullable=False, server_default=func.now()
+    )
+    valid_to: Mapped[Optional[datetime]] = mapped_column(TIMESTAMP(timezone=True))
+    is_current: Mapped[bool] = mapped_column(nullable=False, default=True, index=True)
+
     # Audit & metadata
-    last_updated: Mapped[Optional[datetime]] = mapped_column(TIMESTAMP(timezone=True))
+    last_updated: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now()
+    )
     vendor_note: Mapped[Optional[str]] = mapped_column(Text)
     attributes: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
 
@@ -116,7 +143,30 @@ class PriceItemModel(Base):
 
     __table_args__ = (
         CheckConstraint("unit_price >= 0", name="check_unit_price_non_negative"),
-        Index("idx_price_class", "classification_code"),  # CRITICAL for blocking
+        CheckConstraint("valid_to IS NULL OR valid_to > valid_from", name="check_valid_period"),
+
+        # CRITICAL for blocking by classification
+        Index("idx_price_class", "classification_code"),
+
+        # SCD Type-2: Enforce one active record per (org_id, item_code, region)
+        Index(
+            "idx_price_active_unique",
+            "org_id",
+            "item_code",
+            "region",
+            unique=True,
+            postgresql_where=text("is_current = true"),
+            sqlite_where=text("is_current = 1"),
+        ),
+
+        # Temporal queries (as-of lookups)
+        Index("idx_price_temporal", "org_id", "item_code", "region", "valid_from", "valid_to"),
+
+        # Current price lookups (most common query)
+        Index("idx_price_current", "org_id", "item_code", "region", "is_current"),
+
+        # Source tracking for operational monitoring
+        Index("idx_price_source", "source_name", "last_updated"),
     )
 
 
@@ -149,7 +199,8 @@ class ItemMappingModel(Base):
             "org_id",
             "canonical_key",
             unique=True,
-            postgresql_where="end_ts IS NULL",
+            postgresql_where=text("end_ts IS NULL"),
+            sqlite_where=text("end_ts IS NULL"),
         ),
         # Temporal queries (as-of)
         Index("idx_mapping_temporal", "org_id", "canonical_key", "start_ts", "end_ts"),
@@ -226,6 +277,60 @@ class MatchResultModel(Base):
             "decision IN ('auto-accepted', 'manual-review', 'rejected')",
             name="check_decision_valid",
         ),
+    )
+
+
+class DataSyncLogModel(Base):
+    """Granular logging for automated price data synchronization pipeline.
+
+    Provides per-source operational monitoring and diagnostics.
+    Critical for resilience: isolates failures to individual sources.
+    """
+
+    __tablename__ = "data_sync_log"
+
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+
+    # Pipeline execution tracking
+    run_timestamp: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True), nullable=False, index=True
+    )
+    source_name: Mapped[str] = mapped_column(Text, nullable=False, index=True)
+
+    # Execution outcome
+    status: Mapped[str] = mapped_column(Text, nullable=False, index=True)
+    records_updated: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    records_inserted: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    records_failed: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+    # Detailed diagnostics
+    message: Mapped[Optional[str]] = mapped_column(Text)
+    error_details: Mapped[Optional[dict]] = mapped_column(JSON)
+
+    # Execution metrics
+    duration_seconds: Mapped[Optional[float]] = mapped_column()
+
+    created_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('SUCCESS', 'FAILED', 'PARTIAL_SUCCESS', 'SKIPPED')",
+            name="check_sync_status_valid",
+        ),
+        CheckConstraint("records_updated >= 0", name="check_records_updated_non_negative"),
+        CheckConstraint("records_inserted >= 0", name="check_records_inserted_non_negative"),
+        CheckConstraint("records_failed >= 0", name="check_records_failed_non_negative"),
+
+        # Query by run for full pipeline status
+        Index("idx_sync_run", "run_timestamp", "source_name"),
+
+        # Alert queries (find failures)
+        Index("idx_sync_failures", "status", "run_timestamp"),
+
+        # Source health monitoring
+        Index("idx_sync_source_health", "source_name", "status", "run_timestamp"),
     )
 
 

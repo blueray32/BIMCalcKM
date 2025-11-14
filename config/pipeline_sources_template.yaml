@@ -1,0 +1,236 @@
+# BIMCalc Pipeline Sources - Template
+# Copy this file and customize for your sources
+
+sources:
+  # ===========================================
+  # TEMPLATE: CSV/Excel File Source
+  # ===========================================
+  # Copy and customize this section for each CSV/Excel file
+  - name: vendor_name_descriptive  # REQUIRED: Unique name (no spaces)
+    type: csv
+    enabled: false  # Set to true when ready
+    config:
+      file_path: /data/prices/vendor_file.csv  # REQUIRED: Full path to file
+      region: UK  # REQUIRED: UK, IE, DE, FR, NL, etc.
+      vendor_id: VENDOR_NAME  # REQUIRED: Source identifier
+
+      # Column mapping: Map CSV columns to BIMCalc fields
+      # Format: "CSV Column Name": "bimcalc_field"
+      column_mapping:
+        "Product Code": "item_code"        # REQUIRED
+        "Description": "description"        # REQUIRED
+        "Classification": "classification_code"  # Recommended
+        "Price": "unit_price"              # REQUIRED
+        "Currency": "currency"             # REQUIRED (GBP, EUR, etc.)
+        "Unit": "unit"                     # REQUIRED (ea, m, kg, etc.)
+        "Width": "width_mm"                # Optional
+        "Height": "height_mm"              # Optional
+        "Diameter": "dn"                   # Optional
+        "Material": "material"             # Optional
+        "Notes": "vendor_note"             # Optional
+
+      # Optional settings
+      skip_rows: 0  # Skip N header rows (default: 0)
+      sheet_name: "Price List"  # For Excel files (default: first sheet)
+
+  # ===========================================
+  # TEMPLATE: REST API Source
+  # ===========================================
+  # Copy and customize for API-based sources
+  - name: api_source_name
+    type: api
+    enabled: false
+    config:
+      api_url: https://api.vendor.com/v1/products  # REQUIRED: Base URL
+      api_key_env: VENDOR_API_KEY  # REQUIRED: Environment variable name
+      region: UK  # REQUIRED
+      vendor_id: VENDOR_NAME  # REQUIRED
+
+      # Rate limiting
+      rate_limit: 10  # requests per second (default: 10)
+      timeout: 30  # request timeout in seconds (default: 30)
+
+      # Pagination
+      pagination:
+        page_size: 100  # items per page
+        max_pages: 1000  # maximum pages to fetch
+
+      # HTTP headers
+      headers:
+        Accept: application/json
+        Content-Type: application/json
+
+      # Field mapping from API response to BIMCalc
+      field_mapping:
+        id: "item_code"
+        name: "description"
+        category: "classification_code"
+        price: "unit_price"
+        currency: "currency"
+        unit: "unit"
+
+  # ===========================================
+  # TEMPLATE: Multi-Region Configuration
+  # ===========================================
+  # Example: Same vendor, different regions
+
+  # UK Region
+  - name: vendor_uk
+    type: csv
+    enabled: false
+    config:
+      file_path: /data/prices/vendor_uk.csv
+      region: UK
+      vendor_id: VENDOR_NAME
+      column_mapping:
+        # ... same mapping as above
+
+  # Ireland Region
+  - name: vendor_ie
+    type: csv
+    enabled: false
+    config:
+      file_path: /data/prices/vendor_ie.csv
+      region: IE  # Different region
+      vendor_id: VENDOR_NAME
+      column_mapping:
+        # ... same mapping as above
+
+  # Germany Region
+  - name: vendor_de
+    type: csv
+    enabled: false
+    config:
+      file_path: /data/prices/vendor_de.csv
+      region: DE  # Different region
+      vendor_id: VENDOR_NAME
+      column_mapping:
+        # ... same mapping as above
+
+# ===========================================
+# Pipeline Schedule
+# ===========================================
+# Cron format: minute hour day month weekday
+schedule: "0 2 * * *"  # Daily at 2:00 AM UTC
+
+# ===========================================
+# Alert Configuration
+# ===========================================
+alerts:
+  enabled: true
+
+  # Email notifications (requires SMTP configuration)
+  email:
+    enabled: false
+    recipients:
+      - your.email@example.com
+    smtp_host: smtp.gmail.com
+    smtp_port: 587
+    smtp_user_env: SMTP_USER
+    smtp_password_env: SMTP_PASSWORD
+
+  # Slack notifications
+  slack:
+    enabled: false
+    webhook_url_env: SLACK_WEBHOOK_URL
+    channel: "#bimcalc-alerts"
+
+# ===========================================
+# Field Mapping Reference
+# ===========================================
+#
+# REQUIRED FIELDS (must be present in every source):
+#   - item_code: Product/SKU code (string)
+#   - description: Item description (string)
+#   - unit_price: Price value (decimal)
+#   - currency: Currency code (GBP, EUR, USD, etc.)
+#   - unit: Unit of measure (ea, m, kg, etc.)
+#   - region: Geographic region (UK, IE, DE, etc.)
+#   - vendor_id: Source identifier (string)
+#
+# OPTIONAL FIELDS (enhance matching quality):
+#   - classification_code: Product category (OmniClass, UniClass, etc.)
+#   - width_mm: Width in millimeters (integer)
+#   - height_mm: Height in millimeters (integer)
+#   - dn: Diameter nominal for pipes/fittings (integer)
+#   - material: Material type (steel, copper, pvc, etc.)
+#   - vendor_note: Additional notes (string)
+#
+# ===========================================
+# Common Unit Codes
+# ===========================================
+#
+# Quantity units:
+#   ea - Each (items sold individually)
+#   pair - Pairs
+#   set - Sets
+#   box - Boxes
+#   pack - Packs
+#   dozen - Dozens
+#   hundred - Hundreds
+#
+# Length units:
+#   m - Meters
+#   cm - Centimeters
+#   mm - Millimeters
+#   ft - Feet
+#   in - Inches
+#
+# Weight units:
+#   kg - Kilograms
+#   g - Grams
+#   lb - Pounds
+#
+# Volume units:
+#   l - Liters
+#   ml - Milliliters
+#   gal - Gallons
+#
+# Area units:
+#   m2 - Square meters
+#   ft2 - Square feet
+#
+# ===========================================
+# Common Currency Codes
+# ===========================================
+#
+#   GBP - British Pound Sterling
+#   EUR - Euro
+#   USD - US Dollar
+#   CHF - Swiss Franc
+#   SEK - Swedish Krona
+#   NOK - Norwegian Krone
+#   DKK - Danish Krone
+#   PLN - Polish Złoty
+#
+# ===========================================
+# Region Codes
+# ===========================================
+#
+#   UK - United Kingdom
+#   IE - Ireland
+#   DE - Germany
+#   FR - France
+#   NL - Netherlands
+#   BE - Belgium
+#   ES - Spain
+#   IT - Italy
+#   CH - Switzerland
+#   AT - Austria
+#   PL - Poland
+#   SE - Sweden
+#   NO - Norway
+#   DK - Denmark
+#   EU - Europe (general/multi-country)
+#
+# ===========================================
+# Getting Started
+# ===========================================
+#
+# 1. Copy a template section above
+# 2. Customize the configuration
+# 3. Set enabled: true
+# 4. Validate: python scripts/validate_config.py
+# 5. Test: docker exec bimcalckm-app-1 python -m bimcalc.cli sync-prices --source your_source_name
+# 6. Monitor: open http://localhost:8001/pipeline
+#

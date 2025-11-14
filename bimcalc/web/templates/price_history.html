@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+
+{% block title %}Price History: {{ item_code }} - BIMCalc{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>📊 Price History</h1>
+    <p>Complete audit trail for {{ item_code }} ({{ region }})</p>
+    <a href="/prices" style="display: inline-block; margin-top: 0.5rem; color: #4299e1; text-decoration: none;">← Back to Prices</a>
+</div>
+
+<div style="background: white; padding: 1.5rem; border-radius: 0.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 2rem;">
+    <h2 style="margin-bottom: 1rem;">Item Information</h2>
+    <dl style="display: grid; grid-template-columns: auto 1fr; gap: 0.5rem 2rem;">
+        <dt style="font-weight: 600; color: #718096;">Item Code:</dt>
+        <dd>{{ item_code }}</dd>
+        <dt style="font-weight: 600; color: #718096;">Region:</dt>
+        <dd>{{ region }}</dd>
+        <dt style="font-weight: 600; color: #718096;">Description:</dt>
+        <dd>{{ price_history[0].description }}</dd>
+        <dt style="font-weight: 600; color: #718096;">Classification:</dt>
+        <dd>{{ price_history[0].classification_code }}</dd>
+        <dt style="font-weight: 600; color: #718096;">Total Price Changes:</dt>
+        <dd style="font-weight: 600; color: #4299e1;">{{ price_history|length }}</dd>
+    </dl>
+</div>
+
+<div style="background: white; padding: 1.5rem; border-radius: 0.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+    <h2 style="margin-bottom: 1.5rem;">Price History (Most Recent First)</h2>
+
+    {% if price_history %}
+    <table style="width: 100%; border-collapse: collapse;">
+        <thead>
+            <tr style="border-bottom: 2px solid #e2e8f0; text-align: left;">
+                <th style="padding: 0.75rem; font-size: 0.875rem; color: #718096;">Status</th>
+                <th style="padding: 0.75rem; font-size: 0.875rem; color: #718096;">Price</th>
+                <th style="padding: 0.75rem; font-size: 0.875rem; color: #718096;">Currency</th>
+                <th style="padding: 0.75rem; font-size: 0.875rem; color: #718096;">Valid From</th>
+                <th style="padding: 0.75rem; font-size: 0.875rem; color: #718096;">Valid To</th>
+                <th style="padding: 0.75rem; font-size: 0.875rem; color: #718096;">Duration</th>
+                <th style="padding: 0.75rem; font-size: 0.875rem; color: #718096;">Source</th>
+                <th style="padding: 0.75rem; font-size: 0.875rem; color: #718096;">Change</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for price in price_history %}
+            <tr style="border-bottom: 1px solid #e2e8f0; {% if price.is_current %}background: #f7fafc;{% endif %}">
+                <td style="padding: 0.75rem;">
+                    {% if price.is_current %}
+                    <span style="background: #c6f6d5; color: #22543d; padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600;">✓ CURRENT</span>
+                    {% else %}
+                    <span style="background: #e2e8f0; color: #4a5568; padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.75rem;">EXPIRED</span>
+                    {% endif %}
+                </td>
+                <td style="padding: 0.75rem; font-size: 1.25rem; font-weight: 700; {% if price.is_current %}color: #22543d;{% endif %}">
+                    {{ "%.2f"|format(price.unit_price) }}
+                </td>
+                <td style="padding: 0.75rem;">{{ price.currency }}</td>
+                <td style="padding: 0.75rem;">{{ price.valid_from.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                <td style="padding: 0.75rem;">
+                    {% if price.valid_to %}
+                        {{ price.valid_to.strftime('%Y-%m-%d %H:%M:%S') }}
+                    {% else %}
+                        <span style="color: #48bb78;">Present</span>
+                    {% endif %}
+                </td>
+                <td style="padding: 0.75rem; font-size: 0.875rem; color: #718096;">
+                    {% if price.valid_to %}
+                        {% set duration_days = (price.valid_to - price.valid_from).days %}
+                        {% if duration_days == 0 %}
+                            < 1 day
+                        {% elif duration_days == 1 %}
+                            1 day
+                        {% else %}
+                            {{ duration_days }} days
+                        {% endif %}
+                    {% else %}
+                        {% if price.last_updated %}
+                            {% set duration_days = (price.last_updated - price.valid_from).days %}
+                            {{ duration_days }} days (ongoing)
+                        {% else %}
+                            Active
+                        {% endif %}
+                    {% endif %}
+                </td>
+                <td style="padding: 0.75rem; font-size: 0.75rem; color: #718096;">{{ price.source_name }}</td>
+                <td style="padding: 0.75rem;">
+                    {% if not loop.last %}
+                        {% set prev_price = price_history[loop.index] %}
+                        {% set price_diff = price.unit_price - prev_price.unit_price %}
+                        {% set price_pct = ((price.unit_price - prev_price.unit_price) / prev_price.unit_price * 100) %}
+                        {% if price_diff > 0 %}
+                            <span style="color: #f56565; font-weight: 600;">+{{ "%.2f"|format(price_diff) }} (+{{ "%.1f"|format(price_pct) }}%)</span>
+                        {% elif price_diff < 0 %}
+                            <span style="color: #48bb78; font-weight: 600;">{{ "%.2f"|format(price_diff) }} ({{ "%.1f"|format(price_pct) }}%)</span>
+                        {% else %}
+                            <span style="color: #718096;">No change</span>
+                        {% endif %}
+                    {% else %}
+                        <span style="color: #718096;">First price</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div style="margin-top: 2rem; padding: 1.5rem; background: #f7fafc; border-radius: 0.375rem;">
+        <h3 style="margin-bottom: 1rem; font-size: 1rem; color: #2d3748;">Price Analysis</h3>
+        {% set current_price = price_history[0].unit_price %}
+        {% set oldest_price = price_history[-1].unit_price %}
+        {% set total_change = current_price - oldest_price %}
+        {% set total_change_pct = ((current_price - oldest_price) / oldest_price * 100) if oldest_price > 0 else 0 %}
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+            <div>
+                <div style="font-size: 0.875rem; color: #718096; margin-bottom: 0.25rem;">Current Price</div>
+                <div style="font-size: 1.5rem; font-weight: 700; color: #22543d;">{{ price_history[0].currency }} {{ "%.2f"|format(current_price) }}</div>
+            </div>
+            <div>
+                <div style="font-size: 0.875rem; color: #718096; margin-bottom: 0.25rem;">First Price</div>
+                <div style="font-size: 1.5rem; font-weight: 700;">{{ price_history[-1].currency }} {{ "%.2f"|format(oldest_price) }}</div>
+            </div>
+            <div>
+                <div style="font-size: 0.875rem; color: #718096; margin-bottom: 0.25rem;">Total Change</div>
+                <div style="font-size: 1.5rem; font-weight: 700; {% if total_change > 0 %}color: #f56565;{% elif total_change < 0 %}color: #48bb78;{% endif %}">
+                    {% if total_change > 0 %}+{% endif %}{{ "%.2f"|format(total_change) }} ({{ "%.1f"|format(total_change_pct) }}%)
+                </div>
+            </div>
+            <div>
+                <div style="font-size: 0.875rem; color: #718096; margin-bottom: 0.25rem;">Price Changes</div>
+                <div style="font-size: 1.5rem; font-weight: 700; color: #4299e1;">{{ price_history|length - 1 }}</div>
+            </div>
+        </div>
+    </div>
+
+    {% else %}
+    <p style="text-align: center; color: #718096; padding: 2rem;">No price history found.</p>
+    {% endif %}
+</div>
+{% endblock %}

@@ -9,7 +9,7 @@ from typing import Optional
 from uuid import UUID
 
 import pandas as pd
-from fastapi import FastAPI, File, Form, HTTPException, Query, Request, UploadFile
+from fastapi import Cookie, Depends, FastAPI, File, Form, HTTPException, Query, Request, Response, UploadFile
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -25,9 +25,23 @@ from bimcalc.matching.orchestrator import MatchOrchestrator
 from bimcalc.models import FlagSeverity, Item
 from bimcalc.reporting.builder import generate_report
 from bimcalc.review import approve_review_record, fetch_pending_reviews, fetch_review_record
+from bimcalc.db.models import DataSyncLogModel
+from bimcalc.pipeline.config_loader import load_pipeline_config
+from bimcalc.pipeline.orchestrator import PipelineOrchestrator
+from bimcalc.web.auth import (
+    create_session,
+    logout as auth_logout,
+    require_auth,
+    validate_session,
+    verify_credentials,
+)
 
 templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
 app = FastAPI(title="BIMCalc Management Console", version="2.0")
+
+# Authentication enabled by default (disable with BIMCALC_AUTH_DISABLED=true for development)
+import os
+AUTH_ENABLED = os.environ.get("BIMCALC_AUTH_DISABLED", "false").lower() != "true"
 
 # Mount static files if directory exists
 static_dir = Path(__file__).parent / "static"
@@ -61,11 +75,67 @@ def _get_org_project(request: Request, org: Optional[str] = None, project: Optio
 
 
 # ============================================================================
+# Authentication Routes
+# ============================================================================
+
+@app.get("/login", response_class=HTMLResponse)
+async def login_page(request: Request, error: Optional[str] = None):
+    """Login page."""
+    return templates.TemplateResponse("login.html", {
+        "request": request,
+        "error": error,
+    })
+
+
+@app.post("/login")
+async def login(
+    request: Request,
+    response: Response,
+    username: str = Form(...),
+    password: str = Form(...),
+):
+    """Process login form."""
+    if verify_credentials(username, password):
+        # Create session
+        session_token = create_session(username)
+
+        # Set cookie
+        response = RedirectResponse(url="/", status_code=302)
+        response.set_cookie(
+            key="session",
+            value=session_token,
+            httponly=True,
+            max_age=86400,  # 24 hours
+            samesite="lax",
+        )
+        return response
+    else:
+        # Invalid credentials
+        return RedirectResponse(url="/login?error=invalid", status_code=302)
+
+
+@app.get("/logout")
+async def logout(response: Response, session: Optional[str] = Cookie(default=None)):
+    """Logout and clear session."""
+    if session:
+        auth_logout(session)
+
+    response = RedirectResponse(url="/login", status_code=302)
+    response.delete_cookie("session")
+    return response
+
+
+# ============================================================================
 # Main Dashboard / Navigation
 # ============================================================================
 
 @app.get("/", response_class=HTMLResponse)
-async def dashboard(request: Request, org: Optional[str] = None, project: Optional[str] = None):
+async def dashboard(
+    request: Request,
+    org: Optional[str] = None,
+    project: Optional[str] = None,
+    username: str = Depends(require_auth) if AUTH_ENABLED else None,
+):
     """Main dashboard with navigation and statistics."""
     org_id, project_id = _get_org_project(request, org, project)
 
@@ -79,7 +149,11 @@ async def dashboard(request: Request, org: Optional[str] = None, project: Option
         )
         items_count = items_result.scalar_one()
 
-        prices_result = await session.execute(select(func.count()).select_from(PriceItemModel))
+        prices_result = await session.execute(
+            select(func.count()).select_from(PriceItemModel).where(
+                PriceItemModel.is_current == True
+            )
+        )
         prices_count = prices_result.scalar_one()
 
         mappings_result = await session.execute(
@@ -465,13 +539,14 @@ async def mappings_list(
     offset = (page - 1) * per_page
 
     async with get_session() as session:
-        # Get active mappings with pagination
+        # Get active mappings with pagination (only current prices)
         stmt = (
             select(ItemMappingModel, PriceItemModel)
             .join(PriceItemModel, PriceItemModel.id == ItemMappingModel.price_item_id)
             .where(
                 ItemMappingModel.org_id == org_id,
                 ItemMappingModel.end_ts.is_(None),
+                PriceItemModel.is_current == True,
             )
             .order_by(ItemMappingModel.start_ts.desc())
             .limit(per_page)
@@ -687,6 +762,227 @@ async def audit_trail(
             "audit_records": audit_records,
             "org_id": org_id,
             "project_id": project_id,
+            "page": page,
+            "per_page": per_page,
+            "total": total,
+            "total_pages": (total + per_page - 1) // per_page,
+        },
+    )
+
+
+# ============================================================================
+# Pipeline Management (NEW - SCD Type-2 Support)
+# ============================================================================
+
+@app.get("/pipeline", response_class=HTMLResponse)
+async def pipeline_dashboard(request: Request, page: int = Query(default=1, ge=1)):
+    """Pipeline status and management dashboard."""
+    per_page = 20
+    offset = (page - 1) * per_page
+
+    async with get_session() as session:
+        # Get pipeline run history
+        stmt = (
+            select(DataSyncLogModel)
+            .order_by(DataSyncLogModel.run_timestamp.desc())
+            .limit(per_page)
+            .offset(offset)
+        )
+        result = await session.execute(stmt)
+        pipeline_runs = result.scalars().all()
+
+        # Get total count
+        count_result = await session.execute(
+            select(func.count()).select_from(DataSyncLogModel)
+        )
+        total = count_result.scalar_one()
+
+        # Get summary statistics
+        success_result = await session.execute(
+            select(func.count()).select_from(DataSyncLogModel).where(
+                DataSyncLogModel.status == "SUCCESS"
+            )
+        )
+        success_count = success_result.scalar_one()
+
+        failed_result = await session.execute(
+            select(func.count()).select_from(DataSyncLogModel).where(
+                DataSyncLogModel.status == "FAILED"
+            )
+        )
+        failed_count = failed_result.scalar_one()
+
+        # Get last run timestamp
+        last_run_result = await session.execute(
+            select(DataSyncLogModel.run_timestamp)
+            .order_by(DataSyncLogModel.run_timestamp.desc())
+            .limit(1)
+        )
+        last_run = last_run_result.scalar_one_or_none()
+
+    return templates.TemplateResponse(
+        "pipeline.html",
+        {
+            "request": request,
+            "pipeline_runs": pipeline_runs,
+            "page": page,
+            "per_page": per_page,
+            "total": total,
+            "total_pages": (total + per_page - 1) // per_page,
+            "success_count": success_count,
+            "failed_count": failed_count,
+            "last_run": last_run,
+        },
+    )
+
+
+@app.post("/pipeline/run")
+async def run_pipeline_manual():
+    """Manually trigger pipeline run."""
+    try:
+        # Load configuration
+        config_path = Path(__file__).parent.parent.parent / "config" / "pipeline_sources.yaml"
+
+        if not config_path.exists():
+            return JSONResponse(
+                status_code=400,
+                content={"success": False, "message": f"Configuration file not found: {config_path}"},
+            )
+
+        importers = load_pipeline_config(config_path)
+
+        if not importers:
+            return JSONResponse(
+                status_code=400,
+                content={"success": False, "message": "No enabled data sources configured"},
+            )
+
+        # Run pipeline
+        orchestrator = PipelineOrchestrator(importers)
+        summary = await orchestrator.run()
+
+        return {
+            "success": summary["overall_success"],
+            "message": f"Pipeline completed: {summary['successful_sources']}/{summary['total_sources']} sources successful",
+            "details": summary,
+        }
+
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content={"success": False, "message": str(e)},
+        )
+
+
+@app.get("/pipeline/sources")
+async def get_pipeline_sources():
+    """Get configured pipeline sources."""
+    try:
+        config_path = Path(__file__).parent.parent.parent / "config" / "pipeline_sources.yaml"
+
+        if not config_path.exists():
+            return JSONResponse(
+                status_code=404,
+                content={"success": False, "message": f"Configuration file not found: {config_path}"},
+            )
+
+        importers = load_pipeline_config(config_path)
+        sources = [
+            {
+                "name": imp.source_name,
+                "type": imp.__class__.__name__,
+                "config": imp.config,
+            }
+            for imp in importers
+        ]
+        return {"success": True, "sources": sources}
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content={"success": False, "message": str(e)},
+        )
+
+
+# ============================================================================
+# Price History Viewer (NEW - SCD Type-2 Support)
+# ============================================================================
+
+@app.get("/prices/history/{item_code}", response_class=HTMLResponse)
+async def price_history(
+    request: Request,
+    item_code: str,
+    region: str = Query(default="UK"),
+):
+    """View price history for a specific item."""
+    async with get_session() as session:
+        # Get all price records (current + historical)
+        stmt = (
+            select(PriceItemModel)
+            .where(
+                PriceItemModel.item_code == item_code,
+                PriceItemModel.region == region,
+            )
+            .order_by(PriceItemModel.valid_from.desc())
+        )
+        result = await session.execute(stmt)
+        price_history = result.scalars().all()
+
+        if not price_history:
+            raise HTTPException(
+                status_code=404,
+                detail=f"No price history found for {item_code} in {region}"
+            )
+
+    return templates.TemplateResponse(
+        "price_history.html",
+        {
+            "request": request,
+            "item_code": item_code,
+            "region": region,
+            "price_history": price_history,
+        },
+    )
+
+
+@app.get("/prices", response_class=HTMLResponse)
+async def prices_list(
+    request: Request,
+    current_only: bool = Query(default=True),
+    page: int = Query(default=1, ge=1),
+):
+    """List all price items with optional history."""
+    per_page = 50
+    offset = (page - 1) * per_page
+
+    async with get_session() as session:
+        # Build query
+        stmt = select(PriceItemModel).order_by(
+            PriceItemModel.item_code,
+            PriceItemModel.valid_from.desc(),
+        )
+
+        if current_only:
+            stmt = stmt.where(PriceItemModel.is_current == True)
+
+        stmt = stmt.limit(per_page).offset(offset)
+
+        result = await session.execute(stmt)
+        prices = result.scalars().all()
+
+        # Get total count
+        count_stmt = select(func.count()).select_from(PriceItemModel)
+        if current_only:
+            count_stmt = count_stmt.where(PriceItemModel.is_current == True)
+
+        count_result = await session.execute(count_stmt)
+        total = count_result.scalar_one()
+
+    return templates.TemplateResponse(
+        "prices.html",
+        {
+            "request": request,
+            "prices": prices,
+            "current_only": current_only,
             "page": page,
             "per_page": per_page,
             "total": total,

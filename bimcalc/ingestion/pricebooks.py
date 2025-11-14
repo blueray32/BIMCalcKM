@@ -25,6 +25,8 @@ async def ingest_pricebook(
     session: AsyncSession,
     file_path: Path,
     vendor_id: str = "default",
+    org_id: str = "default",
+    region: str = "IE",
     use_cmm: bool = True,
     config_dir: Path = Path("config/vendors"),
 ) -> tuple[int, list[str]]:
@@ -51,6 +53,8 @@ async def ingest_pricebook(
         session: Database session
         file_path: Path to CSV or XLSX file
         vendor_id: Vendor identifier
+        org_id: Organization ID for multi-tenant scoping (required)
+        region: Region code (e.g., 'IE', 'UK', 'EU') for price localization
         use_cmm: Enable Classification Mapping Module translation
         config_dir: Directory containing vendor mapping YAML files
 
@@ -175,8 +179,11 @@ async def ingest_pricebook(
                 cmm_note = f"CMM: {translation_result.canonical_code or 'mapped'}"
                 vendor_note = f"{cmm_note}; {vendor_note}" if vendor_note else cmm_note
 
-            # Create PriceItem model
+            # Create PriceItem model with required SCD2 and multi-tenant fields
             price_model = PriceItemModel(
+                org_id=org_id,  # CRITICAL: Multi-tenant isolation
+                item_code=sku,  # Use SKU as item_code (can be customized)
+                region=region,  # Price localization by region
                 vendor_id=vendor_id,
                 sku=sku,
                 description=description,
@@ -190,6 +197,8 @@ async def ingest_pricebook(
                 dn_mm=dn_mm,
                 angle_deg=angle_deg,
                 material=material,
+                source_name=f"{vendor_id}_{file_path.stem}",  # Traceable source
+                source_currency=currency,
                 vendor_note=vendor_note,
             )
 

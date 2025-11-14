@@ -1,0 +1,342 @@
+# BIMCalc Pipeline Sources - Example Configurations
+# Copy desired sources to pipeline_sources.yaml and configure
+
+sources:
+  # ============================================
+  # CSV/Excel File Sources (Manufacturer Direct)
+  # ============================================
+
+  # German Manufacturer: OBO Bettermann (Cable Management)
+  - name: obo_q1_2025
+    type: csv
+    enabled: false  # Set to true when configured
+    config:
+      file_path: /data/prices/obo/OBO_Q1_2025_Preisliste.csv
+      region: DE
+      vendor_id: OBO_BETTERMANN
+      column_mapping:
+        "Artikel-Nr": "item_code"
+        "Bezeichnung": "description"
+        "Warengruppe": "classification_code"
+        "Preis": "unit_price"
+        "Währung": "currency"
+        "Einheit": "unit"
+        "Breite": "width_mm"
+        "Höhe": "height_mm"
+        "Material": "material"
+
+  # Dutch Manufacturer: Philips Lighting
+  - name: philips_lighting_nl_2025
+    type: csv
+    enabled: false
+    config:
+      file_path: /data/prices/philips/Philips_2025_Prijslijst.xlsx
+      region: NL
+      vendor_id: PHILIPS_LIGHTING
+      column_mapping:
+        "Product Code": "item_code"
+        "Description": "description"
+        "Category": "classification_code"
+        "List Price": "unit_price"
+        "Currency": "currency"
+        "Unit": "unit"
+        "Power (W)": "vendor_note"  # Store wattage in notes
+
+  # UK Manufacturer: Schneider Electric
+  - name: schneider_uk_2025
+    type: csv
+    enabled: false
+    config:
+      file_path: /data/prices/schneider/Schneider_UK_2025_Price_List.xlsx
+      region: UK
+      vendor_id: SCHNEIDER_ELECTRIC
+      column_mapping:
+        "Reference": "item_code"
+        "Description": "description"
+        "Product Range": "classification_code"
+        "Net Price": "unit_price"
+        "Currency": "currency"
+        "Sales Unit": "unit"
+
+  # ============================================
+  # API Sources (Distributors)
+  # ============================================
+
+  # RS Components UK (Electrocomponents)
+  - name: rs_components_uk
+    type: api
+    enabled: false
+    config:
+      api_url: https://api.rs-online.com/v1/catalogue/products
+      api_key_env: RS_API_KEY  # export RS_API_KEY="your_key"
+      region: UK
+      vendor_id: RS_COMPONENTS
+      rate_limit: 10  # requests per second
+      pagination:
+        page_size: 100
+        max_pages: 1000
+      headers:
+        Accept: application/json
+        Content-Type: application/json
+      # Map API response fields to PriceRecord
+      field_mapping:
+        stockNumber: "item_code"
+        productDescription: "description"
+        categoryCode: "classification_code"
+        priceBreaks[0].price: "unit_price"
+        currency: "currency"
+        unitOfMeasure: "unit"
+
+  # Farnell UK (Element14)
+  - name: farnell_uk
+    type: api
+    enabled: false
+    config:
+      api_url: https://api.element14.com/catalog/products
+      api_key_env: FARNELL_API_KEY
+      region: UK
+      vendor_id: FARNELL
+      rate_limit: 5
+      pagination:
+        page_size: 50
+        max_pages: 500
+      headers:
+        Accept: application/json
+
+  # Rexel Germany (Electrical Distributor)
+  - name: rexel_de
+    type: api
+    enabled: false
+    config:
+      api_url: https://api.rexel.de/v2/products
+      api_key_env: REXEL_API_KEY
+      region: DE
+      vendor_id: REXEL_GERMANY
+      rate_limit: 20
+      authentication:
+        type: oauth2
+        token_url: https://auth.rexel.de/oauth/token
+        client_id_env: REXEL_CLIENT_ID
+        client_secret_env: REXEL_CLIENT_SECRET
+
+  # Trimble Luckins UK (MEP Specialist)
+  - name: trimble_luckins_uk
+    type: api
+    enabled: false
+    config:
+      api_url: https://api.luckins.com/v1/pricing
+      api_key_env: LUCKINS_API_KEY
+      region: UK
+      vendor_id: TRIMBLE_LUCKINS
+      rate_limit: 15
+      category_filter:
+        - HVAC
+        - ELECTRICAL
+        - PLUMBING
+
+  # ============================================
+  # Data Pool Sources (Industry Standards)
+  # ============================================
+
+  # ITEC Data Pool (Germany) - Building Services Standard
+  - name: itec_data_pool_de
+    type: api
+    enabled: false
+    config:
+      api_url: https://api.itec-standard.de/v2/prices
+      api_key_env: ITEC_API_KEY
+      region: DE
+      vendor_id: ITEC_POOL
+      standard_version: ITEC_7_0
+      rate_limit: 50
+      # ITEC provides standardized classification
+      classification_mapping:
+        auto: true  # Use ITEC classification codes directly
+
+  # 2BA Data Pool (Netherlands/Belgium) - Similar to ITEC
+  - name: 2ba_data_pool_nl
+    type: api
+    enabled: false
+    config:
+      api_url: https://api.2ba.nl/v3/pricing
+      api_key_env: TWO_BA_API_KEY
+      region: NL
+      vendor_id: 2BA_POOL
+      rate_limit: 30
+      filter:
+        product_groups:
+          - electrical
+          - hvac
+          - plumbing
+
+  # ============================================
+  # Web Scraping Sources (Last Resort)
+  # ============================================
+
+  # Webshop Scraper Example (Use with caution - check terms of service)
+  - name: vendor_webshop_scraper
+    type: scraper
+    enabled: false
+    config:
+      base_url: https://shop.example-vendor.com/catalog
+      region: UK
+      vendor_id: EXAMPLE_VENDOR
+      scraping:
+        rate_limit: 1  # Be respectful - very slow
+        user_agent: "BIMCalc Price Bot v1.0 (contact@example.com)"
+        selectors:
+          item_code: ".product-sku"
+          description: ".product-title"
+          price: ".product-price"
+          currency: ".price-currency"
+      # WARNING: Web scraping is fragile and may violate ToS
+      # Always prefer API or file-based sources
+
+  # ============================================
+  # FTP/SFTP Sources (Automated File Drops)
+  # ============================================
+
+  # Manufacturer FTP Drop Example
+  - name: manufacturer_ftp_drop
+    type: ftp
+    enabled: false
+    config:
+      ftp_host: ftp.manufacturer.com
+      ftp_user_env: FTP_USER
+      ftp_password_env: FTP_PASSWORD
+      ftp_path: /price_lists/latest/
+      file_pattern: "*_pricelist_*.csv"
+      download_to: /data/prices/manufacturer/
+      region: DE
+      vendor_id: MANUFACTURER_GMBH
+      # After download, process as CSV
+      processing:
+        type: csv
+        column_mapping:
+          "SKU": "item_code"
+          "Description": "description"
+          "Price": "unit_price"
+
+  # ============================================
+  # Email Attachment Sources (Automated)
+  # ============================================
+
+  # Email-based price list (requires email integration)
+  - name: vendor_email_pricelist
+    type: email_attachment
+    enabled: false
+    config:
+      imap_server: imap.gmail.com
+      imap_user_env: EMAIL_USER
+      imap_password_env: EMAIL_PASSWORD
+      from_filter: pricelist@vendor.com
+      subject_filter: "Monthly Price Update"
+      attachment_pattern: "*.xlsx"
+      download_to: /data/prices/vendor_email/
+      region: UK
+      vendor_id: VENDOR_EMAIL
+      mark_as_read: true
+      # Process downloaded file as Excel
+      processing:
+        type: csv
+        column_mapping:
+          "Item": "item_code"
+          "Price": "unit_price"
+
+  # ============================================
+  # Manual Upload Source (Web UI)
+  # ============================================
+
+  # Files uploaded via web interface
+  - name: manual_upload_staging
+    type: csv
+    enabled: true
+    config:
+      file_path: /data/uploads/staging/latest.csv
+      region: UK
+      vendor_id: MANUAL_UPLOAD
+      # Flexible mapping for various formats
+      column_mapping:
+        "SKU": "item_code"
+        "Item Code": "item_code"
+        "Description": "description"
+        "Product Name": "description"
+        "Price": "unit_price"
+        "Cost": "unit_price"
+
+  # ============================================
+  # Test/Development Sources
+  # ============================================
+
+  # Local test data (already configured)
+  - name: test_prices_local
+    type: csv
+    enabled: true
+    config:
+      file_path: tests/fixtures/sample_prices.csv
+      region: UK
+      vendor_id: TEST_VENDOR
+      column_mapping:
+        "SKU": "item_code"
+        "Description": "description"
+        "Classification Code": "classification_code"
+        "Unit Price": "unit_price"
+        "Currency": "currency"
+        "Unit": "unit"
+        "Width": "width_mm"
+        "Height": "height_mm"
+        "Material": "material"
+
+# ============================================
+# Notes on Configuration
+# ============================================
+
+# Environment Variables Required:
+# - Export API keys as environment variables (never commit to git)
+# - Example: export RS_API_KEY="your_actual_key_here"
+
+# Column Mapping Guidelines:
+# - Left side: Column name in source file/API (exact match, case-sensitive)
+# - Right side: PriceRecord field name (must match schema)
+# - Required fields: item_code, description, classification_code, unit_price, currency, unit
+# - Optional fields: width_mm, height_mm, dn_mm, angle_deg, material, vendor_note, sku, vendor_id
+
+# Region Codes:
+# - UK: United Kingdom
+# - DE: Germany (Deutschland)
+# - NL: Netherlands
+# - BE: Belgium
+# - FR: France
+# - ES: Spain
+# - IT: Italy
+# - IE: Ireland
+# - AT: Austria
+# - CH: Switzerland
+
+# Currency Codes (ISO 4217):
+# - EUR: Euro
+# - GBP: British Pound
+# - CHF: Swiss Franc
+
+# Vendor IDs:
+# - Use consistent uppercase identifiers
+# - Examples: RS_COMPONENTS, FARNELL, OBO_BETTERMANN, PHILIPS_LIGHTING
+# - Helps with data governance and traceability
+
+# Rate Limiting:
+# - Be respectful of API rate limits
+# - Default to conservative values (5-10 req/s)
+# - Monitor API usage and adjust as needed
+
+# Error Handling:
+# - Single source failures don't halt pipeline
+# - Check logs: python -m bimcalc.cli pipeline-status
+# - Errors are isolated per source
+
+# Testing New Sources:
+# 1. Add source configuration with enabled: false
+# 2. Set enabled: true for the source only
+# 3. Run: python -m bimcalc.cli sync-prices --dry-run
+# 4. Check logs for errors
+# 5. Fix configuration and retry
+# 6. When working, enable in production

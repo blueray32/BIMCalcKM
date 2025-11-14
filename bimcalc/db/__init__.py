@@ -3,6 +3,7 @@
 from bimcalc.db.connection import get_session, init_db
 from bimcalc.db.models import (
     Base,
+    DataSyncLogModel,
     DocumentModel,
     ItemMappingModel,
     ItemModel,
@@ -19,6 +20,7 @@ __all__ = [
     "MatchFlagModel",
     "MatchResultModel",
     "DocumentModel",
+    "DataSyncLogModel",
     "get_session",
     "init_db",
 ]

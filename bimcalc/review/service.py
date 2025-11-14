@@ -24,6 +24,15 @@ async def approve_review_record(
     if not record.item.canonical_key:
         raise ValueError("Item is missing canonical key; run matching first")
 
+    # CRITICAL: Block approval if any Critical-Veto flags exist
+    if record.has_critical_flags:
+        critical_flags = [f for f in record.flags if f.severity == "Critical-Veto"]
+        flag_types = ", ".join(f.type for f in critical_flags)
+        raise ValueError(
+            f"Cannot approve item with Critical-Veto flags: {flag_types}. "
+            "These flags indicate fundamental mismatches that compromise auditability."
+        )
+
     mapping = MappingMemory(session)
     await mapping.write(
         org_id=record.item.org_id,

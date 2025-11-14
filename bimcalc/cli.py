@@ -2,11 +2,14 @@
 
 Commands:
 - init: Initialize database schema
+- migrate: Run database migrations
 - ingest-schedules: Import Revit schedules (CSV/XLSX)
 - ingest-prices: Import vendor price books (CSV/XLSX)
+- sync-prices: Run automated price synchronization pipeline
 - match: Run matching pipeline on project
 - report: Generate cost report with as-of query
 - stats: Show project statistics
+- pipeline-status: Check last pipeline run status
 """
 
 from __future__ import annotations
@@ -162,6 +165,15 @@ def match(
         run_started = datetime.utcnow()
         processed_item_ids: list = []
         async with get_session() as session:
+            # CRITICAL: Run startup validations (fail-fast per CLAUDE.md)
+            from bimcalc.startup_validation import run_all_validations
+            try:
+                await run_all_validations(session)
+            except Exception as e:
+                console.print(f"[bold red]✗ Startup validation failed:[/bold red] {e}")
+                console.print("[yellow]Fix configuration issues before running match.[/yellow]")
+                return
+
             orchestrator = MatchOrchestrator(session)
 
             # Query items for project
@@ -401,6 +413,177 @@ def stats(
             console.print(table)
 
     asyncio.run(_stats())
+
+
+@app.command()
+def migrate(
+    execute: bool = typer.Option(False, "--execute", help="Execute migration (default: dry-run)"),
+    rollback: bool = typer.Option(False, "--rollback", help="Rollback migration (DESTRUCTIVE)"),
+):
+    """Run database migration to SCD Type-2 schema."""
+    from bimcalc.migrations.upgrade_to_scd2 import migrate as run_migration
+
+    run_migration(execute=execute, rollback=rollback)
+
+
+@app.command(name="sync-prices")
+def sync_prices_cmd(
+    config_file: Path = typer.Option(
+        Path("config/pipeline_sources.yaml"),
+        "--config",
+        "-c",
+        help="Pipeline configuration file",
+    ),
+    dry_run: bool = typer.Option(False, "--dry-run", help="Simulate run without writing to database"),
+):
+    """Run automated price synchronization pipeline.
+
+    Executes the nightly price data refresh from all configured sources.
+    Each source is processed independently - failures are isolated and logged.
+    """
+    from bimcalc.pipeline.config_loader import load_pipeline_config
+    from bimcalc.pipeline.orchestrator import run_pipeline
+
+    console.print(f"[bold]Starting price synchronization pipeline[/bold]")
+    console.print(f"Config: {config_file}")
+
+    if dry_run:
+        console.print("[yellow]DRY RUN MODE - No changes will be made[/yellow]\n")
+
+    async def _sync():
+        try:
+            # Load importer configurations
+            importers = load_pipeline_config(config_file)
+
+            if not importers:
+                console.print("[yellow]No importers configured or all disabled[/yellow]")
+                return
+
+            console.print(f"Loaded {len(importers)} data sources\n")
+
+            # Run pipeline
+            summary = await run_pipeline(importers)
+
+            # Display results
+            console.print("\n[bold]Pipeline Run Summary[/bold]")
+            console.print(f"Run timestamp: {summary['run_timestamp']}")
+            console.print(
+                f"Status: {summary['successful_sources']}/{summary['total_sources']} sources successful"
+            )
+
+            # Results table
+            table = Table(title="Source Results")
+            table.add_column("Source", style="cyan")
+            table.add_column("Status", style="bold")
+            table.add_column("Inserted", justify="right")
+            table.add_column("Updated", justify="right")
+            table.add_column("Failed", justify="right")
+            table.add_column("Duration", justify="right")
+
+            for result in summary["results"]:
+                status_style = "green" if result.success else "red"
+                status_text = f"[{status_style}]{result.status.value}[/{status_style}]"
+
+                table.add_row(
+                    result.source_name,
+                    status_text,
+                    str(result.records_inserted),
+                    str(result.records_updated),
+                    str(result.records_failed),
+                    f"{result.duration_seconds:.1f}s",
+                )
+
+            console.print("\n")
+            console.print(table)
+
+            # Show error messages
+            if summary["failed_sources"] > 0:
+                console.print("\n[bold red]Failed Sources:[/bold red]")
+                for result in summary["results"]:
+                    if not result.success:
+                        console.print(f"  • {result.source_name}: {result.message}")
+
+        except FileNotFoundError as e:
+            console.print(f"[red]Config file not found: {e}[/red]")
+        except Exception as e:
+            console.print(f"[red]Pipeline error: {e}[/red]")
+            import traceback
+
+            traceback.print_exc()
+
+    asyncio.run(_sync())
+
+
+@app.command(name="pipeline-status")
+def pipeline_status_cmd(
+    last_n: int = typer.Option(5, "--last", "-n", help="Show last N pipeline runs"),
+):
+    """Check status of recent pipeline runs."""
+    from bimcalc.db.models import DataSyncLogModel
+
+    console.print(f"[bold]Last {last_n} Pipeline Runs[/bold]\n")
+
+    async def _status():
+        async with get_session() as session:
+            # Get recent runs
+            stmt = (
+                select(DataSyncLogModel)
+                .order_by(DataSyncLogModel.run_timestamp.desc())
+                .limit(last_n * 10)  # Get more rows, we'll group by run_timestamp
+            )
+
+            result = await session.execute(stmt)
+            logs = result.scalars().all()
+
+            if not logs:
+                console.print("[yellow]No pipeline runs found[/yellow]")
+                return
+
+            # Group by run_timestamp
+            from collections import defaultdict
+
+            runs = defaultdict(list)
+            for log in logs:
+                runs[log.run_timestamp].append(log)
+
+            # Take last N runs
+            run_timestamps = sorted(runs.keys(), reverse=True)[:last_n]
+
+            for run_ts in run_timestamps:
+                run_logs = runs[run_ts]
+
+                # Calculate statistics
+                total_sources = len(run_logs)
+                successful = sum(1 for log in run_logs if log.status == "SUCCESS")
+                failed = sum(1 for log in run_logs if log.status == "FAILED")
+                partial = sum(1 for log in run_logs if log.status == "PARTIAL_SUCCESS")
+
+                total_inserted = sum(log.records_inserted for log in run_logs)
+                total_updated = sum(log.records_updated for log in run_logs)
+
+                # Overall status
+                if failed > 0:
+                    overall_status = "[red]FAILED[/red]"
+                elif partial > 0:
+                    overall_status = "[yellow]PARTIAL[/yellow]"
+                else:
+                    overall_status = "[green]SUCCESS[/green]"
+
+                console.print(f"\n[bold]{run_ts.strftime('%Y-%m-%d %H:%M:%S UTC')}[/bold]")
+                console.print(f"Status: {overall_status}")
+                console.print(
+                    f"Sources: {successful} success, {failed} failed, {partial} partial"
+                )
+                console.print(f"Records: {total_inserted} inserted, {total_updated} updated")
+
+                # Show failed sources
+                if failed > 0 or partial > 0:
+                    console.print("\nIssues:")
+                    for log in run_logs:
+                        if log.status in ("FAILED", "PARTIAL_SUCCESS"):
+                            console.print(f"  • {log.source_name}: {log.message}")
+
+    asyncio.run(_status())
 
 
 def main():

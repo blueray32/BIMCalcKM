@@ -1,0 +1,107 @@
+# BIMCalc Pipeline Data Sources Configuration
+#
+# This file defines all pricing data sources for the automated pipeline.
+# Each source is processed independently - failures are isolated and logged.
+#
+# Source Types:
+# - csv: File-based (CSV/Excel) importers
+# - api: Generic REST API importers
+# - rs_components: RS Components-specific API
+# - farnell: Farnell/Element14-specific API
+# - trimble_luckins: Trimble Luckins UK aggregator API
+# - itec_datenorm: ITEC DATANORM parser (Germany)
+# - bmecat: BMEcat XML parser (Germany)
+#
+# Security: API keys should be stored in environment variables, not in this file.
+
+sources:
+  # Example: OBO Manufacturer Direct Feed (Quarterly CSV)
+  - name: obo_q4_2024
+    type: csv
+    enabled: false  # Disabled - example only
+    config:
+      file_path: /data/prices/obo_q4_2024.csv
+      region: DE
+      vendor_id: obo_bettermann
+      column_mapping:
+        Item Code: item_code
+        Description: description
+        Classification: classification_code
+        Price: unit_price
+        Currency: currency
+        Unit: unit
+        Width: width_mm
+        Height: height_mm
+        Material: material
+
+  # Example: RS Components API (UK)
+  - name: rs_components_uk
+    type: api
+    enabled: false  # Disabled until API key configured
+    config:
+      api_url: https://api.rs-online.com/v1/catalogue/products
+      api_key_env: RS_API_KEY  # Load from environment variable
+      region: UK
+      rate_limit: 5  # requests per second
+      pagination:
+        page_size: 100
+
+  # Example: Trimble Luckins (UK Master Aggregator)
+  - name: trimble_luckins_uk
+    type: api
+    enabled: false  # Disabled until subscription active
+    config:
+      api_url: https://api.trimble-luckins.com/v2/pricing
+      api_key_env: LUCKINS_API_KEY
+      region: UK
+      rate_limit: 10  # requests per second
+      pagination:
+        page_size: 500
+
+  # Demo API - Simulates a vendor API for testing (no real HTTP calls)
+  # Perfect for learning how API imports work before connecting to real vendors
+  - name: demo_api_multi_region
+    type: demo_api
+    enabled: true
+    config:
+      regions: ["UK", "IE", "DE"]  # Generate data for multiple regions
+      items_per_region: 10  # Number of products per region
+      simulate_delay: 0.1  # Simulate API delay in seconds
+      simulate_pagination: true  # Split data into pages
+      page_size: 5  # Items per page
+
+  # Example: Local test data for development
+  - name: test_prices_local
+    type: csv
+    enabled: true
+    config:
+      file_path: tests/fixtures/sample_prices.csv
+      region: UK
+      vendor_id: test_vendor
+      column_mapping:
+        SKU: item_code
+        Description: description
+        Classification Code: classification_code
+        Unit Price: unit_price
+        Currency: currency
+        Unit: unit
+        Width: width_mm
+        Height: height_mm
+        Material: material
+
+# Pipeline Schedule (cron format)
+# Default: Run daily at 2:00 AM UTC
+schedule: "0 2 * * *"
+
+# Alert settings
+alerts:
+  enabled: true
+  # Email notifications on failures (future enhancement)
+  email:
+    enabled: false
+    recipients:
+      - ops@example.com
+  # Slack notifications (future enhancement)
+  slack:
+    enabled: false
+    webhook_url: ${SLACK_WEBHOOK_URL}

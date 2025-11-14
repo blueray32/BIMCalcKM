@@ -1,0 +1,11 @@
+SKU,Description,Classification Code,Unit Price,Currency,Unit,Width,Height,Material
+ELBOW-001,Cable Tray Elbow 90deg 200x50mm Galvanized,2215,52.00,EUR,ea,200,50,galvanized
+ELBOW-002,Cable Tray Elbow 45deg 200x50mm Galvanized,2215,42.00,EUR,ea,200,50,galvanized
+TRAY-001,Cable Tray Straight 3m 200x50mm Galvanized,2215,89.99,EUR,ea,200,50,galvanized
+BRACKET-001,Cable Tray Support Bracket Heavy Duty,2215,12.50,EUR,ea,,,galvanized
+FITTING-001,Conduit Elbow 90deg 25mm,2216,3.75,EUR,ea,25,,pvc
+CONDUIT-001,Conduit Straight 3m 25mm,2216,8.50,EUR,m,25,,pvc
+LIGHT-001,LED Panel 60x60cm 40W 4000K,2320,125.00,EUR,ea,600,600,
+SWITCH-001,Light Switch Single Gang White,2340,8.90,EUR,ea,,,plastic
+SOCKET-001,Power Socket Double Gang White,2340,12.50,EUR,ea,,,plastic
+CABLE-001,Power Cable 3x2.5mm NYM-J,2210,2.85,EUR,m,,,copper

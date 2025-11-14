@@ -21,6 +21,7 @@ class ReviewItem:
     type_name: str
     category: Optional[str]
     system_type: Optional[str]
+    classification_code: Optional[int]  # For escape-hatch detection
     quantity: Optional[Decimal]
     unit: Optional[str]
     width_mm: Optional[float]
@@ -37,6 +38,7 @@ class ReviewPrice:
     vendor_id: Optional[str]
     sku: str
     description: str
+    classification_code: Optional[int]  # For escape-hatch detection
     unit: str
     unit_price: Decimal
     currency: str
@@ -88,3 +90,10 @@ class ReviewRecord:
     @property
     def requires_annotation(self) -> bool:
         return any(flag.severity == FlagSeverity.ADVISORY for flag in self.flags)
+
+    @property
+    def is_escape_hatch_match(self) -> bool:
+        """Check if this is an out-of-class match (escape-hatch was used)."""
+        if not self.price or self.item.classification_code is None or self.price.classification_code is None:
+            return False
+        return self.item.classification_code != self.price.classification_code

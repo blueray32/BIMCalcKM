@@ -48,8 +48,13 @@ class AutoRouter:
         confidence = match.score
         flags = match.flags
 
+        # CRITICAL: Explicit check for Critical-Veto flags (per CLAUDE.md audit fix)
+        has_critical_flags = any(f.severity == "Critical-Veto" for f in flags)
+        has_any_flags = len(flags) > 0
+
         # Check auto-accept criteria
-        if confidence >= self.min_confidence and len(flags) == 0:
+        # MUST NOT auto-accept if ANY flags exist (Critical-Veto OR Advisory)
+        if confidence >= self.min_confidence and not has_any_flags:
             decision = MatchDecision.AUTO_ACCEPTED
             reason = (
                 f"High confidence ({confidence:.1f}%), no flags, "
@@ -58,13 +63,16 @@ class AutoRouter:
         else:
             decision = MatchDecision.MANUAL_REVIEW
 
-            # Build reason
+            # Build reason with explicit critical flag mention
             reasons = []
             if confidence < self.min_confidence:
                 reasons.append(f"confidence {confidence:.1f}% < {self.min_confidence}%")
-            if len(flags) > 0:
+            if has_critical_flags:
+                critical_types = ", ".join(f.type for f in flags if f.severity == "Critical-Veto")
+                reasons.append(f"CRITICAL flags: {critical_types}")
+            elif has_any_flags:
                 flag_types = ", ".join(f.type for f in flags)
-                reasons.append(f"flags: {flag_types}")
+                reasons.append(f"advisory flags: {flag_types}")
 
             reason = f"Manual review required: {'; '.join(reasons)}"
 

@@ -93,11 +93,15 @@ class MatchOrchestrator:
 
                 return result, price_item
 
-        # Step 4: Mapping miss → Generate candidates (classification-blocked)
-        candidates = await self.candidate_generator.generate(item)
+        # Step 4: Mapping miss → Generate candidates with escape-hatch
+        candidates, used_escape_hatch = await self.candidate_generator.generate_with_escape_hatch(item)
 
         if not candidates:
-            # No candidates found
+            # No candidates found even with escape-hatch
+            reason = "No candidates found after classification blocking (including escape-hatch)"
+            if used_escape_hatch:
+                reason = "No candidates found even with escape-hatch (relaxed classification)"
+
             result = MatchResult(
                 item_id=item.id,
                 price_item_id=None,
@@ -105,7 +109,7 @@ class MatchOrchestrator:
                 source="fuzzy_match",
                 flags=[],
                 decision="rejected",
-                reason="No candidates found after classification blocking",
+                reason=reason,
                 created_by=created_by,
             )
             return result, None
@@ -130,6 +134,19 @@ class MatchOrchestrator:
         # Step 6: Evaluate flags for top candidate
         top_match = ranked[0]
         top_match.flags = compute_flags(item.model_dump(), top_match.price_item.model_dump())
+
+        # If escape-hatch was used, add Classification Mismatch flag (CRITICAL-VETO)
+        if used_escape_hatch:
+            from bimcalc.models import Flag, FlagSeverity
+            escape_flag = Flag(
+                type="Classification Mismatch",
+                severity=FlagSeverity.CRITICAL_VETO,
+                message=(
+                    f"Out-of-class match via escape-hatch: item class={item.classification_code}, "
+                    f"price class={top_match.price_item.classification_code}"
+                )
+            )
+            top_match.flags.append(escape_flag)
 
         # Step 7: Auto-route decision
         result = self.auto_router.route(top_match, source="fuzzy_match", created_by=created_by)

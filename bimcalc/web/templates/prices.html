@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+
+{% block title %}Price Items - BIMCalc{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>💰 Price Items</h1>
+    <p>View current and historical pricing data</p>
+</div>
+
+<div style="background: white; padding: 1.5rem; border-radius: 0.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 2rem;">
+    <form method="get" style="display: flex; align-items: center; gap: 1rem;">
+        <label style="display: flex; align-items: center; gap: 0.5rem;">
+            <input type="checkbox" name="current_only" {% if current_only %}checked{% endif %} onchange="this.form.submit()" />
+            <span>Show current prices only</span>
+        </label>
+        <span style="margin-left: auto; color: #718096;">Total: {{ total }} items</span>
+    </form>
+</div>
+
+<div style="background: white; padding: 1.5rem; border-radius: 0.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+    {% if prices %}
+    <table style="width: 100%; border-collapse: collapse; font-size: 0.875rem;">
+        <thead>
+            <tr style="border-bottom: 2px solid #e2e8f0; text-align: left;">
+                <th style="padding: 0.75rem; font-size: 0.875rem; color: #718096;">Item Code</th>
+                <th style="padding: 0.75rem; font-size: 0.875rem; color: #718096;">Description</th>
+                <th style="padding: 0.75rem; font-size: 0.875rem; color: #718096;">Classification</th>
+                <th style="padding: 0.75rem; font-size: 0.875rem; color: #718096;">Price</th>
+                <th style="padding: 0.75rem; font-size: 0.875rem; color: #718096;">Unit</th>
+                <th style="padding: 0.75rem; font-size: 0.875rem; color: #718096;">Region</th>
+                <th style="padding: 0.75rem; font-size: 0.875rem; color: #718096;">Source</th>
+                <th style="padding: 0.75rem; font-size: 0.875rem; color: #718096;">Valid From</th>
+                <th style="padding: 0.75rem; font-size: 0.875rem; color: #718096;">Status</th>
+                <th style="padding: 0.75rem; font-size: 0.875rem; color: #718096;">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for price in prices %}
+            <tr style="border-bottom: 1px solid #e2e8f0;">
+                <td style="padding: 0.75rem; font-weight: 600;">{{ price.item_code }}</td>
+                <td style="padding: 0.75rem; max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="{{ price.description }}">
+                    {{ price.description }}
+                </td>
+                <td style="padding: 0.75rem;">{{ price.classification_code }}</td>
+                <td style="padding: 0.75rem; font-weight: 600;">{{ price.currency }} {{ "%.2f"|format(price.unit_price) }}</td>
+                <td style="padding: 0.75rem;">{{ price.unit }}</td>
+                <td style="padding: 0.75rem;">
+                    <span style="background: #edf2f7; padding: 0.25rem 0.5rem; border-radius: 0.25rem; font-size: 0.75rem;">{{ price.region }}</span>
+                </td>
+                <td style="padding: 0.75rem; font-size: 0.75rem; color: #718096;">{{ price.source_name }}</td>
+                <td style="padding: 0.75rem;">{{ price.valid_from.strftime('%Y-%m-%d') }}</td>
+                <td style="padding: 0.75rem;">
+                    {% if price.is_current %}
+                    <span style="background: #c6f6d5; color: #22543d; padding: 0.25rem 0.5rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600;">CURRENT</span>
+                    {% else %}
+                    <span style="background: #e2e8f0; color: #4a5568; padding: 0.25rem 0.5rem; border-radius: 9999px; font-size: 0.75rem;">EXPIRED</span>
+                    {% endif %}
+                </td>
+                <td style="padding: 0.75rem;">
+                    <a href="/prices/history/{{ price.item_code }}?region={{ price.region }}" style="color: #4299e1; text-decoration: none; font-size: 0.875rem;">
+                        📊 History
+                    </a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    {% if total_pages > 1 %}
+    <div style="margin-top: 1.5rem; display: flex; justify-content: center; gap: 0.5rem;">
+        {% if page > 1 %}
+        <a href="?page={{ page - 1 }}&current_only={{ 'on' if current_only else '' }}" style="padding: 0.5rem 1rem; background: #edf2f7; border-radius: 0.375rem; text-decoration: none; color: #2d3748;">Previous</a>
+        {% endif %}
+        <span style="padding: 0.5rem 1rem;">Page {{ page }} of {{ total_pages }}</span>
+        {% if page < total_pages %}
+        <a href="?page={{ page + 1 }}&current_only={{ 'on' if current_only else '' }}" style="padding: 0.5rem 1rem; background: #edf2f7; border-radius: 0.375rem; text-decoration: none; color: #2d3748;">Next</a>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    {% else %}
+    <p style="text-align: center; color: #718096; padding: 2rem;">No price items found.</p>
+    {% endif %}
+</div>
+{% endblock %}

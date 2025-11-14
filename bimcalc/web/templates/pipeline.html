@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+
+{% block title %}Pipeline Management - BIMCalc{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>📦 Pipeline Management</h1>
+    <p>Monitor and manage the live pricing data synchronization pipeline</p>
+</div>
+
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+    <div style="background: white; padding: 1.5rem; border-radius: 0.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+        <div style="font-size: 0.875rem; color: #718096; margin-bottom: 0.5rem;">Total Runs</div>
+        <div style="font-size: 2rem; font-weight: 700; color: #2d3748;">{{ total }}</div>
+    </div>
+    <div style="background: white; padding: 1.5rem; border-radius: 0.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+        <div style="font-size: 0.875rem; color: #718096; margin-bottom: 0.5rem;">Successful</div>
+        <div style="font-size: 2rem; font-weight: 700; color: #48bb78;">{{ success_count }}</div>
+    </div>
+    <div style="background: white; padding: 1.5rem; border-radius: 0.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+        <div style="font-size: 0.875rem; color: #718096; margin-bottom: 0.5rem;">Failed</div>
+        <div style="font-size: 2rem; font-weight: 700; color: #f56565;">{{ failed_count }}</div>
+    </div>
+    <div style="background: white; padding: 1.5rem; border-radius: 0.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+        <div style="font-size: 0.875rem; color: #718096; margin-bottom: 0.5rem;">Last Run</div>
+        <div style="font-size: 1rem; font-weight: 600; color: #2d3748;">
+            {% if last_run %}
+                {{ last_run.strftime('%Y-%m-%d %H:%M') }}
+            {% else %}
+                Never
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<div style="background: white; padding: 1.5rem; border-radius: 0.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 2rem;">
+    <h2 style="margin-bottom: 1rem;">Actions</h2>
+    <button onclick="runPipeline()" style="padding: 0.75rem 1.5rem; background: #4299e1; color: white; border: none; border-radius: 0.375rem; font-weight: 600; cursor: pointer;">
+        ▶️ Run Pipeline Now
+    </button>
+    <button onclick="viewSources()" style="padding: 0.75rem 1.5rem; background: #718096; color: white; border: none; border-radius: 0.375rem; font-weight: 600; cursor: pointer; margin-left: 1rem;">
+        📋 View Sources
+    </button>
+</div>
+
+<div style="background: white; padding: 1.5rem; border-radius: 0.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+    <h2 style="margin-bottom: 1.5rem;">Pipeline Run History</h2>
+
+    {% if pipeline_runs %}
+    <table style="width: 100%; border-collapse: collapse;">
+        <thead>
+            <tr style="border-bottom: 2px solid #e2e8f0; text-align: left;">
+                <th style="padding: 0.75rem; font-size: 0.875rem; color: #718096;">Timestamp</th>
+                <th style="padding: 0.75rem; font-size: 0.875rem; color: #718096;">Source</th>
+                <th style="padding: 0.75rem; font-size: 0.875rem; color: #718096;">Status</th>
+                <th style="padding: 0.75rem; font-size: 0.875rem; color: #718096;">Inserted</th>
+                <th style="padding: 0.75rem; font-size: 0.875rem; color: #718096;">Updated</th>
+                <th style="padding: 0.75rem; font-size: 0.875rem; color: #718096;">Failed</th>
+                <th style="padding: 0.75rem; font-size: 0.875rem; color: #718096;">Duration</th>
+                <th style="padding: 0.75rem; font-size: 0.875rem; color: #718096;">Message</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for run in pipeline_runs %}
+            <tr style="border-bottom: 1px solid #e2e8f0;">
+                <td style="padding: 0.75rem; font-size: 0.875rem;">{{ run.run_timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                <td style="padding: 0.75rem; font-size: 0.875rem; font-weight: 600;">{{ run.source_name }}</td>
+                <td style="padding: 0.75rem;">
+                    {% if run.status == 'SUCCESS' %}
+                    <span style="background: #c6f6d5; color: #22543d; padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600;">✓ SUCCESS</span>
+                    {% elif run.status == 'FAILED' %}
+                    <span style="background: #fed7d7; color: #742a2a; padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600;">✗ FAILED</span>
+                    {% else %}
+                    <span style="background: #feebc8; color: #7c2d12; padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600;">⚠ {{ run.status }}</span>
+                    {% endif %}
+                </td>
+                <td style="padding: 0.75rem; font-size: 0.875rem; text-align: center;">{{ run.records_inserted or 0 }}</td>
+                <td style="padding: 0.75rem; font-size: 0.875rem; text-align: center;">{{ run.records_updated or 0 }}</td>
+                <td style="padding: 0.75rem; font-size: 0.875rem; text-align: center;">
+                    {% if run.records_failed > 0 %}
+                    <span style="color: #f56565; font-weight: 600;">{{ run.records_failed }}</span>
+                    {% else %}
+                    {{ run.records_failed or 0 }}
+                    {% endif %}
+                </td>
+                <td style="padding: 0.75rem; font-size: 0.875rem;">
+                    {% if run.duration_seconds %}
+                        {{ "%.2f"|format(run.duration_seconds) }}s
+                    {% else %}
+                        -
+                    {% endif %}
+                </td>
+                <td style="padding: 0.75rem; font-size: 0.875rem; max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="{{ run.message }}">
+                    {{ run.message or '-' }}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    {% if total_pages > 1 %}
+    <div style="margin-top: 1.5rem; display: flex; justify-content: center; gap: 0.5rem;">
+        {% if page > 1 %}
+        <a href="?page={{ page - 1 }}" style="padding: 0.5rem 1rem; background: #edf2f7; border-radius: 0.375rem; text-decoration: none; color: #2d3748;">Previous</a>
+        {% endif %}
+        <span style="padding: 0.5rem 1rem;">Page {{ page }} of {{ total_pages }}</span>
+        {% if page < total_pages %}
+        <a href="?page={{ page + 1 }}" style="padding: 0.5rem 1rem; background: #edf2f7; border-radius: 0.375rem; text-decoration: none; color: #2d3748;">Next</a>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    {% else %}
+    <p style="text-align: center; color: #718096; padding: 2rem;">No pipeline runs yet. Click "Run Pipeline Now" to start.</p>
+    {% endif %}
+</div>
+
+<script>
+async function runPipeline() {
+    if (!confirm('Run pipeline now? This will sync all enabled data sources.')) return;
+
+    const button = event.target;
+    button.disabled = true;
+    button.textContent = '⏳ Running...';
+
+    try {
+        const response = await fetch('/pipeline/run', { method: 'POST' });
+        const data = await response.json();
+
+        if (data.success) {
+            alert('✓ ' + data.message);
+            window.location.reload();
+        } else {
+            alert('✗ ' + data.message);
+            button.disabled = false;
+            button.textContent = '▶️ Run Pipeline Now';
+        }
+    } catch (error) {
+        alert('✗ Error: ' + error.message);
+        button.disabled = false;
+        button.textContent = '▶️ Run Pipeline Now';
+    }
+}
+
+async function viewSources() {
+    try {
+        const response = await fetch('/pipeline/sources');
+        const data = await response.json();
+
+        if (data.success) {
+            const sources = data.sources.map(s => `- ${s.name} (${s.type})`).join('\n');
+            alert('Configured Sources:\n\n' + sources);
+        } else {
+            alert('✗ ' + data.message);
+        }
+    } catch (error) {
+        alert('✗ Error: ' + error.message);
+    }
+}
+</script>
+{% endblock %}

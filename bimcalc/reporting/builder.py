@@ -65,6 +65,7 @@ class ReportBuilder:
                 ItemModel.quantity,
                 ItemModel.unit.label("item_unit"),
                 ItemModel.canonical_key,
+                ItemModel.source_file,  # ADDED: Revit source traceability
                 PriceItemModel.sku,
                 PriceItemModel.description,
                 PriceItemModel.unit_price,
@@ -113,6 +114,7 @@ class ReportBuilder:
                 "quantity": float(row.quantity) if row.quantity else None,
                 "unit": row.item_unit,
                 "canonical_key": row.canonical_key,
+                "source_file": row.source_file,  # ADDED: Revit source traceability
                 "sku": row.sku,
                 "description": row.description,
                 "unit_price": float(row.unit_price) if row.unit_price else None,
