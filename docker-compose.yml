@@ -40,6 +40,10 @@ services:
       VAT_RATE: "0.23"
       # Logging
       LOG_LEVEL: INFO
+      # OpenAI API (for embeddings and LLM)
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      EMBEDDINGS_MODEL: text-embedding-3-large
+      LLM_MODEL: gpt-4-1106-preview
     volumes:
       - ./:/app
     working_dir: /app
