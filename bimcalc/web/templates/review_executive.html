@@ -1,0 +1,704 @@
+{% extends "base.html" %}
+
+{% block title %}Review Queue - BIMCalc Executive Dashboard{% endblock %}
+
+{% block extra_styles %}
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap');
+
+    body {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    /* Executive Header */
+    .executive-header {
+        background: linear-gradient(135deg, #f56565 0%, #c53030 100%);
+        color: white;
+        padding: 3rem 2rem;
+        margin: -2rem -2rem 2rem -2rem;
+        border-radius: 0 0 1rem 1rem;
+        box-shadow: 0 10px 30px rgba(245, 101, 101, 0.3);
+    }
+
+    .executive-header h1 {
+        font-size: 2.5rem;
+        font-weight: 800;
+        margin: 0 0 0.5rem 0;
+        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .executive-header .subtitle {
+        font-size: 1.125rem;
+        opacity: 0.9;
+        font-weight: 300;
+    }
+
+    /* Urgency Ring */
+    .urgency-ring-container {
+        position: relative;
+        width: 280px;
+        height: 280px;
+        margin: 0 auto;
+    }
+
+    .urgency-ring {
+        transform: rotate(-90deg);
+        filter: drop-shadow(0 4px 12px rgba(245, 101, 101, 0.4));
+    }
+
+    .urgency-value {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        text-align: center;
+    }
+
+    .urgency-value .number {
+        font-size: 4rem;
+        font-weight: 800;
+        line-height: 1;
+        background: linear-gradient(135deg, #f56565 0%, #c53030 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+
+    .urgency-value .label {
+        font-size: 0.875rem;
+        color: #718096;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-top: 0.5rem;
+    }
+
+    /* KPI Cards */
+    .kpi-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 1.5rem;
+        margin: 2rem 0;
+    }
+
+    .kpi-card {
+        background: white;
+        border-radius: 1rem;
+        padding: 1.5rem;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05), 0 1px 3px rgba(0, 0, 0, 0.1);
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .kpi-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 12px 24px rgba(0, 0, 0, 0.1), 0 4px 8px rgba(0, 0, 0, 0.06);
+    }
+
+    .kpi-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+    }
+
+    .kpi-card.danger::before {
+        background: linear-gradient(90deg, #f56565 0%, #c53030 100%);
+    }
+
+    .kpi-card.warning::before {
+        background: linear-gradient(90deg, #ed8936 0%, #dd6b20 100%);
+    }
+
+    .kpi-card.success::before {
+        background: linear-gradient(90deg, #48bb78 0%, #38a169 100%);
+    }
+
+    .kpi-label {
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: #718096;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 0.5rem;
+    }
+
+    .kpi-value {
+        font-size: 2.5rem;
+        font-weight: 800;
+        color: #2d3748;
+        line-height: 1;
+    }
+
+    .kpi-subtitle {
+        font-size: 0.875rem;
+        color: #a0aec0;
+        margin-top: 0.5rem;
+    }
+
+    /* Urgency Breakdown */
+    .urgency-breakdown {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1rem;
+        margin: 2rem 0;
+    }
+
+    .urgency-item {
+        background: white;
+        border-radius: 0.75rem;
+        padding: 1.5rem;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        text-align: center;
+        border-left: 4px solid;
+    }
+
+    .urgency-item.high {
+        border-color: #f56565;
+    }
+
+    .urgency-item.medium {
+        border-color: #ed8936;
+    }
+
+    .urgency-item.low {
+        border-color: #48bb78;
+    }
+
+    .urgency-item-label {
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: #718096;
+        margin-bottom: 0.5rem;
+    }
+
+    .urgency-item-value {
+        font-size: 2rem;
+        font-weight: 800;
+        line-height: 1;
+    }
+
+    .urgency-item.high .urgency-item-value {
+        color: #f56565;
+    }
+
+    .urgency-item.medium .urgency-item-value {
+        color: #ed8936;
+    }
+
+    .urgency-item.low .urgency-item-value {
+        color: #48bb78;
+    }
+
+    /* Chart Cards */
+    .chart-card {
+        background: white;
+        border-radius: 1rem;
+        padding: 2rem;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05), 0 1px 3px rgba(0, 0, 0, 0.1);
+        transition: all 0.3s ease;
+    }
+
+    .chart-card:hover {
+        box-shadow: 0 12px 24px rgba(0, 0, 0, 0.1), 0 4px 8px rgba(0, 0, 0, 0.06);
+    }
+
+    .chart-header {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: #2d3748;
+        margin-bottom: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    /* Action Buttons */
+    .action-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1rem;
+        margin: 2rem 0;
+    }
+
+    .action-btn {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 1.25rem 1.5rem;
+        border-radius: 0.75rem;
+        text-decoration: none;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    }
+
+    .action-btn span:first-child {
+        font-size: 1.5rem;
+    }
+
+    .action-btn.danger {
+        background: linear-gradient(135deg, #f56565 0%, #c53030 100%);
+        color: white;
+    }
+
+    .action-btn.warning {
+        background: linear-gradient(135deg, #ed8936 0%, #dd6b20 100%);
+        color: white;
+    }
+
+    .action-btn.primary {
+        background: linear-gradient(135deg, #4299e1 0%, #3182ce 100%);
+        color: white;
+    }
+
+    .action-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+    }
+
+    /* Aging Badge */
+    .aging-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 1rem;
+        border-radius: 2rem;
+        font-weight: 700;
+        font-size: 0.875rem;
+        margin-top: 1rem;
+    }
+
+    .aging-badge.critical {
+        background: #fff5f5;
+        color: #c53030;
+        border: 2px solid #f56565;
+    }
+
+    .aging-badge.warning {
+        background: #fffaf0;
+        color: #c05621;
+        border: 2px solid #ed8936;
+    }
+
+    .aging-badge.ok {
+        background: #f0fff4;
+        color: #2f855a;
+        border: 2px solid #48bb78;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Executive Header -->
+<div class="executive-header">
+    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+        <div>
+            <h1>🔍 Review Queue Dashboard</h1>
+            <div class="subtitle">Executive summary for {{ project_id }}</div>
+        </div>
+        <a href="/review?org={{ org_id }}&project={{ project_id }}"
+            style="background: rgba(255,255,255,0.2); color: white; padding: 0.75rem 1.5rem; border-radius: 0.5rem; text-decoration: none; font-weight: 600; display: inline-flex; align-items: center; gap: 0.5rem; backdrop-filter: blur(10px);">
+            <span>←</span>
+            <span>Detailed View</span>
+        </a>
+    </div>
+</div>
+
+<!-- Executive Navigation -->
+{% set current_page = 'review' %}
+{% set pending_count = metrics.total_pending %}
+{% include 'executive_nav.html' %}
+
+<!-- Urgency Overview -->
+<div class="chart-card" style="margin-bottom: 2rem;">
+    <div style="display: grid; grid-template-columns: 280px 1fr; gap: 3rem; align-items: center;">
+        <!-- Urgency Ring -->
+        <div>
+            <div class="urgency-ring-container">
+                <svg class="urgency-ring" width="280" height="280">
+                    <circle cx="140" cy="140" r="120" fill="none" stroke="#e2e8f0" stroke-width="24"></circle>
+                    <circle id="urgencyCircle" cx="140" cy="140" r="120" fill="none" stroke="#f56565" stroke-width="24"
+                        stroke-dasharray="754"
+                        stroke-dashoffset="{% if metrics.total_pending > 0 %}{{ 754 - (754 * (metrics.high_urgency / metrics.total_pending)) }}{% else %}754{% endif %}"
+                        stroke-linecap="round" style="transition: stroke-dashoffset 1.5s cubic-bezier(0.4, 0, 0.2, 1);">
+                    </circle>
+                </svg>
+                <div class="urgency-value">
+                    <div class="number">{{ metrics.high_urgency }}</div>
+                    <div class="label">High Urgency</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Urgency Breakdown -->
+        <div>
+            <h2 style="font-size: 1.5rem; font-weight: 700; margin-bottom: 1.5rem; color: #2d3748;">Review Workload
+                Breakdown</h2>
+            <div class="urgency-breakdown">
+                <div class="urgency-item high">
+                    <div class="urgency-item-label">🚨 High Urgency</div>
+                    <div class="urgency-item-value">{{ metrics.high_urgency }}</div>
+                    <div style="font-size: 0.75rem; color: #718096; margin-top: 0.5rem;">Critical flags</div>
+                </div>
+                <div class="urgency-item medium">
+                    <div class="urgency-item-label">⚠️ Medium Urgency</div>
+                    <div class="urgency-item-value">{{ metrics.medium_urgency }}</div>
+                    <div style="font-size: 0.75rem; color: #718096; margin-top: 0.5rem;">Advisory or low confidence
+                    </div>
+                </div>
+                <div class="urgency-item low">
+                    <div class="urgency-item-label">✓ Low Urgency</div>
+                    <div class="urgency-item-value">{{ metrics.low_urgency }}</div>
+                    <div style="font-size: 0.75rem; color: #718096; margin-top: 0.5rem;">Clean matches</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- KPI Cards -->
+<div class="kpi-grid">
+    <div class="kpi-card">
+        <div class="kpi-label">Total Pending</div>
+        <div class="kpi-value">{{ metrics.total_pending }}</div>
+        <div class="kpi-subtitle">Items awaiting review</div>
+    </div>
+
+    <div class="kpi-card danger">
+        <div class="kpi-label">Critical Flags</div>
+        <div class="kpi-value">{{ metrics.critical_flags_count }}</div>
+        <div class="kpi-subtitle">Must resolve before approval</div>
+    </div>
+
+    <div class="kpi-card warning">
+        <div class="kpi-label">Advisory Flags</div>
+        <div class="kpi-value">{{ metrics.advisory_flags_count }}</div>
+        <div class="kpi-subtitle">Require annotation</div>
+    </div>
+
+    <div
+        class="kpi-card {% if metrics.oldest_review_days and metrics.oldest_review_days > 30 %}danger{% elif metrics.oldest_review_days and metrics.oldest_review_days > 7 %}warning{% else %}success{% endif %}">
+        <div class="kpi-label">Oldest Review</div>
+        <div class="kpi-value">
+            {% if metrics.oldest_review_days %}
+            {{ "%.0f"|format(metrics.oldest_review_days) }}
+            {% else %}
+            -
+            {% endif %}
+        </div>
+        <div class="kpi-subtitle">Days waiting</div>
+    </div>
+</div>
+
+<!-- Aging Alert -->
+{% if metrics.items_over_30_days > 0 %}
+<div class="aging-badge critical">
+    ⏰ {{ metrics.items_over_30_days }} items waiting over 30 days - urgent attention needed!
+</div>
+{% elif metrics.items_over_7_days > 0 %}
+<div class="aging-badge warning">
+    ⏱️ {{ metrics.items_over_7_days }} items waiting over 7 days - review recommended
+</div>
+{% else %}
+<div class="aging-badge ok">
+    ✓ All reviews under 7 days old - good velocity!
+</div>
+{% endif %}
+
+<!-- Charts Grid -->
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin: 2rem 0;">
+    <!-- Flag Type Distribution -->
+    <div class="chart-card">
+        <div class="chart-header">
+            🚩 Top Flag Types
+        </div>
+        {% if metrics.critical_flag_types or metrics.advisory_flag_types %}
+        <div style="position: relative; height: 300px; width: 100%;">
+            <canvas id="flagTypesChart"></canvas>
+        </div>
+        {% else %}
+        <div style="text-align: center; padding: 4rem 0; color: #cbd5e0;">
+            <div style="font-size: 3rem; margin-bottom: 1rem;">✓</div>
+            <div style="font-weight: 600; color: #718096;">No flags - all clean!</div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Confidence Distribution -->
+    <div class="chart-card">
+        <div class="chart-header">
+            📊 Confidence Distribution
+        </div>
+        {% if metrics.total_pending > 0 %}
+        <div style="position: relative; height: 300px; width: 100%;">
+            <canvas id="confidenceChart"></canvas>
+        </div>
+        {% else %}
+        <div style="text-align: center; padding: 4rem 0; color: #cbd5e0;">
+            <div style="font-size: 3rem; margin-bottom: 1rem;">📭</div>
+            <div style="font-weight: 600; color: #718096;">No pending reviews</div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Classification Breakdown -->
+{% if metrics.classification_breakdown %}
+<div class="chart-card">
+    <div class="chart-header">
+        🏗️ Classification Breakdown - Review by Category
+    </div>
+    <div style="position: relative; height: 300px; width: 100%;">
+        <canvas id="classificationChart"></canvas>
+    </div>
+    <div
+        style="display: flex; gap: 0.75rem; flex-wrap: wrap; margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid #e2e8f0;">
+        {% set class_names = {
+        "62": "Small Power",
+        "63": "Earthing",
+        "64": "Lighting",
+        "66": "Containment",
+        "67": "Emergency",
+        "68": "Fire"
+        } %}
+        {% set class_colors = {
+        "62": "#d69e2e",
+        "63": "#38a169",
+        "64": "#ed8936",
+        "66": "#3182ce",
+        "67": "#805ad5",
+        "68": "#e53e3e"
+        } %}
+        {% for cls in metrics.classification_breakdown[:6] %}
+        <a href="/review?org={{ org_id }}&project={{ project_id }}&classification={{ cls.code }}"
+            class="action-btn primary"
+            style="flex: 1; min-width: 150px; background: {{ class_colors.get(cls.code, '#718096') }}; border-left: 4px solid {{ class_colors.get(cls.code, '#718096') }}; filter: brightness(0.95);">
+            <div style="display: flex; flex-direction: column; align-items: flex-start; width: 100%;">
+                <div style="font-weight: 700; font-size: 0.875rem;">{{ cls.code }} - {{ class_names.get(cls.code,
+                    cls.code) }}</div>
+                <div style="font-size: 0.75rem; opacity: 0.9;">{{ cls.total }} items pending</div>
+            </div>
+        </a>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<!-- Action Items -->
+<div class="chart-card">
+    <div class="chart-header">⚡ Recommended Actions</div>
+    <div class="action-grid">
+        {% if metrics.high_urgency > 0 %}
+        <a href="/review?org={{ org_id }}&project={{ project_id }}&severity=Critical-Veto" class="action-btn danger">
+            <span>🚨</span>
+            <span>Resolve {{ metrics.high_urgency }} High Urgency Items</span>
+        </a>
+        {% endif %}
+
+        {% if metrics.medium_urgency > 0 %}
+        <a href="/review?org={{ org_id }}&project={{ project_id }}&severity=Advisory" class="action-btn warning">
+            <span>⚠️</span>
+            <span>Review {{ metrics.medium_urgency }} Medium Urgency Items</span>
+        </a>
+        {% endif %}
+
+        {% if metrics.low_urgency > 0 %}
+        <a href="/review?org={{ org_id }}&project={{ project_id }}" class="action-btn primary">
+            <span>✓</span>
+            <span>Approve {{ metrics.low_urgency }} Clean Matches</span>
+        </a>
+        {% endif %}
+
+        <a href="/progress?org={{ org_id }}&project={{ project_id }}&view=executive" class="action-btn primary">
+            <span>📊</span>
+            <span>View Project Progress</span>
+        </a>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+    // Flag Types Chart (Doughnut)
+    {% if metrics.critical_flag_types or metrics.advisory_flag_types %}
+    const flagCtx = document.getElementById('flagTypesChart');
+    new Chart(flagCtx, {
+        type: 'doughnut',
+        data: {
+            labels: [
+                {% for flag_type, count in metrics.critical_flag_types.items() %}'{{ flag_type }} (Critical)'{% if not loop.last %}, {% endif %}{% endfor %}
+        {% if metrics.critical_flag_types and metrics.advisory_flag_types %}, {% endif %}
+    {% for flag_type, count in metrics.advisory_flag_types.items() %} '{{ flag_type }} (Advisory)'{% if not loop.last %}, {% endif %} {% endfor %}
+        ],
+    datasets: [{
+        data: [
+            {% for flag_type, count in metrics.critical_flag_types.items() %}{{ count }}{% if not loop.last %}, {% endif %} {% endfor %}
+    {% if metrics.critical_flag_types and metrics.advisory_flag_types %}, {% endif %}
+    {% for flag_type, count in metrics.advisory_flag_types.items() %} { { count } } {% if not loop.last %}, {% endif %} {% endfor %}
+            ],
+    backgroundColor: [
+        {% for flag_type, count in metrics.critical_flag_types.items() %}'rgba(245, 101, 101, 0.9)'{% if not loop.last %}, {% endif %} {% endfor %}
+    {% if metrics.critical_flag_types and metrics.advisory_flag_types %}, {% endif %}
+    {% for flag_type, count in metrics.advisory_flag_types.items() %} 'rgba(237, 137, 54, 0.9)'{% if not loop.last %}, {% endif %} {% endfor %}
+            ],
+    borderWidth: 0,
+        hoverOffset: 8
+        }]
+    },
+    options: {
+        responsive: true,
+            maintainAspectRatio: false,
+                plugins: {
+            legend: {
+                position: 'bottom',
+                    labels: {
+                    font: {
+                        size: 12,
+                            weight: '600'
+                    },
+                    padding: 15
+                }
+            },
+            tooltip: {
+                backgroundColor: 'rgba(26, 32, 44, 0.95)',
+                    padding: 12
+            }
+        }
+    }
+});
+    {% endif %}
+
+    // Confidence Distribution (Doughnut)
+    {% if metrics.total_pending > 0 %}
+    const confCtx = document.getElementById('confidenceChart');
+    new Chart(confCtx, {
+        type: 'doughnut',
+        data: {
+            labels: ['High (≥85%)', 'Medium (70-84%)', 'Low (<70%)'],
+            datasets: [{
+                data: [{{ metrics.confidence_high }}, {{ metrics.confidence_medium }}, {{ metrics.confidence_low }}],
+        backgroundColor: [
+        'rgba(72, 187, 120, 0.9)',
+        'rgba(66, 153, 225, 0.9)',
+        'rgba(245, 101, 101, 0.9)'
+    ],
+        borderWidth: 0,
+        hoverOffset: 8
+        }]
+    },
+        options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                position: 'bottom',
+                labels: {
+                    font: {
+                        size: 13,
+                        weight: '600'
+                    },
+                    padding: 15
+                }
+            },
+            tooltip: {
+                backgroundColor: 'rgba(26, 32, 44, 0.95)',
+                padding: 12,
+                callbacks: {
+                    label: function(context) {
+                        const total = {{ metrics.total_pending }};
+                        const percentage = total > 0 ? ((context.parsed / total) * 100).toFixed(1) : 0;
+                        return context.label + ': ' + context.parsed + ' items (' + percentage + '%)';
+                    }
+                }
+            }
+        }
+    }
+});
+    {% endif %}
+
+    // Classification Breakdown (Horizontal Bar)
+    {% if metrics.classification_breakdown %}
+    {% set class_names = {
+        "62": "Small Power",
+        "63": "Earthing & Bonding",
+        "64": "Lighting",
+        "66": "Containment",
+        "67": "Emergency Lighting",
+        "68": "Fire Detection"
+    } %}
+    const classCtx = document.getElementById('classificationChart');
+    new Chart(classCtx, {
+        type: 'bar',
+        data: {
+            labels: [{% for cls in metrics.classification_breakdown %}'{{ cls.code }} - {{ class_names.get(cls.code|string, "Class " + cls.code|string) }}'{% if not loop.last %}, {% endif %}{% endfor %}],
+        datasets: [{
+            label: 'Critical Flags',
+            data: [{% for cls in metrics.classification_breakdown %}{{ cls.critical }}{% if not loop.last %}, {% endif %} {% endfor %}],
+    backgroundColor: 'rgba(245, 101, 101, 0.9)',
+        borderRadius: 6
+        }, {
+        label: 'Advisory Flags',
+            data: [{% for cls in metrics.classification_breakdown %} { { cls.advisory } } {% if not loop.last %}, {% endif %} {% endfor %}],
+    backgroundColor: 'rgba(237, 137, 54, 0.9)',
+        borderRadius: 6
+        }, {
+        label: 'Clean',
+            data: [{% for cls in metrics.classification_breakdown %} { { cls.total - cls.critical - cls.advisory } } {% if not loop.last %}, {% endif %} {% endfor %}],
+    backgroundColor: 'rgba(72, 187, 120, 0.9)',
+        borderRadius: 6
+        }]
+    },
+    options: {
+        indexAxis: 'y',
+            responsive: true,
+                maintainAspectRatio: false,
+                    scales: {
+            x: {
+                stacked: true,
+                    beginAtZero: true,
+                        grid: {
+                    display: false
+                }
+            },
+            y: {
+                stacked: true,
+                    grid: {
+                    display: false
+                }
+            }
+        },
+        plugins: {
+            legend: {
+                position: 'bottom',
+                    labels: {
+                    font: {
+                        size: 13,
+                            weight: '600'
+                    },
+                    padding: 20
+                }
+            },
+            tooltip: {
+                backgroundColor: 'rgba(26, 32, 44, 0.95)',
+                    padding: 12
+            }
+        }
+    }
+});
+    {% endif %}
+</script>
+
+<!-- Export to Excel -->
+{% set export_type = 'review' %}
+{% include 'executive_export_button.html' %}
+
+<!-- Print/PDF Export -->
+{% include 'executive_print.html' %}
+
+{% endblock %}

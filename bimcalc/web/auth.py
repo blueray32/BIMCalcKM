@@ -100,6 +100,11 @@ def require_auth(request: Request, session: Optional[str] = Cookie(default=None)
     Raises:
         HTTPException: If not authenticated (redirects to login)
     """
+    # Check if authentication is disabled
+    auth_disabled = os.environ.get("BIMCALC_AUTH_DISABLED", "false").lower() == "true"
+    if auth_disabled:
+        return "default_user"  # Return a default user when auth is disabled
+    
     username = validate_session(session)
     if not username:
         # Redirect to login page

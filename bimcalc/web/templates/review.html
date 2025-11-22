@@ -17,9 +17,11 @@
         align-items: center;
         justify-content: center;
     }
+
     .loading-overlay.active {
         display: flex;
     }
+
     .loading-spinner {
         width: 50px;
         height: 50px;
@@ -28,13 +30,21 @@
         border-radius: 50%;
         animation: spin 1s linear infinite;
     }
+
     @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
+        0% {
+            transform: rotate(0deg);
+        }
+
+        100% {
+            transform: rotate(360deg);
+        }
     }
 
     /* Enhanced form controls */
-    select:focus, input[type="text"]:focus, input[type="checkbox"]:focus {
+    select:focus,
+    input[type="text"]:focus,
+    input[type="checkbox"]:focus {
         outline: 2px solid #4299e1;
         outline-offset: 2px;
     }
@@ -76,8 +86,19 @@
 </div>
 
 <div class="page-header">
-    <h1>🔍 Review Queue</h1>
-    <p>Review and approve suggested price matches for {{ project_id }}</p>
+    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+        <div>
+            <h1>🔍 Review Queue</h1>
+            <p>Review and approve suggested price matches for {{ project_id }}</p>
+        </div>
+        <div>
+            <a href="/review?org={{ org_id }}&project={{ project_id }}&view=executive" class="btn btn-primary"
+                style="text-decoration: none; display: inline-flex; align-items: center; gap: 0.5rem;">
+                <span>🎯</span>
+                <span>Executive View</span>
+            </a>
+        </div>
+    </div>
 </div>
 
 <!-- Filters -->
@@ -89,25 +110,23 @@
             <input type="hidden" name="project" value="{{ project_id }}" />
 
             <div>
-                <label for="flagFilter" style="display: block; margin-bottom: 0.25rem; font-size: 0.875rem; font-weight: 600; color: #4a5568;">Flag Filter</label>
-                <select
-                    id="flagFilter"
-                    name="flag"
-                    onchange="handleFilterChange(this)"
-                    aria-label="Filter by flag type"
+                <label for="flagFilter"
+                    style="display: block; margin-bottom: 0.25rem; font-size: 0.875rem; font-weight: 600; color: #4a5568;">Flag
+                    Filter</label>
+                <select id="flagFilter" name="flag" onchange="handleFilterChange(this)" aria-label="Filter by flag type"
                     style="padding: 0.5rem; border: 1px solid #cbd5e0; border-radius: 0.375rem; min-width: 150px; cursor: pointer;">
                     {% set flags = [
-                        ("All", "all"),
-                        ("Unit Conflict", "Unit Conflict"),
-                        ("Size Mismatch", "Size Mismatch"),
-                        ("Angle Mismatch", "Angle Mismatch"),
-                        ("Material Conflict", "Material Conflict"),
-                        ("Class Mismatch", "Class Mismatch"),
-                        ("Classification Mismatch", "Classification Mismatch"),
-                        ("Stale Price", "StalePrice"),
-                        ("Currency/VAT", "CurrencyMismatch"),
-                        ("VAT Unclear", "VATUnclear"),
-                        ("Vendor Note", "VendorNote")
+                    ("All", "all"),
+                    ("Unit Conflict", "Unit Conflict"),
+                    ("Size Mismatch", "Size Mismatch"),
+                    ("Angle Mismatch", "Angle Mismatch"),
+                    ("Material Conflict", "Material Conflict"),
+                    ("Class Mismatch", "Class Mismatch"),
+                    ("Classification Mismatch", "Classification Mismatch"),
+                    ("Stale Price", "StalePrice"),
+                    ("Currency/VAT", "CurrencyMismatch"),
+                    ("VAT Unclear", "VATUnclear"),
+                    ("Vendor Note", "VendorNote")
                     ] %}
                     {% for label, value in flags %}
                     <option value="{{ value }}" {% if flag_filter==value %}selected{% endif %}>{{ label }}</option>
@@ -116,30 +135,39 @@
             </div>
 
             <div>
-                <label for="severityFilter" style="display: block; margin-bottom: 0.25rem; font-size: 0.875rem; font-weight: 600; color: #4a5568;">Severity</label>
-                <select
-                    id="severityFilter"
-                    name="severity"
-                    onchange="handleFilterChange(this)"
+                <label for="severityFilter"
+                    style="display: block; margin-bottom: 0.25rem; font-size: 0.875rem; font-weight: 600; color: #4a5568;">Severity</label>
+                <select id="severityFilter" name="severity" onchange="handleFilterChange(this)"
                     aria-label="Filter by severity level"
                     style="padding: 0.5rem; border: 1px solid #cbd5e0; border-radius: 0.375rem; min-width: 150px; cursor: pointer;">
                     <option value="all" {% if severity_filter=='all' %}selected{% endif %}>All</option>
-                    <option value="Critical-Veto" {% if severity_filter=='Critical-Veto' %}selected{% endif %}>Critical</option>
+                    <option value="Critical-Veto" {% if severity_filter=='Critical-Veto' %}selected{% endif %}>Critical
+                    </option>
                     <option value="Advisory" {% if severity_filter=='Advisory' %}selected{% endif %}>Advisory</option>
                 </select>
             </div>
 
             <div>
+                <label for="classificationFilter"
+                    style="display: block; margin-bottom: 0.25rem; font-size: 0.875rem; font-weight: 600; color: #4a5568;">Classification</label>
+                <select id="classificationFilter" name="classification" onchange="handleFilterChange(this)"
+                    aria-label="Filter by classification code"
+                    style="padding: 0.5rem; border: 1px solid #cbd5e0; border-radius: 0.375rem; min-width: 180px; cursor: pointer;">
+                    <option value="all" {% if classification_filter=='all' %}selected{% endif %}>All Classifications
+                    </option>
+                    {% for cls in classifications %}
+                    <option value="{{ cls.code }}" {% if classification_filter==cls.code %}selected{% endif %}>
+                        {{ cls.code }} - {{ cls.name }} ({{ cls.count }})
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div>
                 <label style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem; cursor: pointer;">
-                    <input
-                        id="unmappedFilter"
-                        type="checkbox"
-                        name="unmapped_only"
-                        {% if unmapped_only %}checked{% endif %}
-                        onchange="handleFilterChange(this)"
-                        aria-label="Show only unmapped items"
-                        style="width: auto; margin: 0; cursor: pointer;"
-                    />
+                    <input id="unmappedFilter" type="checkbox" name="unmapped_only" {% if unmapped_only %}checked{%
+                        endif %} onchange="handleFilterChange(this)" aria-label="Show only unmapped items"
+                        style="width: auto; margin: 0; cursor: pointer;" />
                     <span style="font-size: 0.875rem; font-weight: 600; color: #4a5568;">Unmapped Only</span>
                 </label>
             </div>
@@ -153,6 +181,7 @@
     <table>
         <thead>
             <tr>
+                <th>Classification</th>
                 <th>Item</th>
                 <th>Candidate Match</th>
                 <th>Confidence</th>
@@ -163,12 +192,42 @@
         <tbody>
             {% for record in records %}
             <tr>
+                <td style="text-align: center; vertical-align: middle;">
+                    {% if record.item.classification_code %}
+                    {% set class_colors = {
+                    "62": "#d69e2e",
+                    "63": "#38a169",
+                    "64": "#ed8936",
+                    "66": "#3182ce",
+                    "67": "#805ad5",
+                    "68": "#e53e3e"
+                    } %}
+                    {% set class_names = {
+                    "62": "Small Power",
+                    "63": "Earthing",
+                    "64": "Lighting",
+                    "66": "Containment",
+                    "67": "Emergency",
+                    "68": "Fire Detection"
+                    } %}
+                    <div
+                        style="display: inline-block; padding: 0.5rem; background: {{ class_colors.get(record.item.classification_code, '#718096') }}; color: white; border-radius: 0.375rem; font-weight: 700; min-width: 4rem; text-align: center;">
+                        {{ record.item.classification_code }}
+                    </div>
+                    <div style="font-size: 0.75rem; margin-top: 0.25rem; color: #718096; font-weight: 600;">
+                        {{ class_names.get(record.item.classification_code|string, "Class " +
+                        record.item.classification_code|string) }}
+                    </div>
+                    {% else %}
+                    <span style="color: #cbd5e0;">—</span>
+                    {% endif %}
+                </td>
                 <td>
                     <strong style="color: #2d3748;">{{ record.item.family }}</strong><br />
                     <small style="color: #718096;">{{ record.item.type_name }}</small>
-                    {% if record.item.classification_code %}
-                    <br /><span class="badge" style="background: #edf2f7; color: #4a5568; margin-top: 0.25rem;">Class: {{ record.item.classification_code }}</span>
-                    {% endif %}
+                    <div style="margin-top: 0.5rem; font-size: 0.75rem; color: #718096;">
+                        Qty: <strong>{{ "%.2f"|format(record.item.quantity) }}</strong> {{ record.item.unit }}
+                    </div>
                 </td>
                 <td>
                     {% if record.price %}
@@ -177,11 +236,15 @@
                             <strong>{{ record.price.sku }}</strong><br />
                             <small style="color: #718096;">{{ record.price.description }}</small>
                             {% if record.price.classification_code %}
-                            <br /><span class="badge" style="background: #edf2f7; color: #4a5568; margin-top: 0.25rem;">Class: {{ record.price.classification_code }}</span>
+                            <br /><span class="badge"
+                                style="background: #edf2f7; color: #4a5568; margin-top: 0.25rem;">Class: {{
+                                record.price.classification_code }}</span>
                             {% endif %}
                         </div>
                         {% if record.is_escape_hatch_match %}
-                        <span class="badge" style="background: #fed7d7; color: #c53030; font-weight: 600; white-space: nowrap;" title="Out-of-class match via escape-hatch">⚠ Out-of-Class</span>
+                        <span class="badge"
+                            style="background: #fed7d7; color: #c53030; font-weight: 600; white-space: nowrap;"
+                            title="Out-of-class match via escape-hatch">⚠ Out-of-Class</span>
                         {% endif %}
                     </div>
                     {% else %}
@@ -211,12 +274,11 @@
                     {% endif %}
                 </td>
                 <td>
-                    {% set has_critical = record.flags and record.flags|selectattr("severity", "equalto", "Critical-Veto")|list %}
-                    {% set has_advisory = record.flags and record.flags|selectattr("severity", "equalto", "Advisory")|list %}
-                    <form
-                        method="post"
-                        action="/review/approve"
-                        class="approval-form"
+                    {% set has_critical = record.flags and record.flags|selectattr("severity", "equalto",
+                    "Critical-Veto")|list %}
+                    {% set has_advisory = record.flags and record.flags|selectattr("severity", "equalto",
+                    "Advisory")|list %}
+                    <form method="post" action="/review/approve" class="approval-form"
                         data-has-advisory="{{ 'true' if has_advisory else 'false' }}"
                         onsubmit="return validateApprovalForm(this)"
                         style="display: flex; flex-direction: column; gap: 0.5rem;">
@@ -226,32 +288,23 @@
                         <input type="hidden" name="flag" value="{{ flag_filter }}" />
                         <input type="hidden" name="severity" value="{{ severity_filter }}" />
                         <input type="hidden" name="unmapped_only" value="{{ 'on' if unmapped_only else '' }}" />
+                        <input type="hidden" name="classification"
+                            value="{{ classification_filter if classification_filter != 'all' else '' }}" />
 
                         <div style="display: flex; gap: 0.5rem; align-items: flex-start;">
                             <div style="flex: 1;">
-                                <input
-                                    type="text"
-                                    name="annotation"
-                                    class="annotation-input"
+                                <input type="text" name="annotation" class="annotation-input"
                                     placeholder="{% if has_advisory %}Annotation required for advisory flags{% else %}Optional annotation{% endif %}"
-                                    aria-label="Annotation for approval"
-                                    {% if has_advisory %}required{% endif %}
-                                    style="width: 100%; padding: 0.5rem; border: 1px solid #cbd5e0; border-radius: 0.375rem; font-size: 0.875rem;"
-                                />
+                                    aria-label="Annotation for approval" {% if has_advisory %}required{% endif %}
+                                    style="width: 100%; padding: 0.5rem; border: 1px solid #cbd5e0; border-radius: 0.375rem; font-size: 0.875rem;" />
                                 <div class="annotation-message" style="min-height: 1rem;"></div>
                             </div>
-                            <button
-                                type="submit"
-                                {% if has_critical %}
-                                disabled
-                                title="Cannot approve - Critical flags present"
-                                aria-disabled="true"
+                            <button type="submit" {% if has_critical %} disabled
+                                title="Cannot approve - Critical flags present" aria-disabled="true"
                                 style="background: #cbd5e0; cursor: not-allowed; border: none; padding: 0.5rem 1rem; border-radius: 0.375rem; font-weight: 600; transition: all 0.2s;"
-                                {% else %}
-                                aria-label="Approve this item"
+                                {% else %} aria-label="Approve this item"
                                 style="background: #48bb78; color: white; border: none; padding: 0.5rem 1rem; border-radius: 0.375rem; cursor: pointer; font-weight: 600; transition: all 0.2s;"
-                                {% endif %}
-                            >
+                                {% endif %}>
                                 Approve
                             </button>
                         </div>
@@ -268,10 +321,12 @@
         <div style="font-size: 3rem; margin-bottom: 1rem;">✅</div>
         <h3 style="margin-bottom: 0.5rem; color: #2d3748;">No Items to Review</h3>
         <p>All items have been processed or no items match the current filters.</p>
-        {% if unmapped_only %}
+        {% if unmapped_only or (classification_filter and classification_filter != 'all') or (flag_filter and
+        flag_filter != 'all') or (severity_filter and severity_filter != 'all') %}
         <p style="margin-top: 1rem;">
-            <a href="/review?org={{ org_id }}&project={{ project_id }}" style="color: #4299e1; text-decoration: underline;">
-                Clear filters to see all items
+            <a href="/review?org={{ org_id }}&project={{ project_id }}"
+                style="color: #4299e1; text-decoration: underline;">
+                Clear all filters to see all items
             </a>
         </p>
         {% endif %}
@@ -323,7 +378,7 @@
     }
 
     // Add real-time validation feedback
-    document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('DOMContentLoaded', function () {
         const forms = document.querySelectorAll('.approval-form');
 
         forms.forEach(form => {
@@ -332,7 +387,7 @@
             const messageDiv = form.querySelector('.annotation-message');
 
             if (hasAdvisory && annotationInput) {
-                annotationInput.addEventListener('input', function() {
+                annotationInput.addEventListener('input', function () {
                     const value = this.value.trim();
                     messageDiv.innerHTML = '';
                     this.classList.remove('annotation-required');
@@ -342,7 +397,7 @@
                     }
                 });
 
-                annotationInput.addEventListener('blur', function() {
+                annotationInput.addEventListener('blur', function () {
                     const value = this.value.trim();
                     if (!value) {
                         messageDiv.innerHTML = '<div class="annotation-hint">Annotation required for advisory flags</div>';
@@ -365,12 +420,12 @@
     });
 
     // Hide loading on page load (in case back button was used)
-    window.addEventListener('pageshow', function(event) {
+    window.addEventListener('pageshow', function (event) {
         hideLoading();
     });
 
     // Keyboard accessibility for forms
-    document.addEventListener('keydown', function(e) {
+    document.addEventListener('keydown', function (e) {
         // Allow Enter to submit forms when focus is on inputs
         if (e.key === 'Enter' && e.target.classList.contains('annotation-input')) {
             e.target.form.requestSubmit();
