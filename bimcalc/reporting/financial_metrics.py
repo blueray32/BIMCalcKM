@@ -8,14 +8,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
-from decimal import Decimal
-from typing import Optional
 
-from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import text
-
-from bimcalc.db.models import ItemMappingModel, ItemModel, MatchResultModel, PriceItemModel
 
 
 @dataclass
@@ -49,8 +44,8 @@ class FinancialMetrics:
     match_percentage: float
 
     # Average metrics
-    avg_unit_price: Optional[float]
-    avg_confidence: Optional[float]
+    avg_unit_price: float | None
+    avg_confidence: float | None
 
     # Computed timestamp
     computed_at: datetime

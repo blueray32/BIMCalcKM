@@ -2,13 +2,16 @@
 
 from __future__ import annotations
 
-import tempfile
 from pathlib import Path
 
 import pytest
 import yaml
 
-from bimcalc.classification.cmm_loader import ClassificationMappingLoader, MappingRule, load_vendor_mapping
+from bimcalc.classification.cmm_loader import (
+    ClassificationMappingLoader,
+    MappingRule,
+    load_vendor_mapping,
+)
 
 
 @pytest.fixture

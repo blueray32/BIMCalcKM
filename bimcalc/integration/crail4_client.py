@@ -6,7 +6,7 @@ import json
 import os
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 import httpx
 
@@ -16,9 +16,9 @@ class Crail4Client:
 
     def __init__(
         self,
-        api_key: Optional[str] = None,
-        base_url: Optional[str] = None,
-        source_url: Optional[str] = None,
+        api_key: str | None = None,
+        base_url: str | None = None,
+        source_url: str | None = None,
     ):
         self.api_key = api_key or os.getenv("CRAIL4_API_KEY")
         self.base_url = base_url or os.getenv(
@@ -35,7 +35,7 @@ class Crail4Client:
 
         self.client = httpx.AsyncClient(timeout=60.0)
 
-    def _load_optional_json(self, path: Optional[str]) -> Optional[dict[str, Any]]:
+    def _load_optional_json(self, path: str | None) -> dict[str, Any] | None:
         if not path:
             return None
         schema_path = Path(path)
@@ -48,10 +48,10 @@ class Crail4Client:
 
     async def fetch_all_items(
         self,
-        classification_filter: Optional[list[str]] = None,
-        updated_since: Optional[str] = None,
-        region: Optional[str] = None,
-        url: Optional[str] = None,
+        classification_filter: list[str] | None = None,
+        updated_since: str | None = None,
+        region: str | None = None,
+        url: str | None = None,
     ) -> list[dict]:
         """Fetch price items by scraping source content via Crawl4AI cloud."""
         target_url = url or self.source_url
@@ -102,7 +102,7 @@ class Crail4Client:
         """Close the HTTP client."""
         await self.client.aclose()
 
-    async def __aenter__(self) -> "Crail4Client":
+    async def __aenter__(self) -> Crail4Client:
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:

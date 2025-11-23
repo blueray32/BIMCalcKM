@@ -5,7 +5,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
-from typing import Optional
 from enum import Enum
 
 
@@ -37,22 +36,22 @@ class PriceRecord:
     unit: str
     unit_price: Decimal
     currency: str
-    vat_rate: Optional[Decimal] = None
+    vat_rate: Decimal | None = None
 
     # Physical attributes
-    width_mm: Optional[float] = None
-    height_mm: Optional[float] = None
-    dn_mm: Optional[float] = None
-    angle_deg: Optional[float] = None
-    material: Optional[str] = None
+    width_mm: float | None = None
+    height_mm: float | None = None
+    dn_mm: float | None = None
+    angle_deg: float | None = None
+    material: str | None = None
 
     # Governance
     source_name: str = ""
     source_currency: str = ""
-    original_effective_date: Optional[datetime] = None
-    vendor_id: Optional[str] = None
-    sku: Optional[str] = None
-    vendor_note: Optional[str] = None
+    original_effective_date: datetime | None = None
+    vendor_id: str | None = None
+    sku: str | None = None
+    vendor_note: str | None = None
 
     def __post_init__(self):
         """Set defaults for governance fields."""
@@ -72,7 +71,7 @@ class ImportResult:
     records_updated: int = 0
     records_failed: int = 0
     message: str = ""
-    error_details: Optional[dict] = None
+    error_details: dict | None = None
     duration_seconds: float = 0.0
 
     @property

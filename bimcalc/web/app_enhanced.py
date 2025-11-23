@@ -3,20 +3,31 @@
 from __future__ import annotations
 
 import io
+import os
 from datetime import datetime
 from decimal import Decimal
 from pathlib import Path
-from typing import Optional
 from uuid import UUID, uuid4
 
 import pandas as pd
-from fastapi import Cookie, Depends, FastAPI, File, Form, HTTPException, Query, Request, Response, UploadFile
+from fastapi import (
+    Cookie,
+    Depends,
+    FastAPI,
+    File,
+    Form,
+    HTTPException,
+    Query,
+    Request,
+    Response,
+    UploadFile,
+)
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from sqlalchemy import func, select, text
 from pydantic import BaseModel
+from sqlalchemy import func, select, text
 
 from bimcalc.config import get_config
 from bimcalc.db.connection import get_session
@@ -36,6 +47,8 @@ from bimcalc.integration.classification_mapper import ClassificationMapper
 from bimcalc.integration.crail4_transformer import Crail4Transformer
 from bimcalc.matching.orchestrator import MatchOrchestrator
 from bimcalc.models import FlagSeverity, Item
+from bimcalc.pipeline.config_loader import load_pipeline_config
+from bimcalc.pipeline.orchestrator import PipelineOrchestrator
 from bimcalc.reporting.builder import generate_report
 from bimcalc.review import (
     approve_review_record,
@@ -43,21 +56,66 @@ from bimcalc.review import (
     fetch_pending_reviews,
     fetch_review_record,
 )
-from bimcalc.pipeline.config_loader import load_pipeline_config
-from bimcalc.pipeline.orchestrator import PipelineOrchestrator
 from bimcalc.web.auth import (
     create_session,
-    logout as auth_logout,
     require_auth,
-    validate_session,
     verify_credentials,
 )
+from bimcalc.web.auth import (
+    logout as auth_logout,
+)
+
+from starlette.middleware.base import BaseHTTPMiddleware
+import structlog
+from prometheus_fastapi_instrumentator import Instrumentator
+
+from bimcalc.core.logging import configure_logging
+
+# Initialize structured logging
+configure_logging()
+logger = structlog.get_logger()
 
 templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
-app = FastAPI(title="BIMCalc Management Console", version="2.0")
 
+app = FastAPI(
+    title="BIMCalc Management Console",
+    description="Web interface for managing BIMCalc pricing data",
+    version="1.0.0",
+    docs_url="/docs",
+    redoc_url="/redoc",
+)
+
+# Prometheus Metrics
+Instrumentator().instrument(app).expose(app)
+
+# Request Logging Middleware
+class RequestLoggingMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        structlog.contextvars.clear_contextvars()
+        
+        request_id = request.headers.get("X-Request-ID", str(uuid4()))
+        structlog.contextvars.bind_contextvars(request_id=request_id)
+        
+        logger.info("request_started", 
+            method=request.method, 
+            path=request.url.path,
+            client_ip=request.client.host
+        )
+        
+        try:
+            response = await call_next(request)
+            
+            logger.info("request_completed",
+                status_code=response.status_code,
+            )
+            return response
+            
+        except Exception as exc:
+            logger.error("request_failed", error=str(exc))
+            raise
+
+app.add_middleware(RequestLoggingMiddleware)
 # Authentication enabled by default (disable with BIMCALC_AUTH_DISABLED=true for development)
-import os
 AUTH_ENABLED = os.environ.get("BIMCALC_AUTH_DISABLED", "false").lower() != "true"
 
 # Mount static files if directory exists
@@ -70,13 +128,13 @@ if static_dir.exists():
 # Helper Functions
 # ============================================================================
 
-def _parse_flag_filter(flag: Optional[str]) -> list[str] | None:
+def _parse_flag_filter(flag: str | None) -> list[str] | None:
     if flag is None or flag == "all" or flag == "":
         return None
     return [flag]
 
 
-def _parse_severity_filter(severity: Optional[str]) -> FlagSeverity | None:
+def _parse_severity_filter(severity: str | None) -> FlagSeverity | None:
     if not severity or severity.lower() == "all":
         return None
     try:
@@ -85,7 +143,7 @@ def _parse_severity_filter(severity: Optional[str]) -> FlagSeverity | None:
         raise HTTPException(status_code=400, detail="Invalid severity filter") from None
 
 
-def _get_org_project(request: Request, org: Optional[str] = None, project: Optional[str] = None):
+def _get_org_project(request: Request, org: str | None = None, project: str | None = None):
     """Get org/project with fallbacks."""
     config = get_config()
     return (org or config.org_id, project or "default")
@@ -96,7 +154,7 @@ def _get_org_project(request: Request, org: Optional[str] = None, project: Optio
 # ============================================================================
 
 @app.get("/login", response_class=HTMLResponse)
-async def login_page(request: Request, error: Optional[str] = None):
+async def login_page(request: Request, error: str | None = None):
     """Login page."""
     return templates.TemplateResponse("login.html", {
         "request": request,
@@ -132,7 +190,7 @@ async def login(
 
 
 @app.get("/logout")
-async def logout(response: Response, session: Optional[str] = Cookie(default=None)):
+async def logout(response: Response, session: str | None = Cookie(default=None)):
     """Logout and clear session."""
     if session:
         auth_logout(session)
@@ -149,9 +207,9 @@ async def logout(response: Response, session: Optional[str] = Cookie(default=Non
 @app.get("/", response_class=HTMLResponse)
 async def dashboard(
     request: Request,
-    org: Optional[str] = None,
-    project: Optional[str] = None,
-    view: Optional[str] = Query(default=None),
+    org: str | None = None,
+    project: str | None = None,
+    view: str | None = Query(default=None),
     username: str = Depends(require_auth) if AUTH_ENABLED else None,
 ):
     """Main dashboard with navigation and statistics.
@@ -247,9 +305,9 @@ async def dashboard(
 @app.get("/progress", response_class=HTMLResponse)
 async def progress_dashboard(
     request: Request,
-    org: Optional[str] = None,
-    project: Optional[str] = None,
-    view: Optional[str] = Query(default="standard"),  # standard or executive
+    org: str | None = None,
+    project: str | None = None,
+    view: str | None = Query(default="standard"),  # standard or executive
     username: str = Depends(require_auth) if AUTH_ENABLED else None,
 ):
     """Progress tracking dashboard for cost estimation workflow.
@@ -416,13 +474,13 @@ async def get_ingest_history(
 @app.get("/review", response_class=HTMLResponse)
 async def review_dashboard(
     request: Request,
-    org: Optional[str] = None,
-    project: Optional[str] = None,
-    flag: Optional[str] = Query(default=None),
-    severity: Optional[str] = Query(default=None),
-    unmapped_only: Optional[str] = Query(default=None),
-    classification: Optional[str] = Query(default=None),
-    view: Optional[str] = Query(default=None),
+    org: str | None = None,
+    project: str | None = None,
+    flag: str | None = Query(default=None),
+    severity: str | None = Query(default=None),
+    unmapped_only: str | None = Query(default=None),
+    classification: str | None = Query(default=None),
+    view: str | None = Query(default=None),
 ):
     """Review items requiring manual approval.
 
@@ -486,13 +544,13 @@ async def review_dashboard(
 @app.post("/review/approve")
 async def approve_item(
     match_result_id: UUID = Form(...),
-    annotation: Optional[str] = Form(None),
-    org: Optional[str] = Form(None),
-    project: Optional[str] = Form(None),
-    flag: Optional[str] = Form(None),
-    severity: Optional[str] = Form(None),
-    unmapped_only: Optional[str] = Form(None),
-    classification: Optional[str] = Form(None),
+    annotation: str | None = Form(None),
+    org: str | None = Form(None),
+    project: str | None = Form(None),
+    flag: str | None = Form(None),
+    severity: str | None = Form(None),
+    unmapped_only: str | None = Form(None),
+    classification: str | None = Form(None),
 ):
     """Approve a review item and create mapping."""
     org_id, project_id = _get_org_project(None, org, project)
@@ -522,7 +580,7 @@ async def approve_item(
 # ============================================================================
 
 @app.get("/ingest", response_class=HTMLResponse)
-async def ingest_page(request: Request, org: Optional[str] = None, project: Optional[str] = None):
+async def ingest_page(request: Request, org: str | None = None, project: str | None = None):
     """File upload page for schedules and price books."""
     org_id, project_id = _get_org_project(request, org, project)
 
@@ -615,7 +673,7 @@ async def ingest_prices(
 # ============================================================================
 
 @app.get("/match", response_class=HTMLResponse)
-async def match_page(request: Request, org: Optional[str] = None, project: Optional[str] = None):
+async def match_page(request: Request, org: str | None = None, project: str | None = None):
     """Page to trigger matching pipeline."""
     org_id, project_id = _get_org_project(request, org, project)
 
@@ -633,10 +691,10 @@ async def match_page(request: Request, org: Optional[str] = None, project: Optio
 async def run_matching(
     org: str = Form(...),
     project: str = Form(...),
-    limit: Optional[str] = Form(default=None),
+    limit: str | None = Form(default=None),
 ):
     """Trigger matching pipeline for project."""
-    limit_value: Optional[int] = None
+    limit_value: int | None = None
     if limit not in (None, ""):
         try:
             limit_value = int(limit)
@@ -714,8 +772,8 @@ async def run_matching(
 @app.get("/items", response_class=HTMLResponse)
 async def items_list(
     request: Request,
-    org: Optional[str] = None,
-    project: Optional[str] = None,
+    org: str | None = None,
+    project: str | None = None,
     page: int = Query(default=1, ge=1),
 ):
     """List and manage items."""
@@ -782,8 +840,8 @@ async def delete_item(item_id: UUID):
 @app.get("/mappings", response_class=HTMLResponse)
 async def mappings_list(
     request: Request,
-    org: Optional[str] = None,
-    project: Optional[str] = None,
+    org: str | None = None,
+    project: str | None = None,
     page: int = Query(default=1, ge=1),
 ):
     """List and manage active mappings."""
@@ -858,9 +916,9 @@ async def delete_mapping(mapping_id: UUID):
 @app.get("/reports", response_class=HTMLResponse)
 async def reports_page(
     request: Request,
-    org: Optional[str] = None,
-    project: Optional[str] = None,
-    view: Optional[str] = Query(default=None),
+    org: str | None = None,
+    project: str | None = None,
+    view: str | None = Query(default=None),
 ):
     """Reports page with optional executive view.
 
@@ -902,7 +960,7 @@ async def reports_page(
 async def generate_report_endpoint(
     org: str = Query(...),
     project: str = Query(...),
-    as_of: Optional[str] = Query(default=None),
+    as_of: str | None = Query(default=None),
     format: str = Query(default="csv"),
 ):
     """Generate and download cost report."""
@@ -944,8 +1002,8 @@ async def generate_report_endpoint(
 @app.get("/reports/statistics", response_class=HTMLResponse)
 async def statistics_page(
     request: Request,
-    org: Optional[str] = None,
-    project: Optional[str] = None,
+    org: str | None = None,
+    project: str | None = None,
 ):
     """Project statistics dashboard."""
     org_id, project_id = _get_org_project(request, org, project)
@@ -1000,10 +1058,10 @@ async def statistics_page(
 @app.get("/audit", response_class=HTMLResponse)
 async def audit_trail(
     request: Request,
-    org: Optional[str] = None,
-    project: Optional[str] = None,
+    org: str | None = None,
+    project: str | None = None,
     page: int = Query(default=1, ge=1),
-    view: Optional[str] = Query(default=None),
+    view: str | None = Query(default=None),
 ):
     """View audit trail of all decisions.
 
@@ -1084,8 +1142,8 @@ async def audit_trail(
 @app.get("/pipeline", response_class=HTMLResponse)
 async def pipeline_dashboard(
     request: Request,
-    org: Optional[str] = None,
-    project: Optional[str] = None,
+    org: str | None = None,
+    project: str | None = None,
     page: int = Query(default=1, ge=1)
 ):
     """Pipeline status and management dashboard."""
@@ -1262,9 +1320,9 @@ async def price_history(
 @app.get("/prices", response_class=HTMLResponse)
 async def prices_list(
     request: Request,
-    org: Optional[str] = None,
-    project: Optional[str] = None,  # Added project parameter for consistent navigation
-    view: Optional[str] = Query(default=None),
+    org: str | None = None,
+    project: str | None = None,  # Added project parameter for consistent navigation
+    view: str | None = Query(default=None),
     current_only: bool = Query(default=True),
     page: int = Query(default=1, ge=1),
 ):
@@ -1528,7 +1586,7 @@ async def get_import_run(run_id: str):
 @app.get("/crail4-config", response_class=HTMLResponse)
 async def crail4_config_page(
     request: Request,
-    org: Optional[str] = None,
+    org: str | None = None,
     current_user: str = Depends(require_auth),
 ):
     """Render Crail4 configuration page."""
@@ -1712,45 +1770,103 @@ async def test_crail4_connection(
 @app.post("/crail4-config/sync")
 async def trigger_crail4_sync(
     request: Request,
-    classifications: Optional[str] = Form(default=None),
+    classifications: str | None = Form(default=None),
     full_sync: bool = Form(default=False),
-    region: Optional[str] = Form(default=None),
+    region: str | None = Form(default=None),
     current_user: str = Depends(require_auth),
 ):
     """Trigger manual Crail4 sync."""
     org_id = get_config().org_id
 
     try:
-        from bimcalc.integration.crail4_sync import sync_crail4_prices
+        from bimcalc.core.queue import get_queue
 
-        # Parse classifications filter
-        class_filter = None
-        if classifications and classifications.strip():
-            class_filter = [c.strip() for c in classifications.split(",")]
-
-        # Run sync
-        delta_days = None if full_sync else 7
-        result = await sync_crail4_prices(
+        # Enqueue the job
+        redis = await get_queue()
+        job = await redis.enqueue_job(
+            "run_crail4_sync",
             org_id=org_id,
-            target_scheme="UniClass2015",
-            delta_days=delta_days,
-            classification_filter=class_filter,
-            region=region,
+            full_sync=full_sync
         )
 
-        return JSONResponse({
-            "status": "success",
-            "message": f"Sync completed: {result['items_loaded']}/{result['items_received']} items loaded",
-            "result": result,
-        })
+        # Return HTML fragment for HTMX
+        return HTMLResponse(f"""
+            <div class="message message-info" hx-get="/crail4-config/status/{job.job_id}" hx-trigger="load delay:2s" hx-swap="outerHTML">
+                <strong>🚀 Sync Started!</strong><br>
+                Job ID: {job.job_id}<br>
+                <small>Checking status...</small>
+            </div>
+        """)
+
     except Exception as e:
-        return JSONResponse(
-            {"status": "error", "message": f"Sync failed: {str(e)}"},
-            status_code=500
-        )
+        return HTMLResponse(f"""
+            <div class="message message-error">
+                <strong>❌ Error:</strong> {str(e)}
+            </div>
+        """)
 
 
-@app.get("/crail4-config/mappings/seed")
+@app.get("/crail4-config/status/{job_id}")
+async def get_sync_status(job_id: str, current_user: str = Depends(require_auth)):
+    """Poll for sync job status."""
+    try:
+        from arq.jobs import Job
+
+        from bimcalc.core.queue import get_queue
+
+        redis = await get_queue()
+        job = Job(job_id, redis)
+        status = await job.status()
+        
+        if status == "complete":
+            result = await job.result()
+            # Format result for display
+            items_loaded = result.get("items_loaded", 0)
+            items_fetched = result.get("items_fetched", 0)
+            
+            return HTMLResponse(f"""
+                <div class="message message-success">
+                    <strong>✅ Sync Complete!</strong><br>
+                    Loaded {items_loaded} of {items_fetched} items.
+                    <br>
+                    <a href="/crail4-config" class="btn btn-primary mt-2" style="font-size: 0.8rem;">Refresh Page</a>
+                </div>
+            """)
+            
+        elif status == "in_progress":
+             return HTMLResponse(f"""
+                <div class="message message-info" hx-get="/crail4-config/status/{job_id}" hx-trigger="load delay:2s" hx-swap="outerHTML">
+                    <strong>🔄 Syncing...</strong><br>
+                    Job is running in background.
+                    <div style="margin-top: 0.5rem; background: rgba(255,255,255,0.5); height: 4px; border-radius: 2px; overflow: hidden;">
+                        <div style="background: #2b6cb0; height: 100%; width: 50%; animation: progress 2s infinite;"></div>
+                    </div>
+                    <style>@keyframes progress {{ 0% {{ transform: translateX(-100%); }} 100% {{ transform: translateX(100%); }} }}</style>
+                </div>
+            """)
+            
+        elif status == "failed":
+             return HTMLResponse("""
+                <div class="message message-error">
+                    <strong>❌ Job Failed</strong><br>
+                    The background job encountered an error.
+                </div>
+            """)
+            
+        else: # queued or not_found
+             return HTMLResponse(f"""
+                <div class="message message-info" hx-get="/crail4-config/status/{job_id}" hx-trigger="load delay:2s" hx-swap="outerHTML">
+                    <strong>⏳ Queued...</strong><br>
+                    Waiting for worker...
+                </div>
+            """)
+
+    except Exception as e:
+        return HTMLResponse(f"""
+            <div class="message message-error">
+                <strong>Error checking status:</strong> {str(e)}
+            </div>
+        """)
 async def seed_classification_mappings(
     current_user: str = Depends(require_auth),
 ):
@@ -1831,12 +1947,13 @@ async def import_csv_prices(
     file: UploadFile = File(...),
     vendor_name: str = Form(...),
     org_id: str = Form(default="acme-construction"),
-    sheet_name: Optional[str] = Form(default=None),
+    sheet_name: str | None = Form(default=None),
     current_user: str = Depends(require_auth),
 ):
     """Import supplier price list from CSV or Excel file."""
     import tempfile
     from pathlib import Path
+
     from bimcalc.integration.csv_price_importer import import_supplier_pricelist
 
     # Validate file extension
@@ -1884,8 +2001,8 @@ async def import_csv_prices(
 
 @app.get("/export/dashboard")
 async def export_dashboard(
-    org: Optional[str] = None,
-    project: Optional[str] = None,
+    org: str | None = None,
+    project: str | None = None,
     request: Request = None,
 ):
     """Export dashboard executive metrics to Excel."""
@@ -1911,13 +2028,13 @@ async def export_dashboard(
 
 @app.get("/export/progress")
 async def export_progress(
-    org: Optional[str] = None,
-    project: Optional[str] = None,
+    org: str | None = None,
+    project: str | None = None,
     request: Request = None,
 ):
     """Export progress executive metrics to Excel."""
-    from bimcalc.reporting.progress import compute_progress_metrics
     from bimcalc.reporting.export_utils import export_progress_to_excel
+    from bimcalc.reporting.progress import compute_progress_metrics
 
     org_id, project_id = _get_org_project(request, org, project)
 
@@ -1938,13 +2055,13 @@ async def export_progress(
 
 @app.get("/export/review")
 async def export_review(
-    org: Optional[str] = None,
-    project: Optional[str] = None,
+    org: str | None = None,
+    project: str | None = None,
     request: Request = None,
 ):
     """Export review queue executive metrics to Excel."""
-    from bimcalc.reporting.review_metrics import compute_review_metrics
     from bimcalc.reporting.export_utils import export_review_to_excel
+    from bimcalc.reporting.review_metrics import compute_review_metrics
 
     org_id, project_id = _get_org_project(request, org, project)
 
@@ -1965,13 +2082,13 @@ async def export_review(
 
 @app.get("/export/reports")
 async def export_reports(
-    org: Optional[str] = None,
-    project: Optional[str] = None,
+    org: str | None = None,
+    project: str | None = None,
     request: Request = None,
 ):
     """Export financial reports executive metrics to Excel."""
-    from bimcalc.reporting.financial_metrics import compute_financial_metrics
     from bimcalc.reporting.export_utils import export_reports_to_excel
+    from bimcalc.reporting.financial_metrics import compute_financial_metrics
 
     org_id, project_id = _get_org_project(request, org, project)
 
@@ -1992,8 +2109,8 @@ async def export_reports(
 
 @app.get("/export/audit")
 async def export_audit(
-    org: Optional[str] = None,
-    project: Optional[str] = None,
+    org: str | None = None,
+    project: str | None = None,
     request: Request = None,
 ):
     """Export audit trail executive metrics to Excel."""
@@ -2019,12 +2136,12 @@ async def export_audit(
 
 @app.get("/export/prices")
 async def export_prices(
-    org: Optional[str] = None,
+    org: str | None = None,
     request: Request = None,
 ):
     """Export price data quality metrics to Excel."""
-    from bimcalc.reporting.price_metrics import compute_price_metrics
     from bimcalc.reporting.export_utils import export_prices_to_excel
+    from bimcalc.reporting.price_metrics import compute_price_metrics
 
     org_id, _ = _get_org_project(request, org, None)
 

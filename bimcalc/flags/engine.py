@@ -8,7 +8,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from datetime import datetime, timedelta
 from decimal import Decimal
-from typing import Any, Optional
+from typing import Any
 
 from bimcalc.config import get_config
 from bimcalc.models import Flag, FlagSeverity
@@ -145,28 +145,28 @@ def _get(source: Any, key: str) -> Any:
     return getattr(source, key, None)
 
 
-def _normalize_str(value: Any) -> Optional[str]:
+def _normalize_str(value: Any) -> str | None:
     if value is None:
         return None
     text = str(value).strip()
     return text.lower() if text else None
 
 
-def _normalize_currency(value: Any) -> Optional[str]:
+def _normalize_currency(value: Any) -> str | None:
     if value is None:
         return None
     text = str(value).strip()
     return text.upper() if text else None
 
 
-def _normalize_note(value: Any) -> Optional[str]:
+def _normalize_note(value: Any) -> str | None:
     if value is None:
         return None
     text = str(value).strip()
     return text if text else None
 
 
-def _to_float(value: Any) -> Optional[float]:
+def _to_float(value: Any) -> float | None:
     if value is None:
         return None
     try:
@@ -177,7 +177,7 @@ def _to_float(value: Any) -> Optional[float]:
         return None
 
 
-def _to_int(value: Any) -> Optional[int]:
+def _to_int(value: Any) -> int | None:
     if value is None:
         return None
     try:
@@ -186,7 +186,7 @@ def _to_int(value: Any) -> Optional[int]:
         return None
 
 
-def _to_decimal(value: Any) -> Optional[Decimal]:
+def _to_decimal(value: Any) -> Decimal | None:
     if value is None:
         return None
     try:
@@ -195,7 +195,7 @@ def _to_decimal(value: Any) -> Optional[Decimal]:
         return None
 
 
-def _as_datetime(value: Any) -> Optional[datetime]:
+def _as_datetime(value: Any) -> datetime | None:
     if value is None:
         return None
     if isinstance(value, datetime):
@@ -251,7 +251,7 @@ def _detect_size_mismatch(
     price_attrs: Any,
     linear_tolerance: float,
     dn_tolerance: float,
-) -> Optional[str]:
+) -> str | None:
     comparisons = [
         ("width_mm", linear_tolerance, "width"),
         ("height_mm", linear_tolerance, "height"),

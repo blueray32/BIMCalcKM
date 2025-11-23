@@ -1,6 +1,5 @@
 """Unit tests for enhanced normalizer with synonym expansion."""
 
-from pathlib import Path
 
 import pytest
 

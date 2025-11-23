@@ -1,7 +1,8 @@
 from __future__ import annotations
+
 import re
 import unicodedata
-from typing import Dict, Any
+from typing import Any
 
 _MATERIAL_SYNONYMS = {
     "galvanised": "galv",
@@ -24,7 +25,7 @@ def normalize_name(text: str) -> str:
     s = re.sub(r"\s+", " ", s).strip()
     return s
 
-def parse_attributes(text: str) -> Dict[str, Any]:
+def parse_attributes(text: str) -> dict[str, Any]:
     """Extract structured attributes from normalized text."""
     s = normalize_name(text)
     # size

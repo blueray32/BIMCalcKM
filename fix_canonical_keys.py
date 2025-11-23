@@ -1,11 +1,14 @@
 """Backfill canonical keys for existing items."""
 import asyncio
-from sqlalchemy import select, update
+
+from sqlalchemy import select
+
+from bimcalc.canonical.key_generator import canonical_key
+from bimcalc.classification.trust_hierarchy import classify_item
 from bimcalc.db.connection import get_session
 from bimcalc.db.models import ItemModel
 from bimcalc.models import Item
-from bimcalc.canonical.key_generator import canonical_key
-from bimcalc.classification.trust_hierarchy import classify_item
+
 
 async def backfill_canonical_keys():
     """Update all items with their canonical keys."""

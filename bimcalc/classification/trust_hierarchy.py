@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import csv
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 import yaml
 
@@ -29,7 +29,7 @@ class ConfigurationError(Exception):
 class TrustHierarchyClassifier:
     """YAML-driven classifier implementing trust hierarchy."""
 
-    def __init__(self, config_path: Optional[Path] = None):
+    def __init__(self, config_path: Path | None = None):
         """Initialize classifier from YAML configuration.
 
         Args:
@@ -129,7 +129,7 @@ class TrustHierarchyClassifier:
         # Fallback to Unknown if no level matched
         return 9999
 
-    def _check_explicit_override(self, item: Item, level: dict[str, Any]) -> Optional[int]:
+    def _check_explicit_override(self, item: Item, level: dict[str, Any]) -> int | None:
         """Check explicit override fields (omniclass_code, uniformat_code)."""
         for field in level.get("fields", []):
             value = getattr(item, field, None)
@@ -137,7 +137,7 @@ class TrustHierarchyClassifier:
                 return int(value)
         return None
 
-    def _check_curated_list(self, item: Item, level: dict[str, Any]) -> Optional[int]:
+    def _check_curated_list(self, item: Item, level: dict[str, Any]) -> int | None:
         """Check curated manual classification list (CSV lookup)."""
         if not self._curated_map:
             return None
@@ -153,7 +153,7 @@ class TrustHierarchyClassifier:
 
         return None
 
-    def _check_revit_category_system(self, item: Item, level: dict[str, Any]) -> Optional[int]:
+    def _check_revit_category_system(self, item: Item, level: dict[str, Any]) -> int | None:
         """Check Revit Category + System Type heuristics."""
         rules = level.get("rules", [])
         for rule in rules:
@@ -172,7 +172,7 @@ class TrustHierarchyClassifier:
 
         return None
 
-    def _check_fallback_heuristics(self, item: Item, level: dict[str, Any]) -> Optional[int]:
+    def _check_fallback_heuristics(self, item: Item, level: dict[str, Any]) -> int | None:
         """Check keyword pattern matching in family/type names."""
         rules = level.get("rules", [])
 
@@ -188,7 +188,7 @@ class TrustHierarchyClassifier:
 
 
 # Singleton instance
-_classifier: Optional[TrustHierarchyClassifier] = None
+_classifier: TrustHierarchyClassifier | None = None
 
 
 def get_classifier() -> TrustHierarchyClassifier:

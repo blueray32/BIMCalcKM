@@ -7,14 +7,13 @@ and review velocity trends.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timezone
-from typing import Optional
+from datetime import UTC, datetime
 
 from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import text
 
-from bimcalc.db.models import ItemModel, MatchFlagModel, MatchResultModel
+from bimcalc.db.models import MatchFlagModel, MatchResultModel
 from bimcalc.models import FlagSeverity
 
 
@@ -43,8 +42,8 @@ class ReviewMetrics:
     classification_breakdown: list[dict]  # [{code, total, critical, advisory, avg_confidence}]
 
     # Aging metrics
-    oldest_review_days: Optional[float]
-    avg_age_days: Optional[float]
+    oldest_review_days: float | None
+    avg_age_days: float | None
     items_over_7_days: int
     items_over_30_days: int
 
@@ -118,7 +117,7 @@ async def compute_review_metrics(
             return None
         if isinstance(value, datetime):
             if value.tzinfo:
-                return value.astimezone(timezone.utc).replace(tzinfo=None)
+                return value.astimezone(UTC).replace(tzinfo=None)
             return value
         if isinstance(value, str):
             try:
@@ -126,7 +125,7 @@ async def compute_review_metrics(
             except ValueError:
                 return None
             if parsed.tzinfo:
-                return parsed.astimezone(timezone.utc).replace(tzinfo=None)
+                return parsed.astimezone(UTC).replace(tzinfo=None)
             return parsed
         return None
 

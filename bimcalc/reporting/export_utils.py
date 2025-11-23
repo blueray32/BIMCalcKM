@@ -7,10 +7,10 @@ Provides CSV and Excel export functionality for dashboard metrics.
 import csv
 import io
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from openpyxl import Workbook
-from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 
 
@@ -22,21 +22,21 @@ def _sanitize_sheet_name(name: str) -> str:
     return safe[:31]
 
 
-def format_currency(value: Optional[float], currency: str = "EUR") -> str:
+def format_currency(value: float | None, currency: str = "EUR") -> str:
     """Format currency value for export."""
     if value is None:
         return "N/A"
     return f"{currency} {value:,.2f}"
 
 
-def format_percentage(value: Optional[float]) -> str:
+def format_percentage(value: float | None) -> str:
     """Format percentage value for export."""
     if value is None:
         return "N/A"
     return f"{value:.1f}%"
 
 
-def format_count(value: Optional[int]) -> str:
+def format_count(value: int | None) -> str:
     """Format count value for export."""
     if value is None:
         return "0"
@@ -94,7 +94,7 @@ class ExcelExporter:
         ws.column_dimensions['A'].width = 20
         ws.column_dimensions['B'].width = 40
 
-    def add_kpi_sheet(self, name: str, data: List[Dict[str, Any]]):
+    def add_kpi_sheet(self, name: str, data: list[dict[str, Any]]):
         """Add a sheet with KPI data."""
         ws = self.wb.create_sheet(_sanitize_sheet_name(name))
 
@@ -782,7 +782,7 @@ def export_prices_to_excel(metrics, org_id: str) -> bytes:
     return exporter.save()
 
 
-def export_to_csv(data: List[Dict[str, Any]], title: str) -> str:
+def export_to_csv(data: list[dict[str, Any]], title: str) -> str:
     """Export data to CSV format."""
     if not data:
         return f"{title}\nNo data available"

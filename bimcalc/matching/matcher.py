@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 from bimcalc.matching.confidence import ConfidenceCalculator, MatchMethod
 
@@ -16,7 +16,7 @@ class MatchResult:
     """Result of item matching."""
 
     item_id: str
-    price_item_id: Optional[str]
+    price_item_id: str | None
     confidence: int
     method: MatchMethod
     auto_accepted: bool
@@ -117,8 +117,8 @@ class EnhancedMatcher:
 
     def __init__(
         self,
-        confidence_calculator: Optional[ConfidenceCalculator] = None,
-        auto_router: Optional[AutoRouter] = None,
+        confidence_calculator: ConfidenceCalculator | None = None,
+        auto_router: AutoRouter | None = None,
     ) -> None:
         """Initialize enhanced matcher.
 
@@ -133,8 +133,8 @@ class EnhancedMatcher:
         self,
         item: Item,
         price: PriceItem,
-        mapping_memory: Optional[MappingMemory] = None,
-        flags: Optional[list[str]] = None,
+        mapping_memory: MappingMemory | None = None,
+        flags: list[str] | None = None,
     ) -> MatchResult:
         """Match item to price with confidence scoring and auto-routing.
 
@@ -172,8 +172,8 @@ class EnhancedMatcher:
         self,
         item: Item,
         candidates: list[PriceItem],
-        mapping_memory: Optional[MappingMemory] = None,
-        flags_map: Optional[dict[str, list[str]]] = None,
+        mapping_memory: MappingMemory | None = None,
+        flags_map: dict[str, list[str]] | None = None,
     ) -> list[MatchResult]:
         """Match item against multiple price candidates.
 
@@ -202,9 +202,9 @@ class EnhancedMatcher:
         self,
         item: Item,
         candidates: list[PriceItem],
-        mapping_memory: Optional[MappingMemory] = None,
-        flags_map: Optional[dict[str, list[str]]] = None,
-    ) -> Optional[MatchResult]:
+        mapping_memory: MappingMemory | None = None,
+        flags_map: dict[str, list[str]] | None = None,
+    ) -> MatchResult | None:
         """Get best match for item from candidates.
 
         Args:
@@ -228,8 +228,8 @@ class MatchingPipeline:
 
     def __init__(
         self,
-        matcher: Optional[EnhancedMatcher] = None,
-        mapping_memory: Optional[MappingMemory] = None,
+        matcher: EnhancedMatcher | None = None,
+        mapping_memory: MappingMemory | None = None,
     ) -> None:
         """Initialize matching pipeline.
 
@@ -244,8 +244,8 @@ class MatchingPipeline:
         self,
         item: Item,
         price_catalog: list[PriceItem],
-        flags_map: Optional[dict[str, list[str]]] = None,
-    ) -> Optional[MatchResult]:
+        flags_map: dict[str, list[str]] | None = None,
+    ) -> MatchResult | None:
         """Match single item using classification blocking and confidence scoring.
 
         Workflow:

@@ -9,7 +9,7 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from bimcalc.classification.cmm_loader import ClassificationMappingLoader, load_vendor_mapping
 
@@ -29,9 +29,9 @@ class TranslationResult:
     """
     row: dict[str, Any]
     was_mapped: bool
-    canonical_code: Optional[str] = None
-    internal_group: Optional[str] = None
-    original_fields: Optional[dict[str, Any]] = None
+    canonical_code: str | None = None
+    internal_group: str | None = None
+    original_fields: dict[str, Any] | None = None
 
 
 class VendorTranslator:
@@ -46,7 +46,7 @@ class VendorTranslator:
         """
         self.vendor_id = vendor_id
         self.config_dir = config_dir
-        self.loader: Optional[ClassificationMappingLoader] = None
+        self.loader: ClassificationMappingLoader | None = None
         self._mapped_count = 0
         self._unmapped_count = 0
 

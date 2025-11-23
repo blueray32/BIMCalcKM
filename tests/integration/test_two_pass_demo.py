@@ -1,6 +1,7 @@
 from bimcalc.canonical.normalizer import canonicalize
 from bimcalc.mapping.dictionary import InMemoryDictionary
 
+
 def test_two_pass_auto_match_demo():
     dict_ = InMemoryDictionary()
     key1 = canonicalize("Tray Elbow 90° 200×50 (Galv) - ProjectA")

@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Optional
 from uuid import UUID
 
 
@@ -15,22 +14,22 @@ class Item:
     id: UUID
     org_id: str
     project_id: str
-    classification_code: Optional[int] = None
-    canonical_key: Optional[str] = None
-    category: Optional[str] = None
-    family: Optional[str] = None
-    type_name: Optional[str] = None
-    quantity: Optional[float] = None
-    unit: Optional[str] = None
-    width_mm: Optional[float] = None
-    height_mm: Optional[float] = None
-    dn_mm: Optional[float] = None
-    angle_deg: Optional[float] = None
-    material: Optional[str] = None
-    manufacturer_part_number: Optional[str] = None  # For exact matching
-    vendor_sku: Optional[str] = None  # For exact matching
-    source_file: Optional[str] = None
-    created_at: Optional[datetime] = None
+    classification_code: int | None = None
+    canonical_key: str | None = None
+    category: str | None = None
+    family: str | None = None
+    type_name: str | None = None
+    quantity: float | None = None
+    unit: str | None = None
+    width_mm: float | None = None
+    height_mm: float | None = None
+    dn_mm: float | None = None
+    angle_deg: float | None = None
+    material: str | None = None
+    manufacturer_part_number: str | None = None  # For exact matching
+    vendor_sku: str | None = None  # For exact matching
+    source_file: str | None = None
+    created_at: datetime | None = None
 
 
 @dataclass
@@ -39,22 +38,22 @@ class PriceItem:
 
     id: UUID
     classification_code: int
-    vendor_id: Optional[str] = None
-    sku: Optional[str] = None
-    manufacturer_part_number: Optional[str] = None  # For exact matching
-    description: Optional[str] = None
-    family: Optional[str] = None  # Parsed from description
-    type_name: Optional[str] = None  # Parsed from description
-    unit: Optional[str] = None
-    unit_price: Optional[float] = None
+    vendor_id: str | None = None
+    sku: str | None = None
+    manufacturer_part_number: str | None = None  # For exact matching
+    description: str | None = None
+    family: str | None = None  # Parsed from description
+    type_name: str | None = None  # Parsed from description
+    unit: str | None = None
+    unit_price: float | None = None
     currency: str = "EUR"
-    vat_rate: Optional[float] = None
-    last_updated: Optional[datetime] = None
-    width_mm: Optional[float] = None
-    height_mm: Optional[float] = None
-    dn_mm: Optional[float] = None
-    angle_deg: Optional[float] = None
-    material: Optional[str] = None
+    vat_rate: float | None = None
+    last_updated: datetime | None = None
+    width_mm: float | None = None
+    height_mm: float | None = None
+    dn_mm: float | None = None
+    angle_deg: float | None = None
+    material: str | None = None
 
 
 @dataclass
@@ -66,9 +65,9 @@ class MappingRecord:
     canonical_key: str
     price_item_id: UUID
     start_ts: datetime
-    end_ts: Optional[datetime] = None
-    created_by: Optional[str] = None
-    reason: Optional[str] = None
+    end_ts: datetime | None = None
+    created_by: str | None = None
+    reason: str | None = None
 
     @property
     def is_active(self) -> bool:
@@ -83,7 +82,7 @@ class MappingMemory:
         """Initialize empty mapping memory."""
         self._mappings: dict[tuple[str, str], MappingRecord] = {}
 
-    def lookup(self, org_id: str, canonical_key: str) -> Optional[MappingRecord]:
+    def lookup(self, org_id: str, canonical_key: str) -> MappingRecord | None:
         """Look up active mapping for canonical key.
 
         Args:

@@ -10,10 +10,8 @@ import hashlib
 import os
 import secrets
 from datetime import datetime, timedelta
-from typing import Optional
 
-from fastapi import Cookie, HTTPException, Request, Response
-from fastapi.responses import RedirectResponse
+from fastapi import Cookie, HTTPException, Request
 
 # Session store (in-memory for simplicity, use Redis for production)
 SESSIONS: dict[str, dict] = {}
@@ -63,7 +61,7 @@ def create_session(username: str) -> str:
     return session_token
 
 
-def validate_session(session_token: Optional[str]) -> Optional[str]:
+def validate_session(session_token: str | None) -> str | None:
     """Validate session token and return username if valid.
 
     Args:
@@ -87,7 +85,7 @@ def validate_session(session_token: Optional[str]) -> Optional[str]:
     return session["username"]
 
 
-def require_auth(request: Request, session: Optional[str] = Cookie(default=None)) -> str:
+def require_auth(request: Request, session: str | None = Cookie(default=None)) -> str:
     """Dependency to require authentication on routes.
 
     Args:
@@ -133,7 +131,7 @@ def verify_credentials(username: str, password: str) -> bool:
     return username == valid_username and password_hash == valid_password_hash
 
 
-def logout(session_token: Optional[str]) -> None:
+def logout(session_token: str | None) -> None:
     """Logout user by invalidating session.
 
     Args:

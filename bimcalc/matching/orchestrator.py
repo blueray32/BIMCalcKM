@@ -6,7 +6,6 @@ Coordinates classification → canonical key → mapping lookup → candidate ge
 
 from __future__ import annotations
 
-from typing import Optional
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -42,7 +41,7 @@ class MatchOrchestrator:
 
     async def match(
         self, item: Item, created_by: str = "system"
-    ) -> tuple[MatchResult, Optional[PriceItem]]:
+    ) -> tuple[MatchResult, PriceItem | None]:
         """Execute end-to-end matching pipeline for an item.
 
         Pipeline:
@@ -164,7 +163,7 @@ class MatchOrchestrator:
 
         return result, top_match.price_item
 
-    async def _get_price_item(self, price_item_id: UUID) -> Optional[PriceItem]:
+    async def _get_price_item(self, price_item_id: UUID) -> PriceItem | None:
         """Get PriceItem by ID.
 
         Args:
@@ -207,7 +206,7 @@ class MatchOrchestrator:
 
 async def match_item(
     session: AsyncSession, item: Item, created_by: str = "system"
-) -> tuple[MatchResult, Optional[PriceItem]]:
+) -> tuple[MatchResult, PriceItem | None]:
     """Convenience function: execute end-to-end matching for an item.
 
     Args:

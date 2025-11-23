@@ -11,10 +11,8 @@ Usage:
 
 from __future__ import annotations
 
-import asyncio
 import logging
 import sqlite3
-from datetime import datetime
 from pathlib import Path
 
 import typer
@@ -290,7 +288,7 @@ def run_rollback_sqlite(db_path: Path, dry_run: bool = False) -> None:
 
         conn.commit()
 
-        console.print(f"[bold green]✓[/bold green] Rollback completed")
+        console.print("[bold green]✓[/bold green] Rollback completed")
         console.print(f"[yellow]⚠[/yellow] Kept {rollback_count} current records (history lost)")
 
     except Exception as e:

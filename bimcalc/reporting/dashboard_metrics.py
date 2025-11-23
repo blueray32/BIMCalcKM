@@ -8,13 +8,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import Optional
 
 from sqlalchemy import and_, func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from bimcalc.db.models import ItemModel, MatchResultModel, PriceItemModel
-
+from bimcalc.db.models import ItemModel
 
 CLASSIFICATION_NAMES = {
     "62": "Small Power",
@@ -49,7 +47,7 @@ class DashboardMetrics:
     auto_approval_rate: float
 
     # Quality Metrics
-    avg_confidence: Optional[float]
+    avg_confidence: float | None
     high_confidence_percentage: float  # >= 85%
 
     # Recent Activity (last 7 days)

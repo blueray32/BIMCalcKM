@@ -8,7 +8,7 @@ from __future__ import annotations
 from datetime import datetime
 from decimal import Decimal
 from enum import Enum
-from typing import Any, Literal, Optional
+from typing import Any, Literal
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field, field_validator
@@ -37,32 +37,32 @@ class Item(BaseModel):
     project_id: str
 
     # Classification
-    classification_code: Optional[int] = None
-    canonical_key: Optional[str] = None
+    classification_code: int | None = None
+    canonical_key: str | None = None
 
     # Revit metadata
-    category: Optional[str] = None
+    category: str | None = None
     family: str
     type_name: str
-    system_type: Optional[str] = None
+    system_type: str | None = None
 
     # Explicit classification overrides (highest trust)
-    omniclass_code: Optional[int] = None
-    uniformat_code: Optional[int] = None
+    omniclass_code: int | None = None
+    uniformat_code: int | None = None
 
     # Quantities
-    quantity: Optional[Decimal] = None
-    unit: Optional[str] = None  # "m", "ea", "m2", "m3"
+    quantity: Decimal | None = None
+    unit: str | None = None  # "m", "ea", "m2", "m3"
 
     # Physical attributes (for canonical key and matching)
-    width_mm: Optional[float] = None
-    height_mm: Optional[float] = None
-    dn_mm: Optional[float] = None  # Pipe diameter
-    angle_deg: Optional[float] = None
-    material: Optional[str] = None
+    width_mm: float | None = None
+    height_mm: float | None = None
+    dn_mm: float | None = None  # Pipe diameter
+    angle_deg: float | None = None
+    material: str | None = None
 
     # Audit
-    source_file: Optional[str] = None
+    source_file: str | None = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
     class Config:
@@ -89,7 +89,7 @@ class PriceItem(BaseModel):
 
     id: UUID = Field(default_factory=uuid4)
     classification_code: int  # Required for classification blocking
-    vendor_id: Optional[str] = None
+    vendor_id: str | None = None
     sku: str
     description: str
 
@@ -97,18 +97,18 @@ class PriceItem(BaseModel):
     unit: str  # "m", "ea", "m2", "m3"
     unit_price: Decimal
     currency: str = "EUR"  # Default EU
-    vat_rate: Optional[Decimal] = None  # 0.23 for Irish/EU standard
+    vat_rate: Decimal | None = None  # 0.23 for Irish/EU standard
 
     # Physical attributes (stored in JSONB or explicit columns)
-    width_mm: Optional[float] = None
-    height_mm: Optional[float] = None
-    dn_mm: Optional[float] = None
-    angle_deg: Optional[float] = None
-    material: Optional[str] = None
+    width_mm: float | None = None
+    height_mm: float | None = None
+    dn_mm: float | None = None
+    angle_deg: float | None = None
+    material: str | None = None
 
     # Audit & metadata
-    last_updated: Optional[datetime] = None
-    vendor_note: Optional[str] = None  # "Discontinued", "12-week lead time", etc.
+    last_updated: datetime | None = None
+    vendor_note: str | None = None  # "Discontinued", "12-week lead time", etc.
     attributes: dict[str, Any] = Field(default_factory=dict)  # Additional JSONB data
 
     @field_validator("unit_price")
@@ -157,7 +157,7 @@ class MatchResult(BaseModel):
     """Result of matching an item to a price."""
 
     item_id: UUID
-    price_item_id: Optional[UUID]
+    price_item_id: UUID | None
     confidence_score: float  # 0-100
     source: Literal["mapping_memory", "fuzzy_match", "review_ui"]  # Match origin
     flags: list[Flag] = Field(default_factory=list)
@@ -198,7 +198,7 @@ class MappingEntry(BaseModel):
 
     # SCD2 temporal fields
     start_ts: datetime = Field(default_factory=datetime.utcnow)
-    end_ts: Optional[datetime] = None  # NULL = active row
+    end_ts: datetime | None = None  # NULL = active row
 
     # Audit
     created_by: str  # User email or "system"
@@ -250,24 +250,24 @@ class ReportRow(BaseModel):
     item_id: UUID
     family: str
     type_name: str
-    quantity: Optional[Decimal]
-    unit: Optional[str]
+    quantity: Decimal | None
+    unit: str | None
 
     # Matched price
-    canonical_key: Optional[str] = None
-    sku: Optional[str] = None
-    description: Optional[str] = None
-    unit_price: Optional[Decimal] = None
+    canonical_key: str | None = None
+    sku: str | None = None
+    description: str | None = None
+    unit_price: Decimal | None = None
     currency: str = "EUR"
-    vat_rate: Optional[Decimal] = None
+    vat_rate: Decimal | None = None
 
     # Calculated totals
-    total_price: Optional[Decimal] = None
-    total_price_with_vat: Optional[Decimal] = None
+    total_price: Decimal | None = None
+    total_price_with_vat: Decimal | None = None
 
     # Audit
-    matched_by: Optional[str] = None
-    match_reason: Optional[str] = None
+    matched_by: str | None = None
+    match_reason: str | None = None
 
     class Config:
         json_schema_extra = {

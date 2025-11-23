@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Optional
 from uuid import UUID
 
 from fastapi import FastAPI, Form, HTTPException, Query, Request
@@ -19,13 +18,13 @@ templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
 app = FastAPI(title="BIMCalc Review UI")
 
 
-def _parse_flag_filter(flag: Optional[str]) -> list[str] | None:
+def _parse_flag_filter(flag: str | None) -> list[str] | None:
     if flag is None or flag == "all" or flag == "":
         return None
     return [flag]
 
 
-def _parse_severity_filter(severity: Optional[str]) -> FlagSeverity | None:
+def _parse_severity_filter(severity: str | None) -> FlagSeverity | None:
     if not severity or severity.lower() == "all":
         return None
     try:
@@ -37,10 +36,10 @@ def _parse_severity_filter(severity: Optional[str]) -> FlagSeverity | None:
 @app.get("/", response_class=HTMLResponse)
 async def review_dashboard(
     request: Request,
-    org: Optional[str] = None,
-    project: Optional[str] = None,
-    flag: Optional[str] = Query(default=None),
-    severity: Optional[str] = Query(default=None),
+    org: str | None = None,
+    project: str | None = None,
+    flag: str | None = Query(default=None),
+    severity: str | None = Query(default=None),
 ):
     config = get_config()
     org_id = org or config.org_id
@@ -71,9 +70,9 @@ async def review_dashboard(
 @app.post("/approve")
 async def approve_item(
     match_result_id: UUID = Form(...),
-    annotation: Optional[str] = Form(None),
-    org: Optional[str] = Form(None),
-    project: Optional[str] = Form(None),
+    annotation: str | None = Form(None),
+    org: str | None = Form(None),
+    project: str | None = Form(None),
 ):
     config = get_config()
     org_id = org or config.org_id

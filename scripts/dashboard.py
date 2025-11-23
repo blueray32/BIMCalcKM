@@ -4,9 +4,8 @@ BIMCalc Pipeline Dashboard - Quick system overview
 Usage: python scripts/dashboard.py
 """
 
-import asyncio
 import sqlite3
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 
 

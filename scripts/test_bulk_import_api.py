@@ -5,8 +5,8 @@ from __future__ import annotations
 import asyncio
 
 from bimcalc.db.connection import get_session
-from bimcalc.integration.crail4_transformer import Crail4Transformer
 from bimcalc.integration.classification_mapper import ClassificationMapper
+from bimcalc.integration.crail4_transformer import Crail4Transformer
 
 
 async def test_cli_bulk_import():

@@ -1,6 +1,6 @@
 services:
   db:
-    image: pgvector/pgvector:pg16  # Upgraded from postgres:15 for semantic search support
+    image: pgvector/pgvector:pg16 # Upgraded from postgres:15 for semantic search support
     container_name: bimcalc-postgres
     restart: unless-stopped
     environment:
@@ -15,7 +15,7 @@ services:
       - db_data:/var/lib/postgresql/data
       - ./scripts/postgres/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U bimcalc -d bimcalc"]
+      test: [ "CMD-SHELL", "pg_isready -U bimcalc -d bimcalc" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -27,7 +27,7 @@ services:
     build: .
     depends_on:
       db:
-        condition: service_healthy  # Wait for database to be ready
+        condition: service_healthy # Wait for database to be ready
     environment:
       DATABASE_URL: postgresql+asyncpg://bimcalc:changeme@db:5432/bimcalc
       DEFAULT_ORG_ID: default
@@ -51,7 +51,7 @@ services:
     working_dir: /app
     stdin_open: true
     tty: true
-    entrypoint: ["bash", "-lc"]
+    entrypoint: [ "bash", "-lc" ]
     command:
       - "uvicorn bimcalc.web.app_enhanced:app --host 0.0.0.0 --port 8001"
     ports:
@@ -75,11 +75,42 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  worker:
+    build: .
+    command: arq bimcalc.worker.WorkerSettings
+    volumes:
+      - ./:/app
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://bimcalc:bimcalc@db:5432/bimcalc
+      - REDIS_URL=redis://redis:6379
+      - REDIS_URL=redis://redis:6379
+      - BIMCALC_AUTH_DISABLED=true
+      - API_BASE_URL=http://app:8001
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     restart: unless-stopped
     networks:
       - bimcalc-network
-    profiles:
-      - dev  # Only start with: docker compose --profile dev up
+
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - bimcalc-network
 
 volumes:
   db_data:

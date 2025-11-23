@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Optional
-
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bimcalc.db.match_results import record_match_result
@@ -16,7 +14,7 @@ async def approve_review_record(
     session: AsyncSession,
     record: ReviewRecord,
     created_by: str,
-    annotation: Optional[str] = None,
+    annotation: str | None = None,
 ) -> None:
     if record.price is None:
         raise ValueError("Cannot approve record without a price candidate")
@@ -59,7 +57,7 @@ async def approve_review_record(
     await record_match_result(session, record.item.id, match_result)
 
 
-def _build_reason(annotation: Optional[str], record: ReviewRecord) -> str:
+def _build_reason(annotation: str | None, record: ReviewRecord) -> str:
     base = "Manual approval via review UI"
     if record.has_critical_flags:
         base += " (override)"

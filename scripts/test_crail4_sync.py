@@ -6,9 +6,9 @@ import asyncio
 import json
 from pathlib import Path
 
-from bimcalc.integration.crail4_transformer import Crail4Transformer
-from bimcalc.integration.classification_mapper import ClassificationMapper
 from bimcalc.db.connection import get_session
+from bimcalc.integration.classification_mapper import ClassificationMapper
+from bimcalc.integration.crail4_transformer import Crail4Transformer
 
 
 async def test_sync():

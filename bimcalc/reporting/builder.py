@@ -6,8 +6,6 @@ Generates deterministic, reproducible cost reports.
 from __future__ import annotations
 
 from datetime import datetime
-from decimal import Decimal
-from typing import Optional
 
 import pandas as pd
 from sqlalchemy import and_, or_, select
@@ -33,7 +31,7 @@ class ReportBuilder:
         self,
         org_id: str,
         project_id: str,
-        as_of: Optional[datetime] = None,
+        as_of: datetime | None = None,
     ) -> pd.DataFrame:
         """Generate cost report using SCD2 as-of query.
 
@@ -209,7 +207,7 @@ async def generate_report(
     session: AsyncSession,
     org_id: str,
     project_id: str,
-    as_of: Optional[datetime] = None,
+    as_of: datetime | None = None,
 ) -> pd.DataFrame:
     """Convenience function: generate cost report.
 

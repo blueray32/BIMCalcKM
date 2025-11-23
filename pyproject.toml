@@ -26,6 +26,11 @@ dependencies = [
     "Jinja2>=3.1",
     "python-multipart>=0.0.9",
     "openai>=1.12",
+    "alembic>=1.13",
+    "arq>=0.25",
+    "redis>=5.0",
+    "structlog>=24.1",
+    "prometheus-fastapi-instrumentator>=7.0",
 ]
 
 [tool.setuptools.packages.find]
@@ -53,10 +58,12 @@ bimcalc = "bimcalc.cli:app"
 line-length = 100
 target-version = ["py311"]
 
-[tool.ruff]
-line-length = 100
-extend-select = ["I", "UP", "B", "C4"]
-target-version = "py311"
+[tool.ruff.lint]
+select = ["E", "F", "B"]
+ignore = ["E712", "F841", "E501", "B008", "B904", "B007", "E402"]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]
 
 [tool.mypy]
 python_version = "3.11"

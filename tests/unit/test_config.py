@@ -5,12 +5,11 @@ Tests AppConfig loading from environment variables, validation, and defaults.
 
 from __future__ import annotations
 
-import os
 from decimal import Decimal
 
 import pytest
 
-from bimcalc.config import AppConfig, DBConfig, EUConfig, MatchingConfig
+from bimcalc.config import AppConfig, DBConfig
 
 
 class TestAppConfig:

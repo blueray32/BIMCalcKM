@@ -8,12 +8,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import Optional
 
-from sqlalchemy import and_, func, select, text
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
-
-from bimcalc.db.models import ItemModel, MatchResultModel
 
 
 @dataclass
@@ -34,11 +31,11 @@ class AuditMetrics:
     decisions_last_7_days: int
     decisions_last_30_days: int
     avg_decisions_per_day: float
-    peak_decision_day: Optional[str]  # Date with most decisions
+    peak_decision_day: str | None  # Date with most decisions
     peak_decision_count: int
 
     # Confidence distribution
-    avg_confidence: Optional[float]
+    avg_confidence: float | None
     high_confidence_count: int  # ≥85%
     medium_confidence_count: int  # 70-84%
     low_confidence_count: int  # <70%

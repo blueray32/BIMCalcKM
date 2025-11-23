@@ -33,3 +33,10 @@ BIMCalc PostgreSQL Backup (Docker)
 /Users/ciarancox/BIMCalcKM/scripts/backup_postgres.sh: line 23: docker: command not found
 ❌ ERROR: PostgreSQL container 'bimcalc-postgres' is not running
    Start it with: docker start bimcalc-postgres
+=========================================
+BIMCalc PostgreSQL Backup (Docker)
+=========================================
+
+/Users/ciarancox/BIMCalcKM/scripts/backup_postgres.sh: line 23: docker: command not found
+❌ ERROR: PostgreSQL container 'bimcalc-postgres' is not running
+   Start it with: docker start bimcalc-postgres

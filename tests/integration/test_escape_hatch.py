@@ -6,7 +6,6 @@ Tests the out-of-class fallback mechanism per CLAUDE.md requirements.
 from __future__ import annotations
 
 from decimal import Decimal
-from uuid import uuid4
 
 import pytest
 import pytest_asyncio

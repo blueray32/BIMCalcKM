@@ -5,8 +5,6 @@ Tests classification code assignment via YAML-driven trust hierarchy.
 
 from __future__ import annotations
 
-from pathlib import Path
-
 import pytest
 
 from bimcalc.classification.trust_hierarchy import (

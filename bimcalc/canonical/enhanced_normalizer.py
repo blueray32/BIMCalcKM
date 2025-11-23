@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 import unicodedata
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 import yaml
 
@@ -13,7 +13,7 @@ import yaml
 class SynonymExpander:
     """Expand synonyms for materials, manufacturers, and units."""
 
-    def __init__(self, config_path: Optional[Path] = None) -> None:
+    def __init__(self, config_path: Path | None = None) -> None:
         """Initialize synonym expander with optional config file.
 
         Args:
@@ -210,7 +210,7 @@ class EnhancedNormalizer:
     """Enhanced text normalization with synonym expansion."""
 
     def __init__(
-        self, synonym_config: Optional[Path] = None, enable_expansions: bool = True
+        self, synonym_config: Path | None = None, enable_expansions: bool = True
     ) -> None:
         """Initialize enhanced normalizer.
 
@@ -285,7 +285,7 @@ class EnhancedNormalizer:
         slug = re.sub(r"_+", "_", slug)
         return slug.strip("_")
 
-    def extract_numeric(self, text: str, pattern: str) -> Optional[float]:
+    def extract_numeric(self, text: str, pattern: str) -> float | None:
         """Extract numeric value from text using pattern.
 
         Args:
@@ -336,11 +336,11 @@ class EnhancedNormalizer:
 
 
 # Global instance (singleton pattern)
-_normalizer: Optional[EnhancedNormalizer] = None
+_normalizer: EnhancedNormalizer | None = None
 
 
 def get_normalizer(
-    config_path: Optional[Path] = None, reload: bool = False
+    config_path: Path | None = None, reload: bool = False
 ) -> EnhancedNormalizer:
     """Get global normalizer instance.
 

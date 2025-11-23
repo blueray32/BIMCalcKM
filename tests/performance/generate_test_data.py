@@ -10,8 +10,6 @@ import asyncio
 import random
 from datetime import datetime, timedelta
 from decimal import Decimal
-from pathlib import Path
-from uuid import uuid4
 
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker

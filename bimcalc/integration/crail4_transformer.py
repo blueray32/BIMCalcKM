@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import logging
 from decimal import Decimal
-from typing import Optional
 
 from bimcalc.canonical.normalize import normalize_text, parse_fitting_attributes
 from bimcalc.integration.classification_mapper import ClassificationMapper
@@ -19,7 +18,7 @@ class Crail4Transformer:
         self.mapper = mapper
         self.target_scheme = target_scheme
 
-    async def transform_item(self, raw_item: dict) -> Optional[dict]:
+    async def transform_item(self, raw_item: dict) -> dict | None:
         """Transform a single Crail4 item."""
         try:
             source_snapshot = raw_item.get("source_data") if isinstance(raw_item, dict) else None

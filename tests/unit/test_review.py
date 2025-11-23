@@ -4,13 +4,13 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta
 from decimal import Decimal
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 import pytest
 import pytest_asyncio
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy import select
 
 from bimcalc.db.models import (
     Base,
@@ -20,10 +20,10 @@ from bimcalc.db.models import (
     MatchResultModel,
     PriceItemModel,
 )
+from bimcalc.models import FlagSeverity
 from bimcalc.review.models import ReviewFlag, ReviewItem, ReviewPrice, ReviewRecord
 from bimcalc.review.repository import fetch_pending_reviews
 from bimcalc.review.service import approve_review_record
-from bimcalc.models import FlagSeverity
 
 
 @pytest_asyncio.fixture()

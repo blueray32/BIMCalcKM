@@ -14,18 +14,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
-from decimal import Decimal
-from typing import Optional
 
-from sqlalchemy import Integer, func, select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bimcalc.db.models import (
-    ItemMappingModel,
     ItemModel,
     MatchFlagModel,
-    MatchResultModel,
-    PriceItemModel,
 )
 
 

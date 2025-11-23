@@ -15,14 +15,13 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import datetime
 
 import typer
 from rich.console import Console
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from bimcalc.db.connection import get_engine, get_session
+from bimcalc.db.connection import get_session
 
 logger = logging.getLogger(__name__)
 console = Console()

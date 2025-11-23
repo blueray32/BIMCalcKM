@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 from rapidfuzz import fuzz
 
 if TYPE_CHECKING:
-    from bimcalc.matching.models import Item, PriceItem, MappingMemory
+    from bimcalc.matching.models import Item, MappingMemory, PriceItem
 
 
 class MatchMethod(Enum):
@@ -28,7 +28,7 @@ class ConfidenceResult:
         self,
         score: int,
         method: MatchMethod,
-        details: Optional[dict[str, float]] = None,
+        details: dict[str, float] | None = None,
     ) -> None:
         """Initialize confidence result.
 
@@ -69,7 +69,7 @@ class ConfidenceCalculator:
         self,
         item: Item,
         price: PriceItem,
-        mapping_memory: Optional[MappingMemory] = None,
+        mapping_memory: MappingMemory | None = None,
     ) -> ConfidenceResult:
         """Calculate confidence score using priority-based matching.
 

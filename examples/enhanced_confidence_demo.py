@@ -1,12 +1,11 @@
 """Demo of enhanced confidence scoring with all strategies."""
 
 from datetime import datetime
-from pathlib import Path
 from uuid import uuid4
 
 from bimcalc.canonical.enhanced_normalizer import get_normalizer
-from bimcalc.matching.confidence import ConfidenceCalculator, MatchMethod
-from bimcalc.matching.matcher import EnhancedMatcher, MatchingPipeline
+from bimcalc.matching.confidence import ConfidenceCalculator
+from bimcalc.matching.matcher import MatchingPipeline
 from bimcalc.matching.models import Item, MappingMemory, MappingRecord, PriceItem
 
 
@@ -106,7 +105,7 @@ def demo_canonical_key_match() -> None:
     print(f"  Canonical Key: {item_project_b.canonical_key}")
     print(f"  Confidence: {result.score}")
     print(f"  Method: {result.method.value}")
-    print(f"  → INSTANT AUTO-MATCH (no fuzzy search needed!)")
+    print("  → INSTANT AUTO-MATCH (no fuzzy search needed!)")
 
 
 def demo_enhanced_fuzzy_perfect() -> None:
@@ -321,7 +320,7 @@ def demo_complete_pipeline() -> None:
     print(f"→ Reduction: {len(price_catalog) - len(candidates)} items filtered out")
 
     if result:
-        print(f"\nBest Match:")
+        print("\nBest Match:")
         print(f"  Price SKU: {result.price_item_id}")
         print(f"  Confidence: {result.confidence}")
         print(f"  Method: {result.method.value}")

@@ -7,7 +7,6 @@ Enforces invariant: at most one active row per (org_id, canonical_key).
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Optional
 from uuid import UUID
 
 from sqlalchemy import and_, select, update
@@ -28,7 +27,7 @@ class MappingMemory:
         """
         self.session = session
 
-    async def lookup(self, org_id: str, canonical_key: str) -> Optional[UUID]:
+    async def lookup(self, org_id: str, canonical_key: str) -> UUID | None:
         """O(1) lookup of active mapping.
 
         Args:
@@ -116,7 +115,7 @@ class MappingMemory:
 
     async def lookup_as_of(
         self, org_id: str, canonical_key: str, as_of: datetime
-    ) -> Optional[UUID]:
+    ) -> UUID | None:
         """Temporal query: get mapping valid at specific timestamp.
 
         Enables reproducible reports (bit-for-bit identical for same timestamp).
@@ -221,7 +220,7 @@ class MappingMemory:
 
 async def lookup_mapping(
     session: AsyncSession, org_id: str, canonical_key: str
-) -> Optional[UUID]:
+) -> UUID | None:
     """Convenience function: lookup active mapping.
 
     Args:

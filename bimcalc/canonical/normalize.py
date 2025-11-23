@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import re
-from typing import Optional
 
 from bimcalc.canonical.key_generator import normalize_text as _base_normalize_text
 
@@ -33,12 +32,12 @@ _DN_PATTERN = re.compile(r"dn\s*(?P<dn>\d{2,4})", re.IGNORECASE)
 _ANGLE_PATTERN = re.compile(r"(?P<angle>\d{1,3})\s*(?:deg|°)", re.IGNORECASE)
 
 
-def normalize_text(text: Optional[str]) -> str:
+def normalize_text(text: str | None) -> str:
     """Expose canonical normalize_text helper in a dedicated module."""
     return _base_normalize_text(text)
 
 
-def parse_fitting_attributes(description: Optional[str]) -> dict:
+def parse_fitting_attributes(description: str | None) -> dict:
     """Parse fitting attributes from normalized description text."""
     if not description:
         return {}

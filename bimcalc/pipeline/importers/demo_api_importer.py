@@ -10,8 +10,8 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from collections.abc import AsyncIterator
 from decimal import Decimal
-from typing import AsyncIterator
 
 from bimcalc.pipeline.base_importer import BaseImporter
 from bimcalc.pipeline.types import PriceRecord

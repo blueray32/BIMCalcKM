@@ -7,9 +7,9 @@ Supports both CSV and Excel formats.
 from __future__ import annotations
 
 import logging
+from collections.abc import AsyncIterator
 from decimal import Decimal
 from pathlib import Path
-from typing import AsyncIterator
 
 import pandas as pd
 

@@ -1,6 +1,6 @@
 """Quick test of classification system."""
-from bimcalc.models import Item
 from bimcalc.classification.trust_hierarchy import classify_item
+from bimcalc.models import Item
 
 # Test cable tray item (should be 66)
 item1 = Item(

@@ -19,10 +19,8 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
-from bimcalc.config import get_config
-from bimcalc.db.models import Base, ItemModel, PriceItemModel
+from bimcalc.db.models import PriceItemModel
 from bimcalc.matching.candidate_generator import CandidateGenerator
-from bimcalc.matching.fuzzy_ranker import FuzzyRanker
 from bimcalc.matching.orchestrator import MatchOrchestrator
 from bimcalc.models import Item
 
@@ -139,7 +137,7 @@ class PerformanceBenchmark:
             "std_dev_ms": statistics.stdev(latencies) if len(latencies) > 1 else 0,
         }
 
-        print(f"\nResults:")
+        print("\nResults:")
         print(f"  Iterations: {results['iterations']}")
         print(f"  Min:        {results['min_ms']:.2f} ms")
         print(f"  Mean:       {results['mean_ms']:.2f} ms")
@@ -191,7 +189,7 @@ class PerformanceBenchmark:
             "std_dev_ms": statistics.stdev(latencies) if len(latencies) > 1 else 0,
         }
 
-        print(f"\nResults:")
+        print("\nResults:")
         print(f"  Iterations: {results['iterations']}")
         print(f"  Min:        {results['min_ms']:.2f} ms")
         print(f"  Mean:       {results['mean_ms']:.2f} ms")
@@ -239,7 +237,7 @@ class PerformanceBenchmark:
             "std_dev_ms": statistics.stdev(latencies) if len(latencies) > 1 else 0,
         }
 
-        print(f"\nResults:")
+        print("\nResults:")
         print(f"  Iterations: {results['iterations']}")
         print(f"  Min:        {results['min_ms']:.2f} ms")
         print(f"  Mean:       {results['mean_ms']:.2f} ms")
@@ -288,7 +286,7 @@ class PerformanceBenchmark:
             "reduction_percentage": ((total_prices - class_66_prices) / total_prices * 100) if total_prices > 0 else 0,
         }
 
-        print(f"\nResults:")
+        print("\nResults:")
         print(f"  Total prices in catalog:      {results['total_prices']:,}")
         print(f"  After classification block:   {results['after_classification_blocking']:,}")
         print(f"  Reduction factor:             {results['reduction_factor']:.1f}×")
@@ -364,16 +362,16 @@ async def main():
         print("PERFORMANCE BENCHMARK SUMMARY")
         print("=" * 60)
 
-        print(f"\nClassification Blocking:")
+        print("\nClassification Blocking:")
         print(f"  Reduction factor: {results['classification_blocking']['reduction_factor']:.1f}× ({'✓' if results['classification_blocking']['reduction_factor'] >= 20 else '✗'})")
 
-        print(f"\nCandidate Generation:")
+        print("\nCandidate Generation:")
         print(f"  p95 latency: {results['candidate_generation']['p95_ms']:.2f} ms ({'✓' if results['candidate_generation']['p95_ms'] < 500 else '✗'})")
 
-        print(f"\nEscape-Hatch:")
+        print("\nEscape-Hatch:")
         print(f"  p95 latency: {results['escape_hatch']['p95_ms']:.2f} ms")
 
-        print(f"\nEnd-to-End Matching:")
+        print("\nEnd-to-End Matching:")
         print(f"  p95 latency: {results['end_to_end']['p95_ms']:.2f} ms ({'✓' if results['end_to_end']['p95_ms'] < 500 else '✗'})")
 
         # Overall status

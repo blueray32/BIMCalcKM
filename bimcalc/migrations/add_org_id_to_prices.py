@@ -127,7 +127,7 @@ async def run_migration(session: AsyncSession, dry_run: bool = False) -> None:
             text("SELECT org_id, COUNT(*) FROM price_items WHERE is_current = true GROUP BY org_id")
         )
         org_counts = result.all()
-        console.print(f"[bold green]✓[/bold green] Price records by org:")
+        console.print("[bold green]✓[/bold green] Price records by org:")
         for org_id, count in org_counts:
             console.print(f"  • {org_id}: {count} active prices")
 

@@ -9,8 +9,7 @@ Tests:
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime, timedelta
-from pathlib import Path
+from datetime import datetime
 from uuid import uuid4
 
 import pytest
@@ -19,7 +18,7 @@ from sqlalchemy import select
 
 from bimcalc.config import get_config
 from bimcalc.db.connection import get_engine, get_session
-from bimcalc.db.models import Base, ItemModel, PriceItemModel, ItemMappingModel
+from bimcalc.db.models import Base, ItemMappingModel, ItemModel, PriceItemModel
 from bimcalc.matching.orchestrator import MatchOrchestrator
 from bimcalc.models import Item
 from bimcalc.reporting.builder import generate_report

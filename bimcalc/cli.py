@@ -17,17 +17,16 @@ from __future__ import annotations
 import asyncio
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
 
 import typer
 from rich.console import Console
 from rich.table import Table
-from sqlalchemy import select, func
+from sqlalchemy import func, select
 
 from bimcalc.config import get_config
 from bimcalc.db.connection import get_engine, get_session
 from bimcalc.db.match_results import record_match_result
-from bimcalc.db.models import Base, ItemModel, ItemMappingModel, MatchResultModel, PriceItemModel
+from bimcalc.db.models import Base, ItemMappingModel, ItemModel, MatchResultModel, PriceItemModel
 from bimcalc.ingestion.pricebooks import ingest_pricebook
 from bimcalc.ingestion.schedules import ingest_schedule
 from bimcalc.matching.orchestrator import MatchOrchestrator
@@ -71,8 +70,8 @@ def init(
 @app.command(name="ingest-schedules")
 def ingest_schedules_cmd(
     files: list[Path] = typer.Argument(..., help="Schedule files (CSV/XLSX)"),
-    org_id: Optional[str] = typer.Option(None, "--org", help="Organization ID"),
-    project_id: Optional[str] = typer.Option(None, "--project", help="Project ID"),
+    org_id: str | None = typer.Option(None, "--org", help="Organization ID"),
+    project_id: str | None = typer.Option(None, "--project", help="Project ID"),
 ):
     """Import Revit schedules from CSV or XLSX files."""
     config = get_config()
@@ -149,10 +148,10 @@ def ingest_prices_cmd(
 
 @app.command()
 def match(
-    org_id: Optional[str] = typer.Option(None, "--org", help="Organization ID"),
-    project_id: Optional[str] = typer.Option(None, "--project", help="Project ID"),
+    org_id: str | None = typer.Option(None, "--org", help="Organization ID"),
+    project_id: str | None = typer.Option(None, "--project", help="Project ID"),
     created_by: str = typer.Option("cli", "--by", help="Created by user/system"),
-    limit: Optional[int] = typer.Option(None, "--limit", help="Limit items to match"),
+    limit: int | None = typer.Option(None, "--limit", help="Limit items to match"),
 ):
     """Run matching pipeline on project items."""
     config = get_config()
@@ -255,7 +254,7 @@ def match(
                 table.add_row(item_desc, status, confidence, flags_str)
 
             console.print(table)
-            console.print(f"\n[bold]Summary:[/bold]")
+            console.print("\n[bold]Summary:[/bold]")
             console.print(f"  Auto-accepted: {auto_accepted}")
             console.print(f"  Instant matches: {instant_match}")
             console.print(f"  Manual review: {manual_review}")
@@ -278,9 +277,9 @@ def match(
 
 @review_cli.command("ui")
 def review_ui_cmd(
-    org_id: Optional[str] = typer.Option(None, "--org", help="Organization ID"),
-    project_id: Optional[str] = typer.Option(None, "--project", help="Project ID"),
-    reviewer: Optional[str] = typer.Option(
+    org_id: str | None = typer.Option(None, "--org", help="Organization ID"),
+    project_id: str | None = typer.Option(None, "--project", help="Project ID"),
+    reviewer: str | None = typer.Option(
         None, "--user", "--by", help="Reviewer name/email for audit trail"
     ),
 ):
@@ -315,10 +314,10 @@ def web_serve(
 
 @app.command()
 def report(
-    org_id: Optional[str] = typer.Option(None, "--org", help="Organization ID"),
-    project_id: Optional[str] = typer.Option(None, "--project", help="Project ID"),
-    as_of: Optional[str] = typer.Option(None, "--as-of", help="As-of timestamp (ISO format)"),
-    output: Optional[Path] = typer.Option(None, "--out", "-o", help="Output CSV file"),
+    org_id: str | None = typer.Option(None, "--org", help="Organization ID"),
+    project_id: str | None = typer.Option(None, "--project", help="Project ID"),
+    as_of: str | None = typer.Option(None, "--as-of", help="As-of timestamp (ISO format)"),
+    output: Path | None = typer.Option(None, "--out", "-o", help="Output CSV file"),
 ):
     """Generate cost report with as-of temporal query."""
     config = get_config()
@@ -348,7 +347,7 @@ def report(
             total_net = df["total_net"].sum()
             total_gross = df["total_gross"].sum()
 
-            console.print(f"\n[bold]Report Summary:[/bold]")
+            console.print("\n[bold]Report Summary:[/bold]")
             console.print(f"  Total items: {total_items}")
             console.print(f"  Matched items: {matched_items}")
             console.print(f"  Total net: €{total_net:,.2f}")
@@ -368,8 +367,8 @@ def report(
 
 @app.command()
 def stats(
-    org_id: Optional[str] = typer.Option(None, "--org", help="Organization ID"),
-    project_id: Optional[str] = typer.Option(None, "--project", help="Project ID"),
+    org_id: str | None = typer.Option(None, "--org", help="Organization ID"),
+    project_id: str | None = typer.Option(None, "--project", help="Project ID"),
 ):
     """Show project statistics."""
     config = get_config()
@@ -431,10 +430,10 @@ def sync_crail4_command(
     org_id: str = typer.Option("acme-construction", "--org", help="Organization ID"),
     target_scheme: str = typer.Option("UniClass2015", "--scheme", help="Target classification scheme"),
     full_sync: bool = typer.Option(False, "--full-sync", help="Ignore delta window and fetch all data"),
-    classifications: Optional[str] = typer.Option(
+    classifications: str | None = typer.Option(
         None, "--classifications", help="Comma-separated classification codes to filter"
     ),
-    region: Optional[str] = typer.Option(None, "--region", help="Region filter (e.g., UK, IE)"),
+    region: str | None = typer.Option(None, "--region", help="Region filter (e.g., UK, IE)"),
 ):
     """Trigger Crail4 AI price synchronization."""
     from bimcalc.integration.crail4_sync import sync_crail4_prices
@@ -475,7 +474,7 @@ def import_csv_prices_command(
     file_path: Path = typer.Argument(..., help="Path to CSV or Excel file"),
     org_id: str = typer.Option("acme-construction", "--org", help="Organization ID"),
     vendor: str = typer.Option(..., "--vendor", help="Vendor/supplier name (e.g., CEF, Rexel)"),
-    sheet_name: Optional[str] = typer.Option(None, "--sheet", help="Sheet name for Excel files"),
+    sheet_name: str | None = typer.Option(None, "--sheet", help="Sheet name for Excel files"),
 ):
     """Import supplier price list from CSV or Excel file.
 
@@ -501,7 +500,7 @@ def import_csv_prices_command(
             )
 
             # Display results
-            console.print(f"\n[green]✓ Import completed successfully[/green]")
+            console.print("\n[green]✓ Import completed successfully[/green]")
             console.print(f"Run ID: {result['run_id']}")
             console.print(f"Items received: {result['items_received']}")
             console.print(f"Items loaded: {result['items_loaded']}")
@@ -537,7 +536,7 @@ def sync_prices_cmd(
     from bimcalc.pipeline.config_loader import load_pipeline_config
     from bimcalc.pipeline.orchestrator import run_pipeline
 
-    console.print(f"[bold]Starting price synchronization pipeline[/bold]")
+    console.print("[bold]Starting price synchronization pipeline[/bold]")
     console.print(f"Config: {config_file}")
 
     if dry_run:

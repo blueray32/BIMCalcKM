@@ -10,7 +10,6 @@ import os
 from dataclasses import dataclass, field
 from decimal import Decimal
 from pathlib import Path
-from typing import Optional
 
 from dotenv import load_dotenv
 
@@ -59,14 +58,14 @@ class LLMConfig:
     """LLM and embeddings configuration for optional RAG agent."""
 
     provider: str = "openai"  # openai, azure, ollama
-    api_key: Optional[str] = None
+    api_key: str | None = None
     embeddings_model: str = "text-embedding-3-large"
     llm_model: str = "gpt-4-1106-preview"
     temperature: float = 0.1
     max_tokens: int = 4000
 
     # Azure-specific
-    azure_endpoint: Optional[str] = None
+    azure_endpoint: str | None = None
     azure_api_version: str = "2024-02-15-preview"
 
 
@@ -197,7 +196,7 @@ class AppConfig:
 
 
 # Singleton instance (lazy-loaded)
-_config: Optional[AppConfig] = None
+_config: AppConfig | None = None
 
 
 def get_config() -> AppConfig:

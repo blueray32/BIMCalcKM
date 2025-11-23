@@ -210,7 +210,7 @@ async def run_migration(session: AsyncSession, dry_run: bool = False):
     revisions_exist = await check_table_exists(session, "item_revisions")
     logs_exist = await check_table_exists(session, "ingest_logs")
 
-    console.print(f"[yellow]Current state:[/yellow]")
+    console.print("[yellow]Current state:[/yellow]")
     console.print(f"  • item_revisions table: {'✓ exists' if revisions_exist else '✗ missing'}")
     console.print(f"  • ingest_logs table: {'✓ exists' if logs_exist else '✗ missing'}")
 

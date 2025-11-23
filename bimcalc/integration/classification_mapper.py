@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Optional
-
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -16,14 +14,14 @@ class ClassificationMapper:
     def __init__(self, session: AsyncSession, org_id: str):
         self.session = session
         self.org_id = org_id
-        self._cache: dict[tuple[str, str, str], Optional[str]] = {}
+        self._cache: dict[tuple[str, str, str], str | None] = {}
 
     async def translate(
         self,
         source_code: str,
         source_scheme: str,
         target_scheme: str
-    ) -> Optional[str]:
+    ) -> str | None:
         """Translate a classification code from source scheme to target scheme."""
         cache_key = (source_scheme, source_code, target_scheme)
         if cache_key in self._cache:
@@ -47,7 +45,7 @@ class ClassificationMapper:
         codes: list[str],
         source_scheme: str,
         target_scheme: str
-    ) -> dict[str, Optional[str]]:
+    ) -> dict[str, str | None]:
         """Translate multiple codes in one query."""
         if not codes:
             return {}

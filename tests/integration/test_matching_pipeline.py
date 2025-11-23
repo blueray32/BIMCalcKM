@@ -11,9 +11,8 @@ import pytest
 from bimcalc.canonical.key_generator import canonical_key
 from bimcalc.classification.trust_hierarchy import classify_item
 from bimcalc.flags.engine import compute_flags
-from bimcalc.models import Flag, FlagSeverity
 from bimcalc.mapping.dictionary import InMemoryDictionary
-from bimcalc.models import Item
+from bimcalc.models import Flag, FlagSeverity, Item
 
 
 class TestClassificationToCanonicalKey:

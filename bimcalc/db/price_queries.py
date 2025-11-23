@@ -8,7 +8,6 @@ of price records.
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Optional
 from uuid import UUID
 
 from sqlalchemy import and_, or_, select
@@ -22,7 +21,7 @@ async def get_current_price(
     session: AsyncSession,
     item_code: str,
     region: str = "UK",
-) -> Optional[PriceItem]:
+) -> PriceItem | None:
     """Get the current active price for an item.
 
     This is the most common query pattern for real-time cost calculations.
@@ -57,7 +56,7 @@ async def get_historical_price(
     item_code: str,
     region: str,
     as_of: datetime,
-) -> Optional[PriceItem]:
+) -> PriceItem | None:
     """Get the price that was active at a specific point in time.
 
     This enables historical cost analysis and variance reporting.
@@ -132,7 +131,7 @@ async def get_price_history(
 async def get_price_by_id(
     session: AsyncSession,
     price_item_id: UUID,
-) -> Optional[PriceItem]:
+) -> PriceItem | None:
     """Get a specific price record by its UUID.
 
     This is used by the mapping system to retrieve exact historical prices.

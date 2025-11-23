@@ -6,7 +6,6 @@ Reduces candidate space by ≥20× through classification blocking and numeric p
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
 from sqlalchemy import and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -30,7 +29,7 @@ class CandidateGenerator:
         self.session = session
         self.config = get_config()
 
-    async def generate(self, item: Item, limit: Optional[int] = None) -> list[PriceItem]:
+    async def generate(self, item: Item, limit: int | None = None) -> list[PriceItem]:
         """Generate candidates using classification-first blocking.
 
         Filter logic (applied in order):
@@ -301,7 +300,7 @@ class CandidateGenerator:
 
 
 async def generate_candidates(
-    session: AsyncSession, item: Item, limit: Optional[int] = None
+    session: AsyncSession, item: Item, limit: int | None = None
 ) -> list[PriceItem]:
     """Convenience function: generate candidates.
 

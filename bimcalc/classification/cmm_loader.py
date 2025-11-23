@@ -12,7 +12,7 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 import yaml
 
@@ -122,7 +122,7 @@ class ClassificationMappingLoader:
 
         logger.info(f"Loaded {len(self.rules)} mapping rules from {self.mapping_file}")
 
-    def find_match(self, row: dict[str, Any]) -> Optional[MappingRule]:
+    def find_match(self, row: dict[str, Any]) -> MappingRule | None:
         """Find first matching rule for given row.
 
         Args:
@@ -158,7 +158,7 @@ class ClassificationMappingLoader:
             return row, False
 
 
-def load_vendor_mapping(vendor_id: str, config_dir: Path = Path("config/vendors")) -> Optional[ClassificationMappingLoader]:
+def load_vendor_mapping(vendor_id: str, config_dir: Path = Path("config/vendors")) -> ClassificationMappingLoader | None:
     """Load vendor mapping file by vendor ID.
 
     Args:

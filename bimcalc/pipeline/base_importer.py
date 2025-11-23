@@ -9,7 +9,7 @@ from __future__ import annotations
 import logging
 import time
 from abc import ABC, abstractmethod
-from typing import AsyncIterator
+from collections.abc import AsyncIterator
 
 from bimcalc.pipeline.types import ImportResult, ImportStatus, PriceRecord
 

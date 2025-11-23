@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import List
 
 import yaml
 
@@ -37,7 +36,7 @@ def register_importer(importer_type: str):
     return decorator
 
 
-def load_pipeline_config(config_path: Path) -> List[BaseImporter]:
+def load_pipeline_config(config_path: Path) -> list[BaseImporter]:
     """Load pipeline configuration and instantiate importers.
 
     Args:

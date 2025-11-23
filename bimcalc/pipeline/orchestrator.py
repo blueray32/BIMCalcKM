@@ -14,7 +14,6 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime
-from typing import List, Optional
 from uuid import uuid4
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -39,7 +38,7 @@ class PipelineOrchestrator:
     5. Generate alerts on failures
     """
 
-    def __init__(self, importers: List[BaseImporter]):
+    def __init__(self, importers: list[BaseImporter]):
         """Initialize orchestrator with list of importers.
 
         Args:
@@ -201,7 +200,7 @@ class PipelineOrchestrator:
 
         session.add(log_entry)
 
-    async def _check_and_alert(self, results: List[ImportResult]) -> None:
+    async def _check_and_alert(self, results: list[ImportResult]) -> None:
         """Check for failures and trigger alerts if needed.
 
         Args:
@@ -222,7 +221,7 @@ class PipelineOrchestrator:
         # For now, just log. In production, this would trigger notifications.
 
 
-async def run_pipeline(importers: List[BaseImporter]) -> dict:
+async def run_pipeline(importers: list[BaseImporter]) -> dict:
     """Convenience function to run the pipeline.
 
     Args:

@@ -6,13 +6,11 @@ Parses CSV/XLSX schedule exports and creates Item records.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Optional
 
 import pandas as pd
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bimcalc.db.models import ItemModel
-from bimcalc.models import Item
 
 
 async def ingest_schedule(
@@ -121,7 +119,7 @@ async def ingest_schedule(
     return success_count, errors
 
 
-def _get_str(row: pd.Series, col_name: str | list[str]) -> Optional[str]:
+def _get_str(row: pd.Series, col_name: str | list[str]) -> str | None:
     """Get string value from row, trying multiple column names."""
     if isinstance(col_name, str):
         col_name = [col_name]
@@ -133,7 +131,7 @@ def _get_str(row: pd.Series, col_name: str | list[str]) -> Optional[str]:
     return None
 
 
-def _get_float(row: pd.Series, col_name: str | list[str]) -> Optional[float]:
+def _get_float(row: pd.Series, col_name: str | list[str]) -> float | None:
     """Get float value from row, trying multiple column names."""
     if isinstance(col_name, str):
         col_name = [col_name]

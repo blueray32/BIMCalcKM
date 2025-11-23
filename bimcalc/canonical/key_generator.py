@@ -14,12 +14,11 @@ from __future__ import annotations
 import hashlib
 import re
 import unicodedata
-from typing import Optional
 
 from bimcalc.models import Item
 
 
-def normalize_text(text: Optional[str]) -> str:
+def normalize_text(text: str | None) -> str:
     """Normalize text to canonical form.
 
     Args:
@@ -53,7 +52,7 @@ def normalize_text(text: Optional[str]) -> str:
     return text
 
 
-def normalize_unit(unit: Optional[str]) -> str:
+def normalize_unit(unit: str | None) -> str:
     """Normalize unit to standard form.
 
     Standard units: m, ea, m2, m3
@@ -92,7 +91,7 @@ def normalize_unit(unit: Optional[str]) -> str:
     raise ValueError(f"Invalid unit: {unit!r}. Expected: m, ea, m2, m3 or variants.")
 
 
-def round_mm(value: Optional[float], tolerance: int = 5) -> Optional[int]:
+def round_mm(value: float | None, tolerance: int = 5) -> int | None:
     """Round dimension to nearest tolerance (default 5mm).
 
     Uses standard rounding (half up/away from zero).
@@ -113,7 +112,7 @@ def round_mm(value: Optional[float], tolerance: int = 5) -> Optional[int]:
         return int((value / tolerance) - 0.5) * tolerance
 
 
-def round_deg(value: Optional[float], tolerance: int = 5) -> Optional[int]:
+def round_deg(value: float | None, tolerance: int = 5) -> int | None:
     """Round angle to nearest tolerance (default 5°).
 
     Uses standard rounding (half up/away from zero).

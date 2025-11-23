@@ -7,8 +7,7 @@ financial exposure for stakeholder reporting.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
-from typing import Optional
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import and_, func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -32,10 +31,10 @@ class PriceMetrics:
     vat_unspecified_count: int  # Items without vat_rate
 
     # Price ranges
-    min_unit_price: Optional[float]
-    max_unit_price: Optional[float]
-    avg_unit_price: Optional[float]
-    median_unit_price: Optional[float]
+    min_unit_price: float | None
+    max_unit_price: float | None
+    avg_unit_price: float | None
+    median_unit_price: float | None
 
     # Coverage by classification
     classifications_with_prices: int
@@ -46,8 +45,8 @@ class PriceMetrics:
     top_classifications: list[dict]  # [{code, count, avg_price, min_price, max_price}]
 
     # Staleness metrics
-    oldest_price_days: Optional[int]
-    avg_age_days: Optional[float]
+    oldest_price_days: int | None
+    avg_age_days: float | None
     prices_updated_last_30_days: int
     prices_updated_last_90_days: int
     stale_prices_count: int  # >365 days old
@@ -125,7 +124,7 @@ async def compute_price_metrics(
         Complete price quality metrics
     """
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     # ========================================================================
     # 1. Overall Inventory
@@ -487,5 +486,5 @@ def _empty_metrics() -> PriceMetrics:
         top_vendors=[],
         quality_score=0,
         quality_status="No Data",
-        computed_at=datetime.now(timezone.utc)
+        computed_at=datetime.now(UTC)
     )

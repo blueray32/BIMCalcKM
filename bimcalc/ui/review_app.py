@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import asyncio
 from datetime import datetime
-from typing import Optional
 
 from textual.app import App, ComposeResult
 from textual.binding import Binding
@@ -75,8 +74,8 @@ class ReviewUIApp(App[None]):
         self.project_id = project_id
         self.reviewer = reviewer
         self.records: list[ReviewRecord] = []
-        self.selected_index: Optional[int] = None
-        self.flag_filter: Optional[str] = None
+        self.selected_index: int | None = None
+        self.flag_filter: str | None = None
         self.loading = reactive(False)
         self.record_index: dict[str, int] = {}
 
@@ -238,7 +237,7 @@ class ReviewUIApp(App[None]):
         return "\n".join(lines)
 
     @property
-    def _current_record(self) -> Optional[ReviewRecord]:
+    def _current_record(self) -> ReviewRecord | None:
         if self.selected_index is None:
             return None
         if 0 <= self.selected_index < len(self.records):
@@ -296,7 +295,7 @@ class ReviewUIApp(App[None]):
         return ts.strftime("%Y-%m-%d %H:%M")
 
 
-def run_review_ui(org_id: Optional[str], project_id: Optional[str], reviewer: Optional[str]) -> None:
+def run_review_ui(org_id: str | None, project_id: str | None, reviewer: str | None) -> None:
     config = get_config()
     org_val = org_id or config.org_id
     project_val = project_id or "default"

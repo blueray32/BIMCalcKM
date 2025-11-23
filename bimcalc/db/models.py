@@ -7,17 +7,16 @@ from __future__ import annotations
 
 from datetime import datetime
 from decimal import Decimal
-from typing import Optional
 from uuid import UUID, uuid4
 
 from sqlalchemy import (
+    JSON,
     TIMESTAMP,
     CheckConstraint,
     Float,
     ForeignKey,
     Index,
     Integer,
-    JSON,
     Numeric,
     String,
     Text,
@@ -25,6 +24,7 @@ from sqlalchemy import (
     Uuid,
     text,
 )
+
 # from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from sqlalchemy.sql import func
@@ -46,32 +46,32 @@ class ItemModel(Base):
     project_id: Mapped[str] = mapped_column(Text, nullable=False, index=True)
 
     # Classification
-    classification_code: Mapped[Optional[int]] = mapped_column(Integer, index=True)
-    canonical_key: Mapped[Optional[str]] = mapped_column(Text, index=True)
+    classification_code: Mapped[int | None] = mapped_column(Integer, index=True)
+    canonical_key: Mapped[str | None] = mapped_column(Text, index=True)
 
     # Revit metadata
-    category: Mapped[Optional[str]] = mapped_column(Text)
+    category: Mapped[str | None] = mapped_column(Text)
     family: Mapped[str] = mapped_column(Text, nullable=False)
     type_name: Mapped[str] = mapped_column(Text, nullable=False)
-    system_type: Mapped[Optional[str]] = mapped_column(Text)
+    system_type: Mapped[str | None] = mapped_column(Text)
 
     # Explicit classification overrides
-    omniclass_code: Mapped[Optional[int]] = mapped_column(Integer)
-    uniformat_code: Mapped[Optional[int]] = mapped_column(Integer)
+    omniclass_code: Mapped[int | None] = mapped_column(Integer)
+    uniformat_code: Mapped[int | None] = mapped_column(Integer)
 
     # Quantities
-    quantity: Mapped[Optional[Decimal]] = mapped_column(Numeric(12, 2))
-    unit: Mapped[Optional[str]] = mapped_column(Text)
+    quantity: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))
+    unit: Mapped[str | None] = mapped_column(Text)
 
     # Physical attributes
-    width_mm: Mapped[Optional[float]] = mapped_column()
-    height_mm: Mapped[Optional[float]] = mapped_column()
-    dn_mm: Mapped[Optional[float]] = mapped_column()
-    angle_deg: Mapped[Optional[float]] = mapped_column()
-    material: Mapped[Optional[str]] = mapped_column(Text)
+    width_mm: Mapped[float | None] = mapped_column()
+    height_mm: Mapped[float | None] = mapped_column()
+    dn_mm: Mapped[float | None] = mapped_column()
+    angle_deg: Mapped[float | None] = mapped_column()
+    material: Mapped[str | None] = mapped_column(Text)
 
     # Audit
-    source_file: Mapped[Optional[str]] = mapped_column(Text)
+    source_file: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
     )
@@ -103,8 +103,8 @@ class PriceItemModel(Base):
     classification_code: Mapped[int] = mapped_column(
         Integer, nullable=False, index=True
     )  # Required for blocking
-    vendor_id: Mapped[Optional[str]] = mapped_column(Text, index=True)
-    vendor_code: Mapped[Optional[str]] = mapped_column(Text, index=True)
+    vendor_id: Mapped[str | None] = mapped_column(Text, index=True)
+    vendor_code: Mapped[str | None] = mapped_column(Text, index=True)
     sku: Mapped[str] = mapped_column(Text, nullable=False, index=True)
     description: Mapped[str] = mapped_column(Text, nullable=False)
 
@@ -112,38 +112,38 @@ class PriceItemModel(Base):
     unit: Mapped[str] = mapped_column(Text, nullable=False)
     unit_price: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     currency: Mapped[str] = mapped_column(String(3), nullable=False, default="EUR")
-    vat_rate: Mapped[Optional[Decimal]] = mapped_column(Numeric(5, 2))
+    vat_rate: Mapped[Decimal | None] = mapped_column(Numeric(5, 2))
 
     # Physical attributes
-    width_mm: Mapped[Optional[float]] = mapped_column()
-    height_mm: Mapped[Optional[float]] = mapped_column()
-    dn_mm: Mapped[Optional[float]] = mapped_column()
-    angle_deg: Mapped[Optional[float]] = mapped_column()
-    material: Mapped[Optional[str]] = mapped_column(Text)
+    width_mm: Mapped[float | None] = mapped_column()
+    height_mm: Mapped[float | None] = mapped_column()
+    dn_mm: Mapped[float | None] = mapped_column()
+    angle_deg: Mapped[float | None] = mapped_column()
+    material: Mapped[str | None] = mapped_column(Text)
 
     # Governance fields (data provenance & integrity)
     source_name: Mapped[str] = mapped_column(Text, nullable=False, index=True)
     source_currency: Mapped[str] = mapped_column(String(3), nullable=False)
-    original_effective_date: Mapped[Optional[datetime]] = mapped_column(TIMESTAMP(timezone=True))
+    original_effective_date: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True))
 
     # SCD Type-2 temporal fields
     valid_from: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True), nullable=False, server_default=func.now()
     )
-    valid_to: Mapped[Optional[datetime]] = mapped_column(TIMESTAMP(timezone=True))
+    valid_to: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True))
     is_current: Mapped[bool] = mapped_column(nullable=False, default=True, index=True)
 
     # Audit & metadata
     last_updated: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now()
     )
-    vendor_note: Mapped[Optional[str]] = mapped_column(Text)
+    vendor_note: Mapped[str | None] = mapped_column(Text)
     attributes: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
 
     created_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
     )
-    import_run_id: Mapped[Optional[str]] = mapped_column(
+    import_run_id: Mapped[str | None] = mapped_column(
         Text, ForeignKey("price_import_runs.id", ondelete="SET NULL"), index=True
     )
 
@@ -185,13 +185,13 @@ class PriceImportRunModel(Base):
     org_id: Mapped[str] = mapped_column(Text, nullable=False, index=True)
     source: Mapped[str] = mapped_column(Text, nullable=False)
     started_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), nullable=False)
-    completed_at: Mapped[Optional[datetime]] = mapped_column(TIMESTAMP(timezone=True))
+    completed_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True))
     status: Mapped[str] = mapped_column(Text, nullable=False)
     items_fetched: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     items_loaded: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     items_rejected: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    rejection_reasons: Mapped[Optional[dict]] = mapped_column(JSON)
-    error_message: Mapped[Optional[str]] = mapped_column(Text)
+    rejection_reasons: Mapped[dict | None] = mapped_column(JSON)
+    error_message: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
     )
@@ -209,11 +209,11 @@ class ClassificationMappingModel(Base):
     target_scheme: Mapped[str] = mapped_column(Text, nullable=False)
     target_code: Mapped[str] = mapped_column(Text, nullable=False)
     confidence: Mapped[float] = mapped_column(Float, nullable=False, default=1.0)
-    mapping_source: Mapped[Optional[str]] = mapped_column(Text)
+    mapping_source: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
     )
-    created_by: Mapped[Optional[str]] = mapped_column(Text)
+    created_by: Mapped[str | None] = mapped_column(Text)
 
     __table_args__ = (
         UniqueConstraint("org_id", "source_scheme", "source_code", "target_scheme"),
@@ -234,7 +234,7 @@ class ItemMappingModel(Base):
     start_ts: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True), nullable=False, server_default=func.now()
     )
-    end_ts: Mapped[Optional[datetime]] = mapped_column(TIMESTAMP(timezone=True))
+    end_ts: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True))
 
     # Audit trail
     created_by: Mapped[str] = mapped_column(Text, nullable=False)
@@ -299,7 +299,7 @@ class MatchResultModel(Base):
 
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
     item_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False, index=True)
-    price_item_id: Mapped[Optional[UUID]] = mapped_column(
+    price_item_id: Mapped[UUID | None] = mapped_column(
         Uuid(as_uuid=True), index=True
     )
 
@@ -354,11 +354,11 @@ class DataSyncLogModel(Base):
     records_failed: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
     # Detailed diagnostics
-    message: Mapped[Optional[str]] = mapped_column(Text)
-    error_details: Mapped[Optional[dict]] = mapped_column(JSON)
+    message: Mapped[str | None] = mapped_column(Text)
+    error_details: Mapped[dict | None] = mapped_column(JSON)
 
     # Execution metrics
-    duration_seconds: Mapped[Optional[float]] = mapped_column()
+    duration_seconds: Mapped[float | None] = mapped_column()
 
     created_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
@@ -396,8 +396,8 @@ class DocumentModel(Base):
 
     # Document metadata (renamed to avoid SQLAlchemy conflict)
     doc_metadata: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
-    doc_type: Mapped[Optional[str]] = mapped_column(Text, index=True)
-    source_file: Mapped[Optional[str]] = mapped_column(Text)
+    doc_type: Mapped[str | None] = mapped_column(Text, index=True)
+    source_file: Mapped[str | None] = mapped_column(Text)
 
     created_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
@@ -432,12 +432,12 @@ class ItemRevisionModel(Base):
     ingest_timestamp: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True), nullable=False, index=True
     )
-    source_filename: Mapped[Optional[str]] = mapped_column(Text)
+    source_filename: Mapped[str | None] = mapped_column(Text)
 
     # Change tracking
     field_name: Mapped[str] = mapped_column(Text, nullable=False, index=True)
-    old_value: Mapped[Optional[str]] = mapped_column(Text)
-    new_value: Mapped[Optional[str]] = mapped_column(Text)
+    old_value: Mapped[str | None] = mapped_column(Text)
+    new_value: Mapped[str | None] = mapped_column(Text)
     change_type: Mapped[str] = mapped_column(Text, nullable=False, index=True)
 
     # Audit
@@ -474,7 +474,7 @@ class IngestLogModel(Base):
 
     # Import details
     filename: Mapped[str] = mapped_column(Text, nullable=False)
-    file_hash: Mapped[Optional[str]] = mapped_column(Text)  # Detect duplicate imports
+    file_hash: Mapped[str | None] = mapped_column(Text)  # Detect duplicate imports
 
     # Statistics
     items_total: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
@@ -486,10 +486,10 @@ class IngestLogModel(Base):
     # Error tracking
     errors: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     warnings: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    error_details: Mapped[Optional[dict]] = mapped_column(JSON, default=dict)
+    error_details: Mapped[dict | None] = mapped_column(JSON, default=dict)
 
     # Performance
-    processing_time_ms: Mapped[Optional[int]] = mapped_column(Integer)
+    processing_time_ms: Mapped[int | None] = mapped_column(Integer)
 
     # Status
     status: Mapped[str] = mapped_column(Text, nullable=False, index=True)
@@ -498,7 +498,7 @@ class IngestLogModel(Base):
     started_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True), server_default=func.now(), nullable=False, index=True
     )
-    completed_at: Mapped[Optional[datetime]] = mapped_column(TIMESTAMP(timezone=True))
+    completed_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True))
 
     created_by: Mapped[str] = mapped_column(Text, nullable=False, default="system")
 

@@ -5,14 +5,13 @@ from __future__ import annotations
 import asyncio
 import logging
 from datetime import datetime, timedelta
-from typing import Optional
 
 import httpx
 from fastapi.encoders import jsonable_encoder
 
 from bimcalc.db.connection import get_session
-from bimcalc.integration.crail4_client import Crail4Client
 from bimcalc.integration.classification_mapper import ClassificationMapper
+from bimcalc.integration.crail4_client import Crail4Client
 from bimcalc.integration.crail4_transformer import Crail4Transformer
 
 logger = logging.getLogger(__name__)
@@ -21,9 +20,9 @@ logger = logging.getLogger(__name__)
 async def sync_crail4_prices(
     org_id: str,
     target_scheme: str = "UniClass2015",
-    delta_days: Optional[int] = 7,
-    classification_filter: Optional[list[str]] = None,
-    region: Optional[str] = None,
+    delta_days: int | None = 7,
+    classification_filter: list[str] | None = None,
+    region: str | None = None,
 ) -> dict:
     """Execute Crail4 → BIMCalc end-to-end sync."""
     updated_since = None
@@ -71,7 +70,9 @@ async def sync_crail4_prices(
         "target_scheme": target_scheme,
     }
 
-    api_url = "http://localhost:8001/api/price-items/bulk-import"
+    import os
+    base_url = os.getenv("API_BASE_URL", "http://localhost:8001")
+    api_url = f"{base_url}/api/price-items/bulk-import"
 
     async with httpx.AsyncClient(timeout=300.0) as http_client:
         response = await http_client.post(api_url, json=payload)

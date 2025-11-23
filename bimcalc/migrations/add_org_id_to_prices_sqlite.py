@@ -126,7 +126,7 @@ async def run_migration(session: AsyncSession, dry_run: bool = False) -> None:
         org_counts = result.fetchall()
 
         if org_counts:
-            console.print(f"[bold green]✓[/bold green] Price records by org:")
+            console.print("[bold green]✓[/bold green] Price records by org:")
             for org_id, count in org_counts:
                 console.print(f"  • {org_id}: {count} active prices")
         else:

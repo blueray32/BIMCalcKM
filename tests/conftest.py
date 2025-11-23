@@ -6,7 +6,6 @@ Provides common fixtures for testing.
 from __future__ import annotations
 
 from decimal import Decimal
-from uuid import uuid4
 
 import pytest
 

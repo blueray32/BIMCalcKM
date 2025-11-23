@@ -9,10 +9,8 @@ to prevent runtime failures.
 from __future__ import annotations
 
 import logging
-from pathlib import Path
-from typing import Optional
 
-from sqlalchemy import select, func
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bimcalc.classification.trust_hierarchy import TrustHierarchyClassifier
@@ -38,7 +36,7 @@ async def validate_classification_config() -> None:
         classifier = TrustHierarchyClassifier()
 
         # Verify classifier is functional
-        logger.info(f"✓ Classification hierarchy classifier loaded successfully")
+        logger.info("✓ Classification hierarchy classifier loaded successfully")
 
     except FileNotFoundError as e:
         raise StartupValidationError(
@@ -200,7 +198,7 @@ async def validate_vat_and_currency_config() -> None:
         # Don't fail startup for config warnings
 
 
-async def run_all_validations(session: Optional[AsyncSession] = None) -> None:
+async def run_all_validations(session: AsyncSession | None = None) -> None:
     """Run all startup validations.
 
     Args:

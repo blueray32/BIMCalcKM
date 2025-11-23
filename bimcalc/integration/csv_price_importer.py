@@ -4,19 +4,16 @@ Handles importing price lists from suppliers like CEF, Rexel, etc.
 with flexible column mapping and classification translation.
 """
 
-import csv
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional, Any
+from typing import Any
 from uuid import uuid4
 
 import pandas as pd
-from sqlalchemy import select, text
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from bimcalc.db import get_session
-from bimcalc.db.models import PriceItemModel, PriceImportRunModel
+from bimcalc.db.models import PriceImportRunModel, PriceItemModel
 
 logger = logging.getLogger(__name__)
 
@@ -48,9 +45,9 @@ class CSVPriceImporter:
     async def import_from_file(
         self,
         file_path: Path,
-        column_mapping: Optional[Dict[str, str]] = None,
-        sheet_name: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        column_mapping: dict[str, str] | None = None,
+        sheet_name: str | None = None,
+    ) -> dict[str, Any]:
         """Import price items from CSV or Excel file.
 
         Args:
@@ -144,7 +141,7 @@ class CSVPriceImporter:
         logger.info(f"Import completed: {result}")
         return result
 
-    def _auto_detect_columns(self, columns: List[str]) -> Dict[str, str]:
+    def _auto_detect_columns(self, columns: list[str]) -> dict[str, str]:
         """Auto-detect column mapping from header names."""
         mapping = {}
         columns_lower = [c.lower().strip() for c in columns]
@@ -161,9 +158,9 @@ class CSVPriceImporter:
     def _process_row(
         self,
         row: pd.Series,
-        column_mapping: Dict[str, str],
+        column_mapping: dict[str, str],
         run_id: str,
-    ) -> Optional[PriceItemModel]:
+    ) -> PriceItemModel | None:
         """Process a single row into a PriceItem."""
         # Extract fields
         code = str(row.get(column_mapping["code"], "")).strip()
@@ -247,7 +244,7 @@ class CSVPriceImporter:
 
         return unit_map.get(unit_lower, unit)
 
-    def _extract_classification(self, category: Optional[str], description: str) -> Optional[str]:
+    def _extract_classification(self, category: str | None, description: str) -> str | None:
         """Try to extract classification code from category or description."""
         # Common electrical classifications (UniClass2015)
         classification_keywords = {
@@ -271,9 +268,9 @@ async def import_supplier_pricelist(
     file_path: str,
     org_id: str,
     vendor_name: str,
-    column_mapping: Optional[Dict[str, str]] = None,
-    sheet_name: Optional[str] = None,
-) -> Dict[str, Any]:
+    column_mapping: dict[str, str] | None = None,
+    sheet_name: str | None = None,
+) -> dict[str, Any]:
     """Import supplier price list from CSV/Excel file.
 
     Args:
