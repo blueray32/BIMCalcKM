@@ -158,7 +158,7 @@ docker exec -i bimcalc-postgres psql -U bimcalc -d bimcalc < backup.sql
 docker compose --profile dev up -d
 
 # Access at: http://localhost:5050
-# Email: admin@bimcalc.local
+# Email: admin@bimcalc.com
 # Password: admin
 ```
 

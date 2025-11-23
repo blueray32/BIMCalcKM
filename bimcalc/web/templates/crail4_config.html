@@ -160,7 +160,7 @@
                 <div style="color: #666; font-size: 0.875rem;">{{ stats.last_sync.started_at }}</div>
                 <div style="margin-top: 0.5rem;">
                     <span
-                        style="background: {% if stats.last_sync.status == 'completed' %}#48bb78{% elif stats.last_sync.status == 'failed' %}#f56565{% else %}#ed8936{% endif %}; color: white; padding: 0.25rem 0.75rem; border-radius: 4px; font-size: 0.75rem;">
+                        class="status-badge {{ 'status-completed' if stats.last_sync.status == 'completed' else 'status-failed' if stats.last_sync.status == 'failed' else 'status-pending' }}">
                         {{ stats.last_sync.status }}
                     </span>
                     <span style="margin-left: 0.5rem; color: #666; font-size: 0.875rem;">
@@ -228,7 +228,7 @@
                         </td>
                         <td style="padding: 0.75rem; text-align: center;">
                             <span
-                                style="background: {% if run.status == 'completed' %}#48bb78{% elif run.status == 'failed' %}#f56565{% else %}#ed8936{% endif %}; color: white; padding: 0.25rem 0.75rem; border-radius: 4px; font-size: 0.75rem;">
+                                class="status-badge {{ 'status-completed' if run.status == 'completed' else 'status-failed' if run.status == 'failed' else 'status-pending' }}">
                                 {{ run.status }}
                             </span>
                         </td>

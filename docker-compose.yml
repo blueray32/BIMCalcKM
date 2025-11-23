@@ -64,7 +64,7 @@ services:
     image: dpage/pgadmin4:latest
     container_name: bimcalc-pgadmin
     environment:
-      PGADMIN_DEFAULT_EMAIL: admin@bimcalc.local
+      PGADMIN_DEFAULT_EMAIL: admin@bimcalc.com
       PGADMIN_DEFAULT_PASSWORD: admin
       PGADMIN_CONFIG_SERVER_MODE: "False"
       PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: "False"
@@ -86,7 +86,6 @@ services:
       - ./:/app
     environment:
       - DATABASE_URL=postgresql+asyncpg://bimcalc:bimcalc@db:5432/bimcalc
-      - REDIS_URL=redis://redis:6379
       - REDIS_URL=redis://redis:6379
       - BIMCALC_AUTH_DISABLED=true
       - API_BASE_URL=http://app:8001

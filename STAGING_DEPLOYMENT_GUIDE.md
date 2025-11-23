@@ -354,7 +354,7 @@ Start pgAdmin for visual database management:
 docker compose --profile dev up -d pgadmin
 
 # Access at: http://localhost:5050
-# Email: admin@bimcalc.local
+# Email: admin@bimcalc.com
 # Password: admin
 ```
 

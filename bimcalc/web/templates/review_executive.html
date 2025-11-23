@@ -476,10 +476,52 @@
         "67": "#805ad5",
         "68": "#e53e3e"
         } %}
+        <style>
+            .btn-class {
+                flex: 1;
+                min-width: 150px;
+                filter: brightness(0.95);
+            }
+
+            .btn-class-62 {
+                background: #d69e2e;
+                border-left: 4px solid #d69e2e;
+            }
+
+            .btn-class-63 {
+                background: #38a169;
+                border-left: 4px solid #38a169;
+            }
+
+            .btn-class-64 {
+                background: #ed8936;
+                border-left: 4px solid #ed8936;
+            }
+
+            .btn-class-66 {
+                background: #3182ce;
+                border-left: 4px solid #3182ce;
+            }
+
+            .btn-class-67 {
+                background: #805ad5;
+                border-left: 4px solid #805ad5;
+            }
+
+            .btn-class-68 {
+                background: #e53e3e;
+                border-left: 4px solid #e53e3e;
+            }
+
+            .btn-class-default {
+                background: #718096;
+                border-left: 4px solid #718096;
+            }
+        </style>
+
         {% for cls in metrics.classification_breakdown[:6] %}
         <a href="/review?org={{ org_id }}&project={{ project_id }}&classification={{ cls.code }}"
-            class="action-btn primary"
-            style="flex: 1; min-width: 150px; background: {{ class_colors.get(cls.code, '#718096') }}; border-left: 4px solid {{ class_colors.get(cls.code, '#718096') }}; filter: brightness(0.95);">
+            class="action-btn primary btn-class btn-class-{{ cls.code }}">
             <div style="display: flex; flex-direction: column; align-items: flex-start; width: 100%;">
                 <div style="font-weight: 700; font-size: 0.875rem;">{{ cls.code }} - {{ class_names.get(cls.code,
                     cls.code) }}</div>
@@ -524,174 +566,181 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+<!-- Data Islands -->
+{% if metrics.critical_flag_types or metrics.advisory_flag_types %}
+<script id="flag-data-critical" type="application/json">{{ metrics.critical_flag_types | tojson }}</script>
+<script id="flag-data-advisory" type="application/json">{{ metrics.advisory_flag_types | tojson }}</script>
+{% endif %}
+
+{% if metrics.total_pending > 0 %}
+<script id="confidence-data" type="application/json">
+{
+    "high": {{ metrics.confidence_high }},
+    "medium": {{ metrics.confidence_medium }},
+    "low": {{ metrics.confidence_low }},
+    "total": {{ metrics.total_pending }}
+}
+</script>
+{% endif %}
+
+{% if metrics.classification_breakdown %}
+<script id="classification-data" type="application/json">
+[
+    {% for cls in metrics.classification_breakdown %}
+    {
+        "code": "{{ cls.code }}",
+        "critical": {{ cls.critical }},
+        "advisory": {{ cls.advisory }},
+        "total": {{ cls.total }}
+    }{% if not loop.last %},{% endif %}
+    {% endfor %}
+]
+</script>
+{% endif %}
+
 <script>
     // Flag Types Chart (Doughnut)
-    {% if metrics.critical_flag_types or metrics.advisory_flag_types %}
-    const flagCtx = document.getElementById('flagTypesChart');
-    new Chart(flagCtx, {
-        type: 'doughnut',
-        data: {
-            labels: [
-                {% for flag_type, count in metrics.critical_flag_types.items() %}'{{ flag_type }} (Critical)'{% if not loop.last %}, {% endif %}{% endfor %}
-        {% if metrics.critical_flag_types and metrics.advisory_flag_types %}, {% endif %}
-    {% for flag_type, count in metrics.advisory_flag_types.items() %} '{{ flag_type }} (Advisory)'{% if not loop.last %}, {% endif %} {% endfor %}
-        ],
-    datasets: [{
-        data: [
-            {% for flag_type, count in metrics.critical_flag_types.items() %}{{ count }}{% if not loop.last %}, {% endif %} {% endfor %}
-    {% if metrics.critical_flag_types and metrics.advisory_flag_types %}, {% endif %}
-    {% for flag_type, count in metrics.advisory_flag_types.items() %} { { count } } {% if not loop.last %}, {% endif %} {% endfor %}
-            ],
-    backgroundColor: [
-        {% for flag_type, count in metrics.critical_flag_types.items() %}'rgba(245, 101, 101, 0.9)'{% if not loop.last %}, {% endif %} {% endfor %}
-    {% if metrics.critical_flag_types and metrics.advisory_flag_types %}, {% endif %}
-    {% for flag_type, count in metrics.advisory_flag_types.items() %} 'rgba(237, 137, 54, 0.9)'{% if not loop.last %}, {% endif %} {% endfor %}
-            ],
-    borderWidth: 0,
-        hoverOffset: 8
-        }]
-    },
-    options: {
-        responsive: true,
-            maintainAspectRatio: false,
-                plugins: {
-            legend: {
-                position: 'bottom',
-                    labels: {
-                    font: {
-                        size: 12,
-                            weight: '600'
-                    },
-                    padding: 15
-                }
-            },
-            tooltip: {
-                backgroundColor: 'rgba(26, 32, 44, 0.95)',
-                    padding: 12
-            }
-        }
-    }
-});
-    {% endif %}
+    (function () {
+        const criticalDataEl = document.getElementById('flag-data-critical');
+        const advisoryDataEl = document.getElementById('flag-data-advisory');
 
-    // Confidence Distribution (Doughnut)
-    {% if metrics.total_pending > 0 %}
-    const confCtx = document.getElementById('confidenceChart');
-    new Chart(confCtx, {
-        type: 'doughnut',
-        data: {
-            labels: ['High (≥85%)', 'Medium (70-84%)', 'Low (<70%)'],
-            datasets: [{
-                data: [{{ metrics.confidence_high }}, {{ metrics.confidence_medium }}, {{ metrics.confidence_low }}],
-        backgroundColor: [
-        'rgba(72, 187, 120, 0.9)',
-        'rgba(66, 153, 225, 0.9)',
-        'rgba(245, 101, 101, 0.9)'
-    ],
-        borderWidth: 0,
-        hoverOffset: 8
-        }]
-    },
-        options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-            legend: {
-                position: 'bottom',
-                labels: {
-                    font: {
-                        size: 13,
-                        weight: '600'
-                    },
-                    padding: 15
-                }
-            },
-            tooltip: {
-                backgroundColor: 'rgba(26, 32, 44, 0.95)',
-                padding: 12,
-                callbacks: {
-                    label: function(context) {
-                        const total = {{ metrics.total_pending }};
-                        const percentage = total > 0 ? ((context.parsed / total) * 100).toFixed(1) : 0;
-                        return context.label + ': ' + context.parsed + ' items (' + percentage + '%)';
+        if (criticalDataEl || advisoryDataEl) {
+            const flagCtx = document.getElementById('flagTypesChart');
+            const criticalFlags = criticalDataEl ? JSON.parse(criticalDataEl.textContent) : {};
+            const advisoryFlags = advisoryDataEl ? JSON.parse(advisoryDataEl.textContent) : {};
+
+            const labels = [];
+            const data = [];
+            const backgroundColor = [];
+
+            Object.entries(criticalFlags).forEach(([type, count]) => {
+                labels.push(`${type} (Critical)`);
+                data.push(count);
+                backgroundColor.push('rgba(245, 101, 101, 0.9)');
+            });
+
+            Object.entries(advisoryFlags).forEach(([type, count]) => {
+                labels.push(`${type} (Advisory)`);
+                data.push(count);
+                backgroundColor.push('rgba(237, 137, 54, 0.9)');
+            });
+
+            new Chart(flagCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        backgroundColor: backgroundColor,
+                        borderWidth: 0,
+                        hoverOffset: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom', labels: { font: { size: 12, weight: '600' }, padding: 15 } },
+                        tooltip: { backgroundColor: 'rgba(26, 32, 44, 0.95)', padding: 12 }
                     }
                 }
-            }
+            });
         }
-    }
-});
-    {% endif %}
+    })();
+
+    // Confidence Distribution (Doughnut)
+    (function () {
+        const confDataEl = document.getElementById('confidence-data');
+        if (confDataEl) {
+            const confData = JSON.parse(confDataEl.textContent);
+            const confCtx = document.getElementById('confidenceChart');
+
+            new Chart(confCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['High (≥85%)', 'Medium (70-84%)', 'Low (<70%)'],
+                    datasets: [{
+                        data: [confData.high, confData.medium, confData.low],
+                        backgroundColor: [
+                            'rgba(72, 187, 120, 0.9)',
+                            'rgba(66, 153, 225, 0.9)',
+                            'rgba(245, 101, 101, 0.9)'
+                        ],
+                        borderWidth: 0,
+                        hoverOffset: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom', labels: { font: { size: 13, weight: '600' }, padding: 15 } },
+                        tooltip: {
+                            backgroundColor: 'rgba(26, 32, 44, 0.95)',
+                            padding: 12,
+                            callbacks: {
+                                label: function (context) {
+                                    const percentage = confData.total > 0 ? ((context.parsed / confData.total) * 100).toFixed(1) : 0;
+                                    return context.label + ': ' + context.parsed + ' items (' + percentage + '%)';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    })();
 
     // Classification Breakdown (Horizontal Bar)
-    {% if metrics.classification_breakdown %}
-    {% set class_names = {
-        "62": "Small Power",
-        "63": "Earthing & Bonding",
-        "64": "Lighting",
-        "66": "Containment",
-        "67": "Emergency Lighting",
-        "68": "Fire Detection"
-    } %}
-    const classCtx = document.getElementById('classificationChart');
-    new Chart(classCtx, {
-        type: 'bar',
-        data: {
-            labels: [{% for cls in metrics.classification_breakdown %}'{{ cls.code }} - {{ class_names.get(cls.code|string, "Class " + cls.code|string) }}'{% if not loop.last %}, {% endif %}{% endfor %}],
-        datasets: [{
-            label: 'Critical Flags',
-            data: [{% for cls in metrics.classification_breakdown %}{{ cls.critical }}{% if not loop.last %}, {% endif %} {% endfor %}],
-    backgroundColor: 'rgba(245, 101, 101, 0.9)',
-        borderRadius: 6
-        }, {
-        label: 'Advisory Flags',
-            data: [{% for cls in metrics.classification_breakdown %} { { cls.advisory } } {% if not loop.last %}, {% endif %} {% endfor %}],
-    backgroundColor: 'rgba(237, 137, 54, 0.9)',
-        borderRadius: 6
-        }, {
-        label: 'Clean',
-            data: [{% for cls in metrics.classification_breakdown %} { { cls.total - cls.critical - cls.advisory } } {% if not loop.last %}, {% endif %} {% endfor %}],
-    backgroundColor: 'rgba(72, 187, 120, 0.9)',
-        borderRadius: 6
-        }]
-    },
-    options: {
-        indexAxis: 'y',
-            responsive: true,
-                maintainAspectRatio: false,
+    (function () {
+        const classDataEl = document.getElementById('classification-data');
+        if (classDataEl) {
+            const classData = JSON.parse(classDataEl.textContent);
+            const classCtx = document.getElementById('classificationChart');
+
+            const labels = classData.map(d => d.code);
+            const criticalData = classData.map(d => d.critical);
+            const advisoryData = classData.map(d => d.advisory);
+            const cleanData = classData.map(d => d.total - d.critical - d.advisory);
+
+            new Chart(classCtx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Critical Flags',
+                        data: criticalData,
+                        backgroundColor: 'rgba(245, 101, 101, 0.9)',
+                        borderRadius: 6
+                    }, {
+                        label: 'Advisory Flags',
+                        data: advisoryData,
+                        backgroundColor: 'rgba(237, 137, 54, 0.9)',
+                        borderRadius: 6
+                    }, {
+                        label: 'Clean',
+                        data: cleanData,
+                        backgroundColor: 'rgba(72, 187, 120, 0.9)',
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
                     scales: {
-            x: {
-                stacked: true,
-                    beginAtZero: true,
-                        grid: {
-                    display: false
-                }
-            },
-            y: {
-                stacked: true,
-                    grid: {
-                    display: false
-                }
-            }
-        },
-        plugins: {
-            legend: {
-                position: 'bottom',
-                    labels: {
-                    font: {
-                        size: 13,
-                            weight: '600'
+                        x: { stacked: true, beginAtZero: true, grid: { display: false } },
+                        y: { stacked: true, grid: { display: false } }
                     },
-                    padding: 20
+                    plugins: {
+                        legend: { position: 'bottom', labels: { font: { size: 13, weight: '600' }, padding: 20 } },
+                        tooltip: { backgroundColor: 'rgba(26, 32, 44, 0.95)', padding: 12 }
+                    }
                 }
-            },
-            tooltip: {
-                backgroundColor: 'rgba(26, 32, 44, 0.95)',
-                    padding: 12
-            }
+            });
         }
-    }
-});
-    {% endif %}
+    })();
 </script>
 
 <!-- Export to Excel -->

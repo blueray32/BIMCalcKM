@@ -210,9 +210,46 @@
                     "67": "Emergency",
                     "68": "Fire Detection"
                     } %}
-                    {% set bg_color = class_colors.get(record.item.classification_code, '#718096') %}
-                    <div
-                        style="display: inline-block; padding: 0.5rem; background: {{ bg_color }}; color: white; border-radius: 0.375rem; font-weight: 700; min-width: 4rem; text-align: center;">
+                    <style>
+                        .badge-class {
+                            display: inline-block;
+                            padding: 0.5rem;
+                            color: white;
+                            border-radius: 0.375rem;
+                            font-weight: 700;
+                            min-width: 4rem;
+                            text-align: center;
+                        }
+
+                        .badge-class-62 {
+                            background: #d69e2e;
+                        }
+
+                        .badge-class-63 {
+                            background: #38a169;
+                        }
+
+                        .badge-class-64 {
+                            background: #ed8936;
+                        }
+
+                        .badge-class-66 {
+                            background: #3182ce;
+                        }
+
+                        .badge-class-67 {
+                            background: #805ad5;
+                        }
+
+                        .badge-class-68 {
+                            background: #e53e3e;
+                        }
+
+                        .badge-class-default {
+                            background: #718096;
+                        }
+                    </style>
+                    <div class="badge-class badge-class-{{ record.item.classification_code }}">
                         {{ record.item.classification_code }}
                     </div>
                     <div style="font-size: 0.75rem; margin-top: 0.25rem; color: #718096; font-weight: 600;">
