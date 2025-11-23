@@ -35,43 +35,92 @@
         <div id="schedules-result" style="margin-top: 1rem;"></div>
     </div>
 
-    <!-- Price Books -->
+    <!-- Supplier Price Data -->
     <div class="card">
-        <div class="card-header">💰 Price Books</div>
-        <form id="prices-form" enctype="multipart/form-data">
-            <div class="form-group">
-                <label>CSV or XLSX File</label>
-                <input type="file" name="file" accept=".csv,.xlsx" required />
-                <small class="text-muted">Vendor catalog with SKU, Description, Unit Price columns</small>
+        <div class="card-header">💰 Supplier Price Data</div>
+        <div style="background: #f0f9ff; border-left: 4px solid #3b82f6; padding: 1rem; margin-bottom: 1rem; border-radius: 6px; font-size: 0.875rem;">
+            <strong>💡 Flexible Import:</strong> Upload any supplier spreadsheet. Auto-detects columns like "Product Code", "Unit Price", "Description", etc.
+        </div>
+
+        <!-- Import Mode Selector -->
+        <div style="background: #f7fafc; padding: 1rem; border-radius: 6px; margin-bottom: 1rem;">
+            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                <input type="radio" name="import-mode" value="flexible" checked onchange="toggleImportMode()" style="width: auto; margin: 0;" />
+                <span><strong>Quick Import</strong> - Auto-detect everything (recommended)</span>
+            </label>
+            <label style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.5rem; cursor: pointer;">
+                <input type="radio" name="import-mode" value="structured" onchange="toggleImportMode()" style="width: auto; margin: 0;" />
+                <span><strong>Advanced Import</strong> - Use CMM mapping rules (YAML configs)</span>
+            </label>
+        </div>
+
+        <!-- Flexible Import Form -->
+        <div id="flexible-import-section">
+            <form id="flexible-prices-form" enctype="multipart/form-data">
+                <div class="form-group">
+                    <label>CSV or XLSX File</label>
+                    <input type="file" name="file" accept=".csv,.xlsx,.xls" required />
+                    <small class="text-muted">Any format - auto-detects columns and classifications</small>
+                </div>
+
+                <div class="form-group">
+                    <label>Vendor Name</label>
+                    <input type="text" name="vendor_name" placeholder="e.g., CEF, Rexel, RS Components" required />
+                    <small class="text-muted">Supplier/vendor name for tracking</small>
+                </div>
+
+                <div class="form-group">
+                    <label>Sheet Name (Excel only)</label>
+                    <input type="text" name="sheet_name" placeholder="Optional - defaults to first sheet" />
+                </div>
+
+                <button type="submit" class="btn btn-success">Upload & Import</button>
+            </form>
+
+            <div id="flexible-prices-result" style="margin-top: 1rem;"></div>
+        </div>
+
+        <!-- Structured Import Form (CMM) -->
+        <div id="structured-import-section" style="display: none;">
+            <div style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 1rem; margin-bottom: 1rem; border-radius: 6px; font-size: 0.875rem;">
+                <strong>⚙️ Advanced:</strong> For vendors with custom YAML mapping configs in <code>config/vendors/</code>
             </div>
 
-            <div class="form-group">
-                <label>Vendor Classification Mapping</label>
-                <select name="vendor" id="vendor-select" required>
-                    <option value="default">Default (Generic Mapping)</option>
-                    <option value="glamox">Glamox (Lighting Vendor)</option>
-                    <option value="abb">ABB (Electrical Components)</option>
-                    <option value="custom">Custom Vendor (No Mapping)</option>
-                </select>
-                <small class="text-muted">
-                    Select vendor to apply classification code translation (CMM)
-                </small>
-            </div>
+            <form id="prices-form" enctype="multipart/form-data">
+                <div class="form-group">
+                    <label>CSV or XLSX File</label>
+                    <input type="file" name="file" accept=".csv,.xlsx" required />
+                    <small class="text-muted">Vendor catalog with SKU, Description, Unit Price columns</small>
+                </div>
 
-            <div class="form-group">
-                <label style="display: flex; align-items: center; gap: 0.5rem;">
-                    <input type="checkbox" name="use_cmm" id="use-cmm-checkbox" checked style="width: auto; margin: 0;" />
-                    <span>Enable Classification Mapping Module (CMM)</span>
-                </label>
-                <small class="text-muted">
-                    CMM translates vendor-specific codes to canonical OmniClass/UniClass codes
-                </small>
-            </div>
+                <div class="form-group">
+                    <label>Vendor Classification Mapping</label>
+                    <select name="vendor" id="vendor-select" required>
+                        <option value="default">Default (Generic Mapping)</option>
+                        <option value="glamox">Glamox (Lighting Vendor)</option>
+                        <option value="abb">ABB (Electrical Components)</option>
+                        <option value="custom">Custom Vendor (No Mapping)</option>
+                    </select>
+                    <small class="text-muted">
+                        Select vendor to apply classification code translation (CMM)
+                    </small>
+                </div>
 
-            <button type="submit" class="btn btn-primary">Upload Price Book</button>
-        </form>
+                <div class="form-group">
+                    <label style="display: flex; align-items: center; gap: 0.5rem;">
+                        <input type="checkbox" name="use_cmm" id="use-cmm-checkbox" checked style="width: auto; margin: 0;" />
+                        <span>Enable Classification Mapping Module (CMM)</span>
+                    </label>
+                    <small class="text-muted">
+                        CMM translates vendor-specific codes to canonical OmniClass/UniClass codes
+                    </small>
+                </div>
 
-        <div id="prices-result" style="margin-top: 1rem;"></div>
+                <button type="submit" class="btn btn-primary">Upload & Import</button>
+            </form>
+
+            <div id="prices-result" style="margin-top: 1rem;"></div>
+        </div>
     </div>
 </div>
 
@@ -153,6 +202,21 @@ ES_CONTMNT,Tray,Straight,300mm,35.00</pre>
 
 {% block scripts %}
 <script>
+// Toggle between flexible and structured import modes
+function toggleImportMode() {
+    const mode = document.querySelector('input[name="import-mode"]:checked').value;
+    const flexibleSection = document.getElementById('flexible-import-section');
+    const structuredSection = document.getElementById('structured-import-section');
+
+    if (mode === 'flexible') {
+        flexibleSection.style.display = 'block';
+        structuredSection.style.display = 'none';
+    } else {
+        flexibleSection.style.display = 'none';
+        structuredSection.style.display = 'block';
+    }
+}
+
 async function parseUploadResponse(response) {
     if (response.ok) {
         return response.json();
@@ -211,7 +275,55 @@ document.getElementById('schedules-form').addEventListener('submit', async (e) =
     }
 });
 
-// Upload Prices
+// Upload Flexible Prices
+document.getElementById('flexible-prices-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const form = e.target;
+    const formData = new FormData(form);
+    formData.append('org_id', '{{ org_id }}');
+    const resultDiv = document.getElementById('flexible-prices-result');
+
+    resultDiv.innerHTML = '<div class="message message-info">Uploading and importing...</div>';
+
+    try {
+        const response = await fetch('/api/prices/import-csv', {
+            method: 'POST',
+            body: formData
+        });
+
+        const result = await response.json();
+
+        if (result.status === 'success') {
+            let detailsHtml = `<strong>Success!</strong><br/>
+                Run ID: ${result.result.run_id}<br/>
+                Items received: ${result.result.items_received}<br/>
+                Items loaded: ${result.result.items_loaded}<br/>
+                Items rejected: ${result.result.items_rejected}`;
+
+            if (result.result.rejection_reasons && Object.keys(result.result.rejection_reasons).length > 0) {
+                detailsHtml += '<br/><br/><strong>Rejection reasons:</strong><br/>';
+                for (const [reason, count] of Object.entries(result.result.rejection_reasons)) {
+                    detailsHtml += `${reason}: ${count}<br/>`;
+                }
+            }
+
+            resultDiv.innerHTML = `<div class="message message-success">${detailsHtml}</div>`;
+            form.reset();
+
+            // Redirect to prices page after 2 seconds
+            setTimeout(() => {
+                window.location.href = '/prices';
+            }, 2000);
+        } else {
+            resultDiv.innerHTML = `<div class="message message-error"><strong>Error:</strong><br/>${result.message}</div>`;
+        }
+    } catch (error) {
+        resultDiv.innerHTML = `<div class="message message-error"><strong>Error:</strong><br/>${error.message}</div>`;
+    }
+});
+
+// Upload Structured Prices
 document.getElementById('prices-form').addEventListener('submit', async (e) => {
     e.preventDefault();
 

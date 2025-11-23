@@ -4,8 +4,20 @@
 
 {% block content %}
 <div class="page-header">
-    <h1>Audit Trail</h1>
-    <p>Complete decision history for {{ project_id }} in {{ org_id }}</p>
+    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+        <div>
+            <h1>Audit Trail</h1>
+            <p>Complete decision history for {{ project_id }} in {{ org_id }}</p>
+        </div>
+        <div>
+            <a href="/audit?org={{ org_id }}&project={{ project_id }}&view=executive"
+               class="btn btn-primary"
+               style="text-decoration: none; display: inline-flex; align-items: center; gap: 0.5rem;">
+                <span>📜</span>
+                <span>Executive View</span>
+            </a>
+        </div>
+    </div>
 </div>
 
 <!-- Summary Stats -->

@@ -1,0 +1,154 @@
+<!-- Executive Navigation Bar -->
+<style>
+    .executive-nav {
+        background: white;
+        border-radius: 0.75rem;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
+        margin-bottom: 2rem;
+        padding: 0.5rem;
+        display: flex;
+        gap: 0.5rem;
+        overflow-x: auto;
+    }
+
+    .executive-nav-item {
+        flex: 1;
+        min-width: 120px;
+        text-align: center;
+        padding: 1rem 0.75rem;
+        border-radius: 0.5rem;
+        text-decoration: none;
+        color: #4a5568;
+        font-weight: 600;
+        font-size: 0.875rem;
+        transition: all 0.2s;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.5rem;
+        border: 2px solid transparent;
+    }
+
+    .executive-nav-item:hover {
+        background: #f7fafc;
+        transform: translateY(-1px);
+    }
+
+    .executive-nav-item.active {
+        color: white;
+        border-color: transparent;
+    }
+
+    .executive-nav-item.active.dashboard {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+
+    .executive-nav-item.active.progress {
+        background: linear-gradient(135deg, #4299e1 0%, #3182ce 100%);
+    }
+
+    .executive-nav-item.active.review {
+        background: linear-gradient(135deg, #f56565 0%, #e53e3e 100%);
+    }
+
+    .executive-nav-item.active.reports {
+        background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+    }
+
+    .executive-nav-item.active.audit {
+        background: linear-gradient(135deg, #ed8936 0%, #dd6b20 100%);
+    }
+
+    .executive-nav-item.active.prices {
+        background: linear-gradient(135deg, #0d9488 0%, #14b8a6 100%);
+    }
+
+    .nav-icon {
+        font-size: 1.5rem;
+    }
+
+    .nav-label {
+        font-size: 0.875rem;
+    }
+
+    .nav-badge {
+        position: absolute;
+        top: 0.5rem;
+        right: 0.5rem;
+        background: #f56565;
+        color: white;
+        font-size: 0.625rem;
+        font-weight: 700;
+        padding: 0.125rem 0.375rem;
+        border-radius: 9999px;
+        min-width: 1.25rem;
+        text-align: center;
+    }
+
+    @media (max-width: 768px) {
+        .executive-nav {
+            flex-wrap: nowrap;
+            overflow-x: scroll;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .executive-nav-item {
+            min-width: 100px;
+        }
+
+        .nav-icon {
+            font-size: 1.25rem;
+        }
+
+        .nav-label {
+            font-size: 0.75rem;
+        }
+    }
+</style>
+
+<nav class="executive-nav" role="navigation" aria-label="Executive Dashboard Navigation">
+    <a href="/?org={{ org_id }}&project={{ project_id }}&view=executive"
+       class="executive-nav-item dashboard {% if current_page == 'dashboard' %}active{% endif %}"
+       {% if current_page == 'dashboard' %}aria-current="page"{% endif %}>
+        <div class="nav-icon">📊</div>
+        <div class="nav-label">Dashboard</div>
+    </a>
+
+    <a href="/progress?org={{ org_id }}&project={{ project_id }}&view=executive"
+       class="executive-nav-item progress {% if current_page == 'progress' %}active{% endif %}"
+       {% if current_page == 'progress' %}aria-current="page"{% endif %}>
+        <div class="nav-icon">🎯</div>
+        <div class="nav-label">Match Progress</div>
+    </a>
+
+    <a href="/review?org={{ org_id }}&project={{ project_id }}&view=executive"
+       class="executive-nav-item review {% if current_page == 'review' %}active{% endif %}"
+       {% if current_page == 'review' %}aria-current="page"{% endif %}>
+        <div class="nav-icon">🔍</div>
+        <div class="nav-label">Review Queue</div>
+        {% if pending_count and pending_count > 0 %}
+        <span class="nav-badge">{{ pending_count }}</span>
+        {% endif %}
+    </a>
+
+    <a href="/reports?org={{ org_id }}&project={{ project_id }}&view=executive"
+       class="executive-nav-item reports {% if current_page == 'reports' %}active{% endif %}"
+       {% if current_page == 'reports' %}aria-current="page"{% endif %}>
+        <div class="nav-icon">💰</div>
+        <div class="nav-label">Financial</div>
+    </a>
+
+    <a href="/audit?org={{ org_id }}&project={{ project_id }}&view=executive"
+       class="executive-nav-item audit {% if current_page == 'audit' %}active{% endif %}"
+       {% if current_page == 'audit' %}aria-current="page"{% endif %}>
+        <div class="nav-icon">📜</div>
+        <div class="nav-label">Audit Trail</div>
+    </a>
+
+    <a href="/prices?org={{ org_id }}&project={{ project_id }}&view=executive"
+       class="executive-nav-item prices {% if current_page == 'prices' %}active{% endif %}"
+       {% if current_page == 'prices' %}aria-current="page"{% endif %}>
+        <div class="nav-icon">💎</div>
+        <div class="nav-label">Price Data</div>
+    </a>
+</nav>

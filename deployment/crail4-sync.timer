@@ -1,0 +1,11 @@
+[Unit]
+Description=BIMCalc Crail4 Sync Timer
+Requires=crail4-sync.service
+
+[Timer]
+OnCalendar=daily
+OnCalendar=02:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

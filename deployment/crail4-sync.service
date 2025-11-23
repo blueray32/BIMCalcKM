@@ -1,0 +1,14 @@
+[Unit]
+Description=BIMCalc Crail4 Sync Service
+After=network.target
+
+[Service]
+Type=simple
+User=bimcalc
+WorkingDirectory=/opt/bimcalc
+Environment="DATABASE_URL=postgresql://..."
+Environment="CRAIL4_API_KEY=..."
+ExecStart=/opt/bimcalc/.venv/bin/python -m bimcalc.integration.crail4_sync
+
+[Install]
+WantedBy=multi-user.target

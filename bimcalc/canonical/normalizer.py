@@ -17,7 +17,7 @@ def normalize_name(text: str) -> str:
     s = re.sub(r"\bby\b", "x", s)
     # remove project noise like 'projectX', 'rev2', 'v1.1'
     s = re.sub(r"\bproject[\w-]*\b", "", s)
-    s = re.sub(r"\brev\s*\d+(?:\.\d+)?\b", "", s)
+    s = re.sub(r"\brev[_\s]*\d+(?:\.\d+)?\b", "", s)
     s = re.sub(r"\bv\s*\d+(?:\.\d+)?\b", "", s)
     # collapse non-word to single space
     s = re.sub(r"[^\w]+", " ", s)

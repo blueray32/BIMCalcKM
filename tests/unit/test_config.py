@@ -27,11 +27,13 @@ class TestAppConfig:
 
     def test_from_env_with_minimal_config(self, monkeypatch):
         """Test loading with only required env vars."""
-        monkeypatch.setenv("DATABASE_URL", "sqlite:///./test.db")
+        monkeypatch.setenv("DATABASE_URL", "sqlite+aiosqlite:///./test.db")
+        monkeypatch.delenv("DEFAULT_ORG_ID", raising=False)
+        monkeypatch.delenv("LOG_LEVEL", raising=False)
 
         config = AppConfig.from_env()
 
-        assert config.db.url == "sqlite:///./test.db"
+        assert config.db.url == "sqlite+aiosqlite:///./test.db"
         assert config.org_id == "default"
         assert config.log_level == "INFO"
 
@@ -138,6 +140,7 @@ class TestLLMConfig:
     def test_default_llm_config(self, monkeypatch):
         """Test default LLM settings."""
         monkeypatch.setenv("DATABASE_URL", "sqlite:///./test.db")
+        monkeypatch.delenv("OPENAI_API_KEY", raising=False)
 
         config = AppConfig.from_env()
 

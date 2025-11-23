@@ -347,13 +347,15 @@
             <div class="nav-brand">⚡ BIMCalc</div>
             <ul class="nav-links">
                 <li><a href="/?org={{ org_id }}&project={{ project_id }}" {% if request.url.path == '/' %}class="active"{% endif %}>Dashboard</a></li>
+                <li><a href="/progress?org={{ org_id }}&project={{ project_id }}" {% if request.url.path == '/progress' %}class="active"{% endif %}>Progress</a></li>
                 <li><a href="/review?org={{ org_id }}&project={{ project_id }}" {% if request.url.path == '/review' %}class="active"{% endif %}>Review</a></li>
                 <li><a href="/items?org={{ org_id }}&project={{ project_id }}" {% if request.url.path == '/items' %}class="active"{% endif %}>Items</a></li>
                 <li><a href="/mappings?org={{ org_id }}" {% if request.url.path == '/mappings' %}class="active"{% endif %}>Mappings</a></li>
                 <li><a href="/ingest?org={{ org_id }}&project={{ project_id }}" {% if request.url.path == '/ingest' %}class="active"{% endif %}>Ingest</a></li>
                 <li><a href="/match?org={{ org_id }}&project={{ project_id }}" {% if request.url.path == '/match' %}class="active"{% endif %}>Match</a></li>
-                <li><a href="/prices" {% if request.url.path == '/prices' %}class="active"{% endif %}>Prices</a></li>
-                <li><a href="/pipeline" {% if request.url.path == '/pipeline' %}class="active"{% endif %}>Pipeline</a></li>
+                <li><a href="/prices?org={{ org_id }}&project={{ project_id }}" {% if request.url.path == '/prices' %}class="active"{% endif %}>Prices</a></li>
+                <li><a href="/crail4-config?org={{ org_id }}" {% if request.url.path == '/crail4-config' %}class="active"{% endif %}>Crail4 Sync</a></li>
+                <li><a href="/pipeline?org={{ org_id }}&project={{ project_id }}" {% if request.url.path == '/pipeline' %}class="active"{% endif %}>Pipeline</a></li>
                 <li><a href="/reports?org={{ org_id }}&project={{ project_id }}" {% if request.url.path == '/reports' %}class="active"{% endif %}>Reports</a></li>
                 <li><a href="/audit?org={{ org_id }}&project={{ project_id }}" {% if request.url.path == '/audit' %}class="active"{% endif %}>Audit</a></li>
                 <li><a href="/logout" style="color: #fc8181;">Logout</a></li>

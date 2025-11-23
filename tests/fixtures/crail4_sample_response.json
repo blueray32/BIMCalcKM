@@ -1,0 +1,49 @@
+{
+  "items": [
+    {
+      "id": "crail4-test-001",
+      "classification_code": "23-17 11 23",
+      "classification_scheme": "OmniClass",
+      "name": "Cable Tray Elbow 90° 200x50mm Galvanized",
+      "description": "Pre-galvanized steel cable tray elbow fitting, 90 degree bend",
+      "unit": "ea",
+      "unit_price": 45.50,
+      "currency": "EUR",
+      "vat_rate": 0.23,
+      "vendor_code": "CTL-ELB-90-200X50-GALV",
+      "item_code": "CTL-ELB-90-200X50-GALV",
+      "region": "IE",
+      "last_updated": "2025-01-15T10:30:00Z"
+    },
+    {
+      "id": "crail4-test-002",
+      "classification_code": "23-17 13 11",
+      "classification_scheme": "OmniClass",
+      "name": "13A Socket Outlet White Single Gang",
+      "description": "Single gang 13A switched socket outlet, white finish",
+      "unit": "ea",
+      "unit_price": 12.75,
+      "currency": "EUR",
+      "vat_rate": 0.23,
+      "vendor_code": "SO-13A-1G-WH",
+      "item_code": "SO-13A-1G-WH",
+      "region": "IE",
+      "last_updated": "2025-01-14T14:20:00Z"
+    },
+    {
+      "id": "crail4-test-003",
+      "classification_code": "23-17 15 11",
+      "classification_scheme": "OmniClass",
+      "name": "LED Bulkhead Light 18W Emergency",
+      "description": "LED bulkhead fitting 18W with 3hr emergency backup",
+      "unit": "ea",
+      "unit_price": 89.00,
+      "currency": "EUR",
+      "vat_rate": 0.23,
+      "vendor_code": "LED-BH-18W-EM",
+      "item_code": "LED-BH-18W-EM",
+      "region": "IE",
+      "last_updated": "2025-01-16T09:15:00Z"
+    }
+  ]
+}

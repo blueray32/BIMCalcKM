@@ -1,0 +1,6 @@
+source_scheme,source_code,target_scheme,target_code,confidence,mapping_source
+OmniClass,23-17 11 23,UniClass2015,66,1.0,csi_crosswalk
+OmniClass,23-17 13 11,UniClass2015,62,1.0,csi_crosswalk
+OmniClass,23-17 15 11,UniClass2015,64,1.0,csi_crosswalk
+OmniClass,23-17 21 11,UniClass2015,68,1.0,csi_crosswalk
+OmniClass,23-17 31 11,UniClass2015,67,1.0,csi_crosswalk

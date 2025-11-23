@@ -114,6 +114,7 @@ async def test_price_allows_multiple_inactive_records(db_session: AsyncSession):
         source_name="catalog",
         source_currency="EUR",
         is_current=False,  # Inactive
+        valid_from=datetime.utcnow() - timedelta(days=60),
         valid_to=datetime.utcnow() - timedelta(days=30),
     )
 
@@ -132,6 +133,7 @@ async def test_price_allows_multiple_inactive_records(db_session: AsyncSession):
         source_name="catalog",
         source_currency="EUR",
         is_current=False,  # Also inactive
+        valid_from=datetime.utcnow() - timedelta(days=45),
         valid_to=datetime.utcnow() - timedelta(days=15),
     )
 
@@ -421,11 +423,11 @@ async def test_scd2_update_workflow_closes_old_opens_new(db_session: AsyncSessio
 
     # Verify v1 is closed
     assert all_mappings[0].end_ts is not None, "V1 should be closed"
-    assert all_mappings[0].price_item_id == "00000000-0000-0000-0000-000000000001"
+    assert all_mappings[0].price_item_id == UUID("00000000-0000-0000-0000-000000000001")
 
     # Verify v2 is active
     assert all_mappings[1].end_ts is None, "V2 should be active"
-    assert all_mappings[1].price_item_id == "00000000-0000-0000-0000-000000000002"
+    assert all_mappings[1].price_item_id == UUID("00000000-0000-0000-0000-000000000002")
 
     # Verify only one active record
     active_result = await db_session.execute(

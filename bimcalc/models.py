@@ -254,12 +254,12 @@ class ReportRow(BaseModel):
     unit: Optional[str]
 
     # Matched price
-    canonical_key: Optional[str]
-    sku: Optional[str]
-    description: Optional[str]
-    unit_price: Optional[Decimal]
+    canonical_key: Optional[str] = None
+    sku: Optional[str] = None
+    description: Optional[str] = None
+    unit_price: Optional[Decimal] = None
     currency: str = "EUR"
-    vat_rate: Optional[Decimal]
+    vat_rate: Optional[Decimal] = None
 
     # Calculated totals
     total_price: Optional[Decimal] = None

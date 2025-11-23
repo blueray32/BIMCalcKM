@@ -13,6 +13,7 @@ from uuid import UUID, uuid4
 from sqlalchemy import (
     TIMESTAMP,
     CheckConstraint,
+    Float,
     ForeignKey,
     Index,
     Integer,
@@ -21,9 +22,10 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    Uuid,
     text,
 )
-from sqlalchemy.dialects.postgresql import UUID as PGUUID
+# from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from sqlalchemy.sql import func
 
@@ -39,7 +41,7 @@ class ItemModel(Base):
 
     __tablename__ = "items"
 
-    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
     org_id: Mapped[str] = mapped_column(Text, nullable=False, index=True)
     project_id: Mapped[str] = mapped_column(Text, nullable=False, index=True)
 
@@ -89,7 +91,7 @@ class PriceItemModel(Base):
 
     __tablename__ = "price_items"
 
-    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
 
     # Multi-tenant scoping (CRITICAL for org isolation)
     org_id: Mapped[str] = mapped_column(Text, nullable=False, index=True)
@@ -102,6 +104,7 @@ class PriceItemModel(Base):
         Integer, nullable=False, index=True
     )  # Required for blocking
     vendor_id: Mapped[Optional[str]] = mapped_column(Text, index=True)
+    vendor_code: Mapped[Optional[str]] = mapped_column(Text, index=True)
     sku: Mapped[str] = mapped_column(Text, nullable=False, index=True)
     description: Mapped[str] = mapped_column(Text, nullable=False)
 
@@ -140,6 +143,9 @@ class PriceItemModel(Base):
     created_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
     )
+    import_run_id: Mapped[Optional[str]] = mapped_column(
+        Text, ForeignKey("price_import_runs.id", ondelete="SET NULL"), index=True
+    )
 
     __table_args__ = (
         CheckConstraint("unit_price >= 0", name="check_unit_price_non_negative"),
@@ -170,15 +176,59 @@ class PriceItemModel(Base):
     )
 
 
+class PriceImportRunModel(Base):
+    """Audit log for external price imports (e.g., Crail4)."""
+
+    __tablename__ = "price_import_runs"
+
+    id: Mapped[str] = mapped_column(Text, primary_key=True)
+    org_id: Mapped[str] = mapped_column(Text, nullable=False, index=True)
+    source: Mapped[str] = mapped_column(Text, nullable=False)
+    started_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), nullable=False)
+    completed_at: Mapped[Optional[datetime]] = mapped_column(TIMESTAMP(timezone=True))
+    status: Mapped[str] = mapped_column(Text, nullable=False)
+    items_fetched: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    items_loaded: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    items_rejected: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    rejection_reasons: Mapped[Optional[dict]] = mapped_column(JSON)
+    error_message: Mapped[Optional[str]] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class ClassificationMappingModel(Base):
+    """Crosswalk table for translating classification schemes."""
+
+    __tablename__ = "classification_mappings"
+
+    id: Mapped[str] = mapped_column(Text, primary_key=True)
+    org_id: Mapped[str] = mapped_column(Text, nullable=False, index=True)
+    source_scheme: Mapped[str] = mapped_column(Text, nullable=False)
+    source_code: Mapped[str] = mapped_column(Text, nullable=False)
+    target_scheme: Mapped[str] = mapped_column(Text, nullable=False)
+    target_code: Mapped[str] = mapped_column(Text, nullable=False)
+    confidence: Mapped[float] = mapped_column(Float, nullable=False, default=1.0)
+    mapping_source: Mapped[Optional[str]] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
+    )
+    created_by: Mapped[Optional[str]] = mapped_column(Text)
+
+    __table_args__ = (
+        UniqueConstraint("org_id", "source_scheme", "source_code", "target_scheme"),
+    )
+
+
 class ItemMappingModel(Base):
     """SCD Type-2 mapping memory for learning curve."""
 
     __tablename__ = "item_mapping"
 
-    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
     org_id: Mapped[str] = mapped_column(Text, nullable=False)
     canonical_key: Mapped[str] = mapped_column(Text, nullable=False)
-    price_item_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False)
+    price_item_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
 
     # SCD2 temporal fields
     start_ts: Mapped[datetime] = mapped_column(
@@ -212,15 +262,15 @@ class MatchFlagModel(Base):
 
     __tablename__ = "match_flags"
 
-    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
     match_result_id: Mapped[UUID] = mapped_column(
-        PGUUID(as_uuid=True),
+        Uuid(as_uuid=True),
         ForeignKey("match_results.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
-    item_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False, index=True)
-    price_item_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False, index=True)
+    item_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False, index=True)
+    price_item_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False, index=True)
 
     # Flag details
     flag_type: Mapped[str] = mapped_column(Text, nullable=False)
@@ -247,10 +297,10 @@ class MatchResultModel(Base):
 
     __tablename__ = "match_results"
 
-    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
-    item_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False, index=True)
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    item_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False, index=True)
     price_item_id: Mapped[Optional[UUID]] = mapped_column(
-        PGUUID(as_uuid=True), index=True
+        Uuid(as_uuid=True), index=True
     )
 
     # Match metadata
@@ -289,7 +339,7 @@ class DataSyncLogModel(Base):
 
     __tablename__ = "data_sync_log"
 
-    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
 
     # Pipeline execution tracking
     run_timestamp: Mapped[datetime] = mapped_column(
@@ -339,7 +389,7 @@ class DocumentModel(Base):
 
     __tablename__ = "documents"
 
-    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
     title: Mapped[str] = mapped_column(Text, nullable=False)
     content: Mapped[str] = mapped_column(Text, nullable=False)
     # embedding: Mapped[Optional[Vector]] = mapped_column(Vector(1536))  # Requires pgvector type
@@ -354,4 +404,108 @@ class DocumentModel(Base):
     )
     updated_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class ItemRevisionModel(Base):
+    """Track field-level changes across Revit schedule imports.
+
+    Enables:
+    - Revision delta reports
+    - Change detection between imports
+    - Audit trail for item modifications
+    - Answering "what changed?" queries
+    """
+
+    __tablename__ = "item_revisions"
+
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+
+    # Links to the item and import
+    item_id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True), nullable=False, index=True
+    )
+    org_id: Mapped[str] = mapped_column(Text, nullable=False, index=True)
+    project_id: Mapped[str] = mapped_column(Text, nullable=False, index=True)
+
+    # Ingest metadata
+    ingest_timestamp: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True), nullable=False, index=True
+    )
+    source_filename: Mapped[Optional[str]] = mapped_column(Text)
+
+    # Change tracking
+    field_name: Mapped[str] = mapped_column(Text, nullable=False, index=True)
+    old_value: Mapped[Optional[str]] = mapped_column(Text)
+    new_value: Mapped[Optional[str]] = mapped_column(Text)
+    change_type: Mapped[str] = mapped_column(Text, nullable=False, index=True)
+
+    # Audit
+    detected_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            "change_type IN ('added', 'modified', 'deleted', 'unchanged')",
+            name="check_change_type_valid",
+        ),
+        Index("idx_revisions_item_field", "item_id", "field_name"),
+        Index("idx_revisions_org_project_timestamp", "org_id", "project_id", "ingest_timestamp"),
+    )
+
+
+class IngestLogModel(Base):
+    """Track Revit schedule import operations with statistics.
+
+    Enables:
+    - Ingest history viewing
+    - Import statistics
+    - Error tracking
+    - Performance monitoring
+    """
+
+    __tablename__ = "ingest_logs"
+
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+
+    org_id: Mapped[str] = mapped_column(Text, nullable=False, index=True)
+    project_id: Mapped[str] = mapped_column(Text, nullable=False, index=True)
+
+    # Import details
+    filename: Mapped[str] = mapped_column(Text, nullable=False)
+    file_hash: Mapped[Optional[str]] = mapped_column(Text)  # Detect duplicate imports
+
+    # Statistics
+    items_total: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    items_added: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    items_modified: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    items_unchanged: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    items_deleted: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+    # Error tracking
+    errors: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    warnings: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    error_details: Mapped[Optional[dict]] = mapped_column(JSON, default=dict)
+
+    # Performance
+    processing_time_ms: Mapped[Optional[int]] = mapped_column(Integer)
+
+    # Status
+    status: Mapped[str] = mapped_column(Text, nullable=False, index=True)
+
+    # Audit
+    started_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True), server_default=func.now(), nullable=False, index=True
+    )
+    completed_at: Mapped[Optional[datetime]] = mapped_column(TIMESTAMP(timezone=True))
+
+    created_by: Mapped[str] = mapped_column(Text, nullable=False, default="system")
+
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('running', 'completed', 'failed', 'cancelled')",
+            name="check_ingest_status_valid",
+        ),
+        Index("idx_ingest_org_project_started", "org_id", "project_id", "started_at"),
     )

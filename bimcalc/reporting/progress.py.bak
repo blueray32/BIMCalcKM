@@ -1,0 +1,367 @@
+"""Progress tracking for cost estimation workflow.
+
+Computes workflow progress metrics from existing data:
+- Import completion
+- Classification coverage
+- Matching progress
+- Review status
+- Overall project completion
+
+All metrics derived from existing tables - no new data structures needed.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from datetime import datetime
+from decimal import Decimal
+from typing import Optional
+
+from sqlalchemy import Integer, func, select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from bimcalc.db.models import (
+    ItemMappingModel,
+    ItemModel,
+    MatchFlagModel,
+    MatchResultModel,
+    PriceItemModel,
+)
+
+
+@dataclass
+class WorkflowStage:
+    """Single stage in the cost estimation workflow."""
+
+    name: str
+    status: str  # "completed", "in_progress", "not_started"
+    completion_percent: float
+    items_total: int
+    items_completed: int
+    description: str
+
+
+@dataclass
+class ProgressMetrics:
+    """Complete progress metrics for a project."""
+
+    # Overall
+    overall_completion: float  # 0-100
+    overall_status: str  # "not_started", "in_progress", "completed"
+
+    # Workflow stages
+    stage_import: WorkflowStage
+    stage_classification: WorkflowStage
+    stage_matching: WorkflowStage
+    stage_review: WorkflowStage
+
+    # Detailed metrics
+    total_items: int
+    classified_items: int
+    matched_items: int
+    auto_approved: int
+    pending_review: int
+    flagged_critical: int
+    flagged_advisory: int
+
+    # Classification breakdown (top 5 codes)
+    classification_coverage: list[dict]
+
+    # Confidence distribution
+    confidence_high: int  # >= 85
+    confidence_medium: int  # 70-84
+    confidence_low: int  # < 70
+
+    # Timestamp
+    computed_at: datetime
+
+
+async def compute_progress_metrics(
+    session: AsyncSession, org_id: str, project_id: str
+) -> ProgressMetrics:
+    """Compute comprehensive progress metrics for a project.
+
+    Args:
+        session: Database session
+        org_id: Organization ID
+        project_id: Project ID
+
+    Returns:
+        Complete progress metrics
+    """
+
+    # ========================================================================
+    # 1. Count Total Items
+    # ========================================================================
+    total_items_query = select(func.count(ItemModel.id)).where(
+        ItemModel.org_id == org_id, ItemModel.project_id == project_id
+    )
+    total_items = (await session.execute(total_items_query)).scalar_one()
+
+    if total_items == 0:
+        # Empty project - return zeros
+        return _empty_metrics()
+
+    # ========================================================================
+    # 2. Classification Stage
+    # ========================================================================
+    classified_query = select(func.count(ItemModel.id)).where(
+        ItemModel.org_id == org_id,
+        ItemModel.project_id == project_id,
+        ItemModel.classification_code.isnot(None),
+    )
+    classified_items = (await session.execute(classified_query)).scalar_one()
+
+    # ========================================================================
+    # 3. Matching Stage
+    # ========================================================================
+    # Use raw SQL with CTE to get latest match result per item (more efficient)
+    from sqlalchemy.sql import text
+
+    matching_stats_query = text('''
+        WITH latest_results AS (
+            SELECT DISTINCT ON (mr.item_id)
+                mr.item_id,
+                mr.decision,
+                mr.confidence_score
+            FROM match_results mr
+            JOIN items i ON i.id = mr.item_id
+            WHERE i.org_id = :org_id
+              AND i.project_id = :project_id
+            ORDER BY mr.item_id, mr.timestamp DESC
+        )
+        SELECT
+            COUNT(*) FILTER (WHERE decision IN ('auto-accepted', 'manual-review', 'accepted')) as matched,
+            COUNT(*) FILTER (WHERE decision = 'auto-accepted') as auto_approved,
+            COUNT(*) FILTER (WHERE decision = 'manual-review') as pending_review,
+            COUNT(*) FILTER (WHERE decision IN ('auto-accepted', 'manual-review', 'accepted') AND confidence_score >= 85) as conf_high,
+            COUNT(*) FILTER (WHERE decision IN ('auto-accepted', 'manual-review', 'accepted') AND confidence_score >= 70 AND confidence_score < 85) as conf_medium,
+            COUNT(*) FILTER (WHERE decision IN ('auto-accepted', 'manual-review', 'accepted') AND confidence_score < 70) as conf_low
+        FROM latest_results;
+    ''')
+
+    stats = (await session.execute(
+        matching_stats_query,
+        {"org_id": org_id, "project_id": project_id}
+    )).first()
+
+    matched_items = stats.matched or 0
+    auto_approved = stats.auto_approved or 0
+    pending_review = stats.pending_review or 0
+    confidence_high = stats.conf_high or 0
+    confidence_medium = stats.conf_medium or 0
+    confidence_low = stats.conf_low or 0
+
+    # ========================================================================
+    # 4. Flags (Risk Items)
+    # ========================================================================
+    critical_flags_query = select(func.count(MatchFlagModel.id.distinct())).where(
+        MatchFlagModel.item_id.in_(
+            select(ItemModel.id).where(
+                ItemModel.org_id == org_id, ItemModel.project_id == project_id
+            )
+        ),
+        MatchFlagModel.severity == "Critical-Veto",
+    )
+    flagged_critical = (await session.execute(critical_flags_query)).scalar_one()
+
+    advisory_flags_query = select(func.count(MatchFlagModel.id.distinct())).where(
+        MatchFlagModel.item_id.in_(
+            select(ItemModel.id).where(
+                ItemModel.org_id == org_id, ItemModel.project_id == project_id
+            )
+        ),
+        MatchFlagModel.severity == "Advisory",
+    )
+    flagged_advisory = (await session.execute(advisory_flags_query)).scalar_one()
+
+    # ========================================================================
+    # 5. Classification Coverage (top 5 codes)
+    # ========================================================================
+    # Count items per classification code, and how many are successfully matched
+    class_coverage_query = text('''
+        WITH latest_results AS (
+            SELECT DISTINCT ON (mr.item_id)
+                mr.item_id,
+                mr.decision
+            FROM match_results mr
+            JOIN items i ON i.id = mr.item_id
+            WHERE i.org_id = :org_id
+              AND i.project_id = :project_id
+            ORDER BY mr.item_id, mr.timestamp DESC
+        )
+        SELECT
+            i.classification_code,
+            COUNT(i.id) as total,
+            COUNT(lr.item_id) FILTER (WHERE lr.decision IN ('auto-accepted', 'manual-review', 'accepted')) as matched
+        FROM items i
+        LEFT JOIN latest_results lr ON lr.item_id = i.id
+        WHERE i.org_id = :org_id
+          AND i.project_id = :project_id
+          AND i.classification_code IS NOT NULL
+        GROUP BY i.classification_code
+        ORDER BY COUNT(i.id) DESC
+        LIMIT 5;
+    ''')
+
+    class_results = (await session.execute(
+        class_coverage_query,
+        {"org_id": org_id, "project_id": project_id}
+    )).all()
+
+    classification_coverage = [
+        {
+            "code": row.classification_code,
+            "total": row.total,
+            "matched": row.matched or 0,
+            "percent": round((row.matched or 0) / row.total * 100, 1)
+            if row.total > 0
+            else 0,
+        }
+        for row in class_results
+    ]
+
+    # ========================================================================
+    # 6. Confidence Distribution
+    # ========================================================================
+    # Already calculated in the CTE above (confidence_high, confidence_medium, confidence_low)
+
+    # ========================================================================
+    # 7. Compute Workflow Stages
+    # ========================================================================
+
+    # Stage 1: Import (always 100% if we have items)
+    stage_import = WorkflowStage(
+        name="Revit Schedule Import",
+        status="completed",
+        completion_percent=100.0,
+        items_total=total_items,
+        items_completed=total_items,
+        description=f"{total_items} elements imported from Revit",
+    )
+
+    # Stage 2: Classification
+    classification_pct = (classified_items / total_items * 100) if total_items > 0 else 0
+    stage_classification = WorkflowStage(
+        name="Classification Assignment",
+        status="completed" if classified_items == total_items else "in_progress",
+        completion_percent=classification_pct,
+        items_total=total_items,
+        items_completed=classified_items,
+        description=f"{classified_items}/{total_items} items classified",
+    )
+
+    # Stage 3: Matching
+    matching_pct = (matched_items / total_items * 100) if total_items > 0 else 0
+    stage_matching = WorkflowStage(
+        name="Price Matching",
+        status="completed" if matched_items == total_items else "in_progress",
+        completion_percent=matching_pct,
+        items_total=total_items,
+        items_completed=matched_items,
+        description=f"{matched_items}/{total_items} items matched to prices",
+    )
+
+    # Stage 4: Review
+    # Items with high confidence (≥85) are auto-approved and don't need review
+    # Review completion = matched items that don't need manual review
+    review_pct = (matched_items / total_items * 100) if total_items > 0 else 0
+    stage_review = WorkflowStage(
+        name="Manual Review & Approval",
+        status="in_progress"
+        if pending_review > 0
+        else ("completed" if matched_items > 0 else "not_started"),
+        completion_percent=review_pct,
+        items_total=total_items,
+        items_completed=matched_items,
+        description=f"{auto_approved} auto-approved, {pending_review} pending review, {flagged_critical} critical flags",
+    )
+
+    # ========================================================================
+    # 8. Overall Completion
+    # ========================================================================
+    # Weighted average of stages
+    overall_completion = (
+        stage_import.completion_percent * 0.15
+        + stage_classification.completion_percent * 0.20
+        + stage_matching.completion_percent * 0.40
+        + stage_review.completion_percent * 0.25
+    )
+
+    overall_status = "completed" if overall_completion >= 100 else "in_progress"
+
+    # ========================================================================
+    # 9. Build Result
+    # ========================================================================
+    return ProgressMetrics(
+        overall_completion=round(overall_completion, 1),
+        overall_status=overall_status,
+        stage_import=stage_import,
+        stage_classification=stage_classification,
+        stage_matching=stage_matching,
+        stage_review=stage_review,
+        total_items=total_items,
+        classified_items=classified_items,
+        matched_items=matched_items,
+        auto_approved=auto_approved,
+        pending_review=pending_review,
+        flagged_critical=flagged_critical,
+        flagged_advisory=flagged_advisory,
+        classification_coverage=classification_coverage,
+        confidence_high=confidence_high,
+        confidence_medium=confidence_medium,
+        confidence_low=confidence_low,
+        computed_at=datetime.utcnow(),
+    )
+
+
+def _empty_metrics() -> ProgressMetrics:
+    """Return empty metrics for a project with no items."""
+    return ProgressMetrics(
+        overall_completion=0.0,
+        overall_status="not_started",
+        stage_import=WorkflowStage(
+            name="Revit Schedule Import",
+            status="not_started",
+            completion_percent=0.0,
+            items_total=0,
+            items_completed=0,
+            description="No items imported yet",
+        ),
+        stage_classification=WorkflowStage(
+            name="Classification Assignment",
+            status="not_started",
+            completion_percent=0.0,
+            items_total=0,
+            items_completed=0,
+            description="No items to classify",
+        ),
+        stage_matching=WorkflowStage(
+            name="Price Matching",
+            status="not_started",
+            completion_percent=0.0,
+            items_total=0,
+            items_completed=0,
+            description="No items to match",
+        ),
+        stage_review=WorkflowStage(
+            name="Manual Review & Approval",
+            status="not_started",
+            completion_percent=0.0,
+            items_total=0,
+            items_completed=0,
+            description="No items to review",
+        ),
+        total_items=0,
+        classified_items=0,
+        matched_items=0,
+        auto_approved=0,
+        pending_review=0,
+        flagged_critical=0,
+        flagged_advisory=0,
+        classification_coverage=[],
+        confidence_high=0,
+        confidence_medium=0,
+        confidence_low=0,
+        computed_at=datetime.utcnow(),
+    )

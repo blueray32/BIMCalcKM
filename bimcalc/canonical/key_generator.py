@@ -37,11 +37,12 @@ def normalize_text(text: Optional[str]) -> str:
     # Lowercase
     text = text.lower()
 
+    # Remove project-specific noise patterns
+    # Must be done BEFORE separator replacement to catch hyphenated patterns like "proj-123"
+    text = re.sub(r"\b(rev[a-z]?|v\d+|proj-\d+)\b", "", text, flags=re.IGNORECASE)
+
     # Replace common separators with space
     text = re.sub(r"[_\-/\\×x]", " ", text)
-
-    # Remove project-specific noise patterns
-    text = re.sub(r"\b(rev[a-z]?|v\d+|proj-\d+)\b", "", text, flags=re.IGNORECASE)
 
     # Collapse multiple spaces
     text = re.sub(r"\s+", " ", text)
@@ -94,6 +95,8 @@ def normalize_unit(unit: Optional[str]) -> str:
 def round_mm(value: Optional[float], tolerance: int = 5) -> Optional[int]:
     """Round dimension to nearest tolerance (default 5mm).
 
+    Uses standard rounding (half up/away from zero).
+
     Args:
         value: Dimension in millimeters
         tolerance: Rounding tolerance (default 5mm)
@@ -103,11 +106,17 @@ def round_mm(value: Optional[float], tolerance: int = 5) -> Optional[int]:
     """
     if value is None:
         return None
-    return round(value / tolerance) * tolerance
+    
+    if value >= 0:
+        return int((value / tolerance) + 0.5) * tolerance
+    else:
+        return int((value / tolerance) - 0.5) * tolerance
 
 
 def round_deg(value: Optional[float], tolerance: int = 5) -> Optional[int]:
     """Round angle to nearest tolerance (default 5°).
+
+    Uses standard rounding (half up/away from zero).
 
     Args:
         value: Angle in degrees
@@ -118,7 +127,11 @@ def round_deg(value: Optional[float], tolerance: int = 5) -> Optional[int]:
     """
     if value is None:
         return None
-    return round(value / tolerance) * tolerance
+        
+    if value >= 0:
+        return int((value / tolerance) + 0.5) * tolerance
+    else:
+        return int((value / tolerance) - 0.5) * tolerance
 
 
 def canonical_key(item: Item) -> str:

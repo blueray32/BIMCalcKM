@@ -1,0 +1,361 @@
+"""Financial executive metrics for cost reporting dashboard.
+
+Calculates aggregated cost statistics, confidence-weighted totals,
+and risk exposure for budget holders and stakeholders.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from datetime import datetime
+from decimal import Decimal
+from typing import Optional
+
+from sqlalchemy import and_, func, or_, select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.sql import text
+
+from bimcalc.db.models import ItemMappingModel, ItemModel, MatchResultModel, PriceItemModel
+
+
+@dataclass
+class FinancialMetrics:
+    """Executive-level financial statistics."""
+
+    # Total costs
+    total_cost_net: float  # Total cost excluding VAT
+    total_cost_gross: float  # Total cost including VAT
+    currency: str  # EUR
+
+    # Confidence-weighted estimates
+    high_confidence_cost: float  # Cost from items with ≥85% confidence
+    medium_confidence_cost: float  # Cost from items with 70-84% confidence
+    low_confidence_cost: float  # Cost from items with <70% confidence
+    unmatched_items_count: int  # Items without price mappings
+
+    # Risk metrics
+    high_risk_items: list[dict]  # Top items with low confidence × high cost
+    high_risk_total_cost: float  # Total EUR at risk from low confidence matches
+
+    # Classification breakdown
+    cost_by_classification: list[dict]  # [{code, total_cost, item_count, avg_confidence}]
+
+    # Top expensive items
+    top_10_expensive: list[dict]  # [{family, type, cost, confidence, unit_price}]
+
+    # Item statistics
+    total_items: int
+    matched_items: int
+    match_percentage: float
+
+    # Average metrics
+    avg_unit_price: Optional[float]
+    avg_confidence: Optional[float]
+
+    # Computed timestamp
+    computed_at: datetime
+
+
+async def compute_financial_metrics(
+    session: AsyncSession, org_id: str, project_id: str
+) -> FinancialMetrics:
+    """Calculate executive financial metrics for cost reporting.
+
+    This provides stakeholders with financial overview without
+    downloading and analyzing CSV reports.
+
+    Args:
+        session: Database session
+        org_id: Organization ID
+        project_id: Project ID
+
+    Returns:
+        FinancialMetrics with aggregated cost statistics
+    """
+
+    # Query to get items with their latest match results and price mappings
+    financial_query = text("""
+        WITH latest_matches AS (
+            -- Get latest match result per item
+            SELECT DISTINCT ON (mr.item_id)
+                mr.item_id,
+                mr.decision,
+                mr.confidence_score,
+                mr.timestamp
+            FROM match_results mr
+            JOIN items i ON i.id = mr.item_id
+            WHERE i.org_id = :org_id
+              AND i.project_id = :project_id
+            ORDER BY mr.item_id, mr.timestamp DESC
+        ),
+        active_mappings AS (
+            -- Get active price mappings (SCD2 current state)
+            SELECT
+                im.canonical_key,
+                im.price_item_id
+            FROM item_mapping im
+            WHERE im.org_id = :org_id
+              AND im.end_ts IS NULL
+        ),
+        item_costs AS (
+            -- Join items with matches, mappings, and prices
+            SELECT
+                i.id as item_id,
+                i.family,
+                i.type_name,
+                i.classification_code,
+                i.quantity,
+                i.canonical_key,
+                lm.confidence_score,
+                lm.decision,
+                pi.unit_price,
+                pi.currency,
+                pi.vat_rate,
+                pi.description as price_description,
+                CASE
+                    WHEN lm.decision IN ('auto-accepted', 'manual-review', 'accepted', 'pending-review')
+                         AND pi.unit_price IS NOT NULL
+                    THEN i.quantity * pi.unit_price
+                    ELSE 0
+                END as cost_net,
+                CASE
+                    WHEN lm.decision IN ('auto-accepted', 'manual-review', 'accepted', 'pending-review')
+                         AND pi.unit_price IS NOT NULL
+                    THEN i.quantity * pi.unit_price * (1 + COALESCE(pi.vat_rate, 0))
+                    ELSE 0
+                END as cost_gross
+            FROM items i
+            LEFT JOIN latest_matches lm ON lm.item_id = i.id
+            LEFT JOIN active_mappings am ON am.canonical_key = i.canonical_key
+            LEFT JOIN price_items pi ON pi.id = am.price_item_id
+            WHERE i.org_id = :org_id
+              AND i.project_id = :project_id
+        )
+        SELECT
+            -- Total costs
+            COALESCE(SUM(cost_net), 0) as total_cost_net,
+            COALESCE(SUM(cost_gross), 0) as total_cost_gross,
+
+            -- Confidence-weighted costs
+            COALESCE(SUM(cost_net) FILTER (WHERE confidence_score >= 85), 0) as high_confidence_cost,
+            COALESCE(SUM(cost_net) FILTER (WHERE confidence_score >= 70 AND confidence_score < 85), 0) as medium_confidence_cost,
+            COALESCE(SUM(cost_net) FILTER (WHERE confidence_score < 70), 0) as low_confidence_cost,
+
+            -- Item counts
+            COUNT(*) as total_items,
+            COUNT(*) FILTER (WHERE decision IN ('auto-accepted', 'manual-review', 'accepted', 'pending-review')) as matched_items,
+            COUNT(*) FILTER (WHERE decision IS NULL OR decision = 'rejected') as unmatched_items,
+
+            -- Averages
+            AVG(unit_price) FILTER (WHERE unit_price IS NOT NULL) as avg_unit_price,
+            AVG(confidence_score) FILTER (WHERE confidence_score IS NOT NULL) as avg_confidence,
+
+            -- Currency (assume EUR for now)
+            COALESCE(MAX(currency), 'EUR') as currency
+        FROM item_costs
+    """)
+
+    result = (await session.execute(
+        financial_query, {"org_id": org_id, "project_id": project_id}
+    )).first()
+
+    total_cost_net = float(result.total_cost_net) if result.total_cost_net else 0.0
+    total_cost_gross = float(result.total_cost_gross) if result.total_cost_gross else 0.0
+    high_confidence_cost = float(result.high_confidence_cost) if result.high_confidence_cost else 0.0
+    medium_confidence_cost = float(result.medium_confidence_cost) if result.medium_confidence_cost else 0.0
+    low_confidence_cost = float(result.low_confidence_cost) if result.low_confidence_cost else 0.0
+    total_items = result.total_items or 0
+    matched_items = result.matched_items or 0
+    unmatched_items = result.unmatched_items or 0
+    avg_unit_price = float(result.avg_unit_price) if result.avg_unit_price else None
+    avg_confidence = float(result.avg_confidence) if result.avg_confidence else None
+    currency = result.currency or 'EUR'
+
+    match_percentage = (matched_items / total_items * 100) if total_items > 0 else 0.0
+
+    # Get high-risk items (low confidence × high cost)
+    high_risk_query = text("""
+        WITH latest_matches AS (
+            SELECT DISTINCT ON (mr.item_id)
+                mr.item_id,
+                mr.confidence_score,
+                mr.decision
+            FROM match_results mr
+            JOIN items i ON i.id = mr.item_id
+            WHERE i.org_id = :org_id
+              AND i.project_id = :project_id
+            ORDER BY mr.item_id, mr.timestamp DESC
+        ),
+        active_mappings AS (
+            SELECT canonical_key, price_item_id
+            FROM item_mapping
+            WHERE org_id = :org_id
+              AND end_ts IS NULL
+        )
+        SELECT
+            i.family,
+            i.type_name,
+            i.quantity,
+            lm.confidence_score,
+            pi.unit_price,
+            (i.quantity * pi.unit_price) as total_cost,
+            pi.description
+        FROM items i
+        JOIN latest_matches lm ON lm.item_id = i.id
+        JOIN active_mappings am ON am.canonical_key = i.canonical_key
+        JOIN price_items pi ON pi.id = am.price_item_id
+        WHERE i.org_id = :org_id
+          AND i.project_id = :project_id
+          AND lm.confidence_score < 85
+          AND lm.decision IN ('auto-accepted', 'manual-review', 'accepted', 'pending-review')
+          AND pi.unit_price IS NOT NULL
+        ORDER BY (i.quantity * pi.unit_price) DESC
+        LIMIT 10
+    """)
+
+    risk_results = (await session.execute(
+        high_risk_query, {"org_id": org_id, "project_id": project_id}
+    )).fetchall()
+
+    high_risk_items = [
+        {
+            "family": row.family,
+            "type": row.type_name,
+            "quantity": float(row.quantity),
+            "confidence": float(row.confidence_score),
+            "unit_price": float(row.unit_price),
+            "total_cost": float(row.total_cost),
+            "description": row.description,
+        }
+        for row in risk_results
+    ]
+
+    high_risk_total_cost = sum(item["total_cost"] for item in high_risk_items)
+
+    # Cost by classification
+    classification_query = text("""
+        WITH latest_matches AS (
+            SELECT DISTINCT ON (mr.item_id)
+                mr.item_id,
+                mr.confidence_score,
+                mr.decision
+            FROM match_results mr
+            JOIN items i ON i.id = mr.item_id
+            WHERE i.org_id = :org_id
+              AND i.project_id = :project_id
+            ORDER BY mr.item_id, mr.timestamp DESC
+        ),
+        active_mappings AS (
+            SELECT canonical_key, price_item_id
+            FROM item_mapping
+            WHERE org_id = :org_id
+              AND end_ts IS NULL
+        )
+        SELECT
+            i.classification_code,
+            COUNT(*) as item_count,
+            COALESCE(SUM(
+                CASE WHEN lm.decision IN ('auto-accepted', 'manual-review', 'accepted', 'pending-review')
+                     AND pi.unit_price IS NOT NULL
+                THEN i.quantity * pi.unit_price
+                ELSE 0 END
+            ), 0) as total_cost,
+            AVG(lm.confidence_score) FILTER (WHERE lm.confidence_score IS NOT NULL) as avg_confidence
+        FROM items i
+        LEFT JOIN latest_matches lm ON lm.item_id = i.id
+        LEFT JOIN active_mappings am ON am.canonical_key = i.canonical_key
+        LEFT JOIN price_items pi ON pi.id = am.price_item_id
+        WHERE i.org_id = :org_id
+          AND i.project_id = :project_id
+        GROUP BY i.classification_code
+        ORDER BY total_cost DESC
+        LIMIT 5
+    """)
+
+    class_results = (await session.execute(
+        classification_query, {"org_id": org_id, "project_id": project_id}
+    )).fetchall()
+
+    cost_by_classification = [
+        {
+            "code": row.classification_code,
+            "item_count": row.item_count,
+            "total_cost": float(row.total_cost) if row.total_cost else 0.0,
+            "avg_confidence": float(row.avg_confidence) if row.avg_confidence else 0.0,
+        }
+        for row in class_results
+    ]
+
+    # Top 10 most expensive items
+    top_expensive_query = text("""
+        WITH latest_matches AS (
+            SELECT DISTINCT ON (mr.item_id)
+                mr.item_id,
+                mr.confidence_score,
+                mr.decision
+            FROM match_results mr
+            JOIN items i ON i.id = mr.item_id
+            WHERE i.org_id = :org_id
+              AND i.project_id = :project_id
+            ORDER BY mr.item_id, mr.timestamp DESC
+        ),
+        active_mappings AS (
+            SELECT canonical_key, price_item_id
+            FROM item_mapping
+            WHERE org_id = :org_id
+              AND end_ts IS NULL
+        )
+        SELECT
+            i.family,
+            i.type_name,
+            i.quantity,
+            lm.confidence_score,
+            pi.unit_price,
+            (i.quantity * pi.unit_price) as total_cost
+        FROM items i
+        JOIN latest_matches lm ON lm.item_id = i.id
+        JOIN active_mappings am ON am.canonical_key = i.canonical_key
+        JOIN price_items pi ON pi.id = am.price_item_id
+        WHERE i.org_id = :org_id
+          AND i.project_id = :project_id
+          AND lm.decision IN ('auto-accepted', 'manual-review', 'accepted', 'pending-review')
+          AND pi.unit_price IS NOT NULL
+        ORDER BY (i.quantity * pi.unit_price) DESC
+        LIMIT 10
+    """)
+
+    expensive_results = (await session.execute(
+        top_expensive_query, {"org_id": org_id, "project_id": project_id}
+    )).fetchall()
+
+    top_10_expensive = [
+        {
+            "family": row.family,
+            "type": row.type_name,
+            "quantity": float(row.quantity),
+            "confidence": float(row.confidence_score) if row.confidence_score else 0.0,
+            "unit_price": float(row.unit_price),
+            "total_cost": float(row.total_cost),
+        }
+        for row in expensive_results
+    ]
+
+    return FinancialMetrics(
+        total_cost_net=total_cost_net,
+        total_cost_gross=total_cost_gross,
+        currency=currency,
+        high_confidence_cost=high_confidence_cost,
+        medium_confidence_cost=medium_confidence_cost,
+        low_confidence_cost=low_confidence_cost,
+        unmatched_items_count=unmatched_items,
+        high_risk_items=high_risk_items,
+        high_risk_total_cost=high_risk_total_cost,
+        cost_by_classification=cost_by_classification,
+        top_10_expensive=top_10_expensive,
+        total_items=total_items,
+        matched_items=matched_items,
+        match_percentage=match_percentage,
+        avg_unit_price=avg_unit_price,
+        avg_confidence=avg_confidence,
+        computed_at=datetime.now(),
+    )

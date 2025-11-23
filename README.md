@@ -409,6 +409,83 @@ bimcalc report \
 # Same inputs + same mappings + same timestamp = same result
 ```
 
+## Crail4 AI Integration
+
+BIMCalc supports automated price synchronization from Crail4 AI pricing catalogs.
+
+### Setup
+
+1. Set environment variables:
+   ```bash
+   export CRAIL4_API_KEY="your_api_key"
+   export CRAIL4_BASE_URL="https://www.crawl4ai-cloud.com/query"
+   export CRAIL4_SOURCE_URL="https://example.com/your-feed"
+   ```
+2. Seed classification mappings:
+   ```bash
+   python -m bimcalc.integration.seed_classification_mappings
+   ```
+3. Test manual sync:
+   ```bash
+   bimcalc sync-crail4 --org your-org-id --classifications 62,63,64,66
+   ```
+
+### Automated Sync
+
+Enable daily sync via systemd:
+
+```bash
+sudo cp deployment/crail4-sync.* /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable crail4-sync.timer
+sudo systemctl start crail4-sync.timer
+```
+
+Check sync status:
+```bash
+sudo systemctl status crail4-sync.timer
+sudo journalctl -u crail4-sync.service -f
+```
+
+### API Usage
+
+Import prices programmatically:
+```bash
+curl -X POST http://localhost:8001/api/price-items/bulk-import \
+  -H "Content-Type: application/json" \
+  -d '{
+    "org_id": "your-org",
+    "source": "crail4_api",
+    "target_scheme": "UniClass2015",
+    "items": [...]
+  }'
+```
+
+Query import history:
+```bash
+curl http://localhost:8001/api/price-imports/{run_id}
+```
+
+### Classification Mapping
+
+Add custom taxonomy translations:
+
+```python
+from bimcalc.integration.classification_mapper import ClassificationMapper
+from bimcalc.db.connection import get_session
+
+async with get_session() as session:
+    mapper = ClassificationMapper(session, "your-org")
+    await mapper.add_mapping(
+        source_code="23-17 11 23",
+        source_scheme="OmniClass",
+        target_code="66",
+        target_scheme="UniClass2015",
+        mapping_source="manual",
+        created_by="admin"
+    )
+```
+
 ## 🤝 Contributing
 
 ### Development Workflow

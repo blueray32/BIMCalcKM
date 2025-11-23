@@ -1,0 +1,554 @@
+{% extends "base.html" %}
+
+{% block title %}Audit & Compliance - BIMCalc{% endblock %}
+
+{% block extra_styles %}
+<style>
+    /* Executive Audit Theme - Orange/Amber (Compliance) */
+    .executive-header {
+        background: linear-gradient(135deg, #ed8936 0%, #dd6b20 100%);
+        color: white;
+        padding: 2rem;
+        border-radius: 0.75rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 10px 30px rgba(237, 137, 54, 0.3);
+    }
+
+    .compliance-indicator {
+        text-align: center;
+        margin: 2rem 0;
+    }
+
+    .compliance-ring-container {
+        position: relative;
+        display: inline-block;
+        margin: 0 auto;
+    }
+
+    .compliance-ring {
+        transform: rotate(-90deg);
+    }
+
+    .compliance-value {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        text-align: center;
+    }
+
+    .compliance-number {
+        font-size: 3rem;
+        font-weight: 700;
+        line-height: 1;
+    }
+
+    .compliance-label {
+        font-size: 0.875rem;
+        color: #718096;
+        margin-top: 0.5rem;
+        font-weight: 600;
+    }
+
+    .compliance-status {
+        font-size: 1.25rem;
+        font-weight: 600;
+        margin-top: 1rem;
+    }
+
+    .compliance-status.excellent { color: #48bb78; }
+    .compliance-status.good { color: #4299e1; }
+    .compliance-status.fair { color: #ed8936; }
+    .compliance-status.poor { color: #f56565; }
+
+    .metrics-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .metric-card {
+        background: white;
+        border-radius: 0.75rem;
+        padding: 1.5rem;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
+        border-left: 4px solid #ed8936;
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .metric-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    .metric-card.velocity {
+        border-left-color: #4299e1;
+    }
+
+    .metric-card.quality {
+        border-left-color: #48bb78;
+    }
+
+    .metric-card.automation {
+        border-left-color: #9f7aea;
+    }
+
+    .metric-icon {
+        font-size: 2.5rem;
+        margin-bottom: 1rem;
+        opacity: 0.9;
+    }
+
+    .metric-label {
+        font-size: 0.875rem;
+        color: #718096;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 0.5rem;
+    }
+
+    .metric-value {
+        font-size: 2rem;
+        font-weight: 700;
+        color: #2d3748;
+        margin-bottom: 0.25rem;
+    }
+
+    .metric-subtitle {
+        font-size: 0.875rem;
+        color: #a0aec0;
+    }
+
+    .metric-trend {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        font-size: 0.875rem;
+        font-weight: 600;
+        margin-top: 0.5rem;
+    }
+
+    .metric-trend.up { color: #48bb78; }
+    .metric-trend.down { color: #f56565; }
+    .metric-trend.neutral { color: #a0aec0; }
+
+    .chart-container {
+        position: relative;
+        height: 300px;
+        margin-top: 1rem;
+    }
+
+    .timeline-chart {
+        height: 200px;
+    }
+
+    .reviewers-table {
+        width: 100%;
+        margin-top: 1rem;
+    }
+
+    .reviewers-table th {
+        text-align: left;
+        padding: 0.75rem;
+        background: #f7fafc;
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: #4a5568;
+    }
+
+    .reviewers-table td {
+        padding: 0.75rem;
+        border-top: 1px solid #e2e8f0;
+        font-size: 0.875rem;
+    }
+
+    .badge {
+        display: inline-block;
+        padding: 0.25rem 0.75rem;
+        border-radius: 9999px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+
+    .badge.high { background: #c6f6d5; color: #22543d; }
+    .badge.medium { background: #feebc8; color: #7c2d12; }
+    .badge.low { background: #fed7d7; color: #742a2a; }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Executive Header -->
+<div class="executive-header">
+    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+        <div>
+            <h1 style="margin: 0 0 0.5rem 0; font-size: 2rem;">📜 Audit & Compliance</h1>
+            <p style="margin: 0; opacity: 0.9;">Decision governance and regulatory oversight for {{ project_id }}</p>
+        </div>
+        <div>
+            <a href="/audit?org={{ org_id }}&project={{ project_id }}"
+               style="background: rgba(255,255,255,0.2); color: white; padding: 0.75rem 1.5rem; border-radius: 0.5rem; text-decoration: none; font-weight: 600; display: inline-flex; align-items: center; gap: 0.5rem; backdrop-filter: blur(10px);">
+                <span>←</span>
+                <span>Detailed Trail</span>
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Executive Navigation -->
+{% set current_page = 'audit' %}
+{% include 'executive_nav.html' %}
+
+<!-- Compliance Score -->
+<div class="card" style="text-align: center;">
+    <div class="compliance-indicator">
+        <div class="compliance-ring-container">
+            <svg class="compliance-ring" width="240" height="240">
+                <circle cx="120" cy="120" r="100" fill="none" stroke="#e2e8f0" stroke-width="20"></circle>
+                <circle
+                    cx="120"
+                    cy="120"
+                    r="100"
+                    fill="none"
+                    stroke="{% if metrics.compliance_score >= 85 %}#48bb78{% elif metrics.compliance_score >= 70 %}#4299e1{% elif metrics.compliance_score >= 50 %}#ed8936{% else %}#f56565{% endif %}"
+                    stroke-width="20"
+                    stroke-dasharray="628"
+                    stroke-dashoffset="{{ 628 - (628 * (metrics.compliance_score / 100)) }}"
+                    stroke-linecap="round"
+                    style="transition: stroke-dashoffset 1.5s cubic-bezier(0.4, 0, 0.2, 1);"></circle>
+            </svg>
+            <div class="compliance-value">
+                <div class="compliance-number">{{ metrics.compliance_score }}</div>
+                <div class="compliance-label">Compliance</div>
+            </div>
+        </div>
+        <div class="compliance-status {{ metrics.compliance_status.lower() }}">
+            {% if metrics.compliance_status == "Excellent" %}✨ Excellent Governance
+            {% elif metrics.compliance_status == "Good" %}✓ Good Compliance
+            {% elif metrics.compliance_status == "Fair" %}⚡ Fair Oversight
+            {% else %}⚠ Needs Improvement{% endif %}
+        </div>
+        <div style="margin-top: 1rem; color: #718096; font-size: 0.875rem;">
+            {{ metrics.total_decisions }} total decisions across {{ metrics.total_items_audited }} items
+        </div>
+    </div>
+</div>
+
+<!-- Key Metrics Grid -->
+{% set total_decisions = metrics.total_decisions %}
+{% set high_conf_ratio = (metrics.high_confidence_count / total_decisions) if total_decisions else 0 %}
+<div class="metrics-grid">
+    <!-- Decision Velocity -->
+    <div class="metric-card velocity">
+        <div class="metric-icon">⚡</div>
+        <div class="metric-label">Decision Velocity</div>
+        <div class="metric-value">{{ "%.1f"|format(metrics.avg_decisions_per_day) }}</div>
+        <div class="metric-subtitle">Decisions per day (30-day avg)</div>
+        <div class="metric-trend neutral">
+            <span>📊</span>
+            <span>{{ metrics.decisions_last_7_days }} this week</span>
+        </div>
+    </div>
+
+    <!-- Decision Quality -->
+    <div class="metric-card quality">
+        <div class="metric-icon">⭐</div>
+        <div class="metric-label">Decision Quality</div>
+        <div class="metric-value">{% if metrics.avg_confidence %}{{ "%.1f"|format(metrics.avg_confidence) }}%{% else %}—{% endif %}</div>
+        <div class="metric-subtitle">Average confidence score</div>
+        <div class="metric-trend {% if high_conf_ratio > 0.7 %}up{% else %}neutral{% endif %}">
+            <span>✨</span>
+            <span>{{ "%.1f"|format(high_conf_ratio * 100) }}% high confidence</span>
+        </div>
+    </div>
+
+    <!-- System Automation -->
+    <div class="metric-card automation">
+        <div class="metric-icon">🤖</div>
+        <div class="metric-label">System Automation</div>
+        <div class="metric-value">{{ "%.1f"|format(metrics.system_percentage) }}%</div>
+        <div class="metric-subtitle">Auto-approved decisions</div>
+        <div class="metric-trend {% if metrics.system_percentage > 50 %}up{% else %}neutral{% endif %}">
+            <span>⚙️</span>
+            <span>{{ metrics.system_decisions }} automated</span>
+        </div>
+    </div>
+
+    <!-- Peak Activity -->
+    <div class="metric-card">
+        <div class="metric-icon">📈</div>
+        <div class="metric-label">Peak Activity</div>
+        <div class="metric-value">{{ metrics.peak_decision_count }}</div>
+        <div class="metric-subtitle">
+            {% if metrics.peak_decision_day %}
+            On {{ metrics.peak_decision_day }}
+            {% else %}
+            No recent peak
+            {% endif %}
+        </div>
+        <div class="metric-trend neutral">
+            <span>📅</span>
+            <span>Last 30 days</span>
+        </div>
+    </div>
+</div>
+
+<!-- Charts Row -->
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 2rem;">
+    <!-- Decision Timeline -->
+    <div class="card">
+        <h3 style="margin: 0 0 1rem 0; color: #2d3748; font-size: 1.25rem;">📊 Decision Timeline (10 Days)</h3>
+        <div class="chart-container timeline-chart">
+            <canvas id="timelineChart"></canvas>
+        </div>
+    </div>
+
+    <!-- Confidence Distribution -->
+    <div class="card">
+        <h3 style="margin: 0 0 1rem 0; color: #2d3748; font-size: 1.25rem;">🎯 Confidence Distribution</h3>
+        <div class="chart-container">
+            <canvas id="confidenceChart"></canvas>
+        </div>
+    </div>
+</div>
+
+<!-- Decision Breakdown & Top Reviewers Row -->
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 2rem;">
+    <!-- Decision Type Breakdown -->
+    <div class="card">
+        <h3 style="margin: 0 0 1rem 0; color: #2d3748; font-size: 1.25rem;">🔄 Decision Type Breakdown</h3>
+        <table class="reviewers-table">
+            <thead>
+                <tr>
+                    <th>Decision Type</th>
+                    <th style="text-align: center;">Count</th>
+                    <th style="text-align: center;">Percentage</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><span style="color: #48bb78; font-weight: 600;">✓ Auto-Approved</span></td>
+                    <td style="text-align: center;">{{ metrics.auto_approved_count }}</td>
+                    <td style="text-align: center;">{{ "%.1f"|format((metrics.auto_approved_count / metrics.total_decisions * 100) if metrics.total_decisions > 0 else 0) }}%</td>
+                </tr>
+                <tr>
+                    <td><span style="color: #4299e1; font-weight: 600;">👤 User Approved</span></td>
+                    <td style="text-align: center;">{{ metrics.user_approved_count }}</td>
+                    <td style="text-align: center;">{{ "%.1f"|format((metrics.user_approved_count / metrics.total_decisions * 100) if metrics.total_decisions > 0 else 0) }}%</td>
+                </tr>
+                <tr>
+                    <td><span style="color: #ed8936; font-weight: 600;">⏳ Pending Review</span></td>
+                    <td style="text-align: center;">{{ metrics.manual_review_count }}</td>
+                    <td style="text-align: center;">{{ "%.1f"|format((metrics.manual_review_count / metrics.total_decisions * 100) if metrics.total_decisions > 0 else 0) }}%</td>
+                </tr>
+                <tr>
+                    <td><span style="color: #f56565; font-weight: 600;">✗ Rejected</span></td>
+                    <td style="text-align: center;">{{ metrics.rejected_count }}</td>
+                    <td style="text-align: center;">{{ "%.1f"|format((metrics.rejected_count / metrics.total_decisions * 100) if metrics.total_decisions > 0 else 0) }}%</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid #e2e8f0;">
+            <h4 style="margin: 0 0 0.75rem 0; color: #4a5568; font-size: 1rem;">Decision Sources</h4>
+            <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="color: #718096; font-size: 0.875rem;">💾 Mapping Memory</span>
+                    <span style="font-weight: 600;">{{ metrics.mapping_memory_count }}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="color: #718096; font-size: 0.875rem;">🔍 Fuzzy Match</span>
+                    <span style="font-weight: 600;">{{ metrics.fuzzy_match_count }}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="color: #718096; font-size: 0.875rem;">👤 Review UI</span>
+                    <span style="font-weight: 600;">{{ metrics.review_ui_count }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Top Reviewers -->
+    <div class="card">
+        <h3 style="margin: 0 0 1rem 0; color: #2d3748; font-size: 1.25rem;">👥 Top Decision Makers</h3>
+
+        {% if metrics.top_reviewers %}
+        <table class="reviewers-table">
+            <thead>
+                <tr>
+                    <th>Reviewer</th>
+                    <th style="text-align: center;">Decisions</th>
+                    <th style="text-align: center;">Avg Confidence</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for reviewer in metrics.top_reviewers %}
+                <tr>
+                    <td style="font-weight: 600; color: #2d3748;">{{ reviewer.created_by }}</td>
+                    <td style="text-align: center;">{{ reviewer.count }}</td>
+                    <td style="text-align: center;">
+                        {% if reviewer.avg_confidence >= 85 %}
+                        <span class="badge high">{{ "%.0f"|format(reviewer.avg_confidence) }}%</span>
+                        {% elif reviewer.avg_confidence >= 70 %}
+                        <span class="badge medium">{{ "%.0f"|format(reviewer.avg_confidence) }}%</span>
+                        {% else %}
+                        <span class="badge low">{{ "%.0f"|format(reviewer.avg_confidence) }}%</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div style="text-align: center; padding: 2rem; color: #a0aec0;">
+            <div style="font-size: 2rem; margin-bottom: 0.5rem;">🤖</div>
+            <div>All decisions automated by system</div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Compliance Score Explanation -->
+<div class="card">
+    <h3 style="margin: 0 0 1rem 0; color: #2d3748; font-size: 1.25rem;">ℹ️ Compliance Score Methodology</h3>
+    <div style="line-height: 1.8;">
+        <p>The compliance score (0-100) measures audit trail quality and governance:</p>
+        <ul style="margin-left: 1.5rem; margin-top: 0.5rem;">
+            <li><strong>40%</strong> - Audit Trail Completeness (decisions logged for all items)</li>
+            <li><strong>30%</strong> - Decision Quality ({{ "%.1f"|format(high_conf_ratio * 100) }}% high confidence)</li>
+            <li><strong>20%</strong> - System Automation ({{ "%.1f"|format(metrics.system_percentage) }}% auto-approved)</li>
+            <li><strong>10%</strong> - Decision Velocity ({{ "%.1f"|format(metrics.avg_decisions_per_day) }} decisions/day)</li>
+        </ul>
+        <p style="margin-top: 1rem;"><strong>Bonuses:</strong></p>
+        <ul style="margin-left: 1.5rem; margin-top: 0.5rem;">
+            <li>+5 points if ≥99% high confidence (near-perfect quality)</li>
+        </ul>
+        <p style="margin-top: 1rem;"><strong>Score Ranges:</strong></p>
+        <ul style="margin-left: 1.5rem; margin-top: 0.5rem;">
+            <li><span class="compliance-status excellent">85-100:</span> Excellent - Robust governance and compliance</li>
+            <li><span class="compliance-status good">70-84:</span> Good - Solid audit trail with minor gaps</li>
+            <li><span class="compliance-status fair">50-69:</span> Fair - Audit improvements recommended</li>
+            <li><span class="compliance-status poor">0-49:</span> Poor - Compliance issues need immediate attention</li>
+        </ul>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+    // Decision Timeline Chart (Last 10 Days)
+    const timelineCtx = document.getElementById('timelineChart');
+    new Chart(timelineCtx, {
+        type: 'bar',
+        data: {
+            labels: [{% for day in metrics.daily_timeline %}'{{ day.date }}'{% if not loop.last %}, {% endif %}{% endfor %}].reverse(),
+            datasets: [{
+                label: 'Decisions',
+                data: [{% for day in metrics.daily_timeline %}{{ day.count }}{% if not loop.last %}, {% endif %}{% endfor %}].reverse(),
+                backgroundColor: 'rgba(237, 137, 54, 0.8)',
+                borderColor: 'rgba(237, 137, 54, 1)',
+                borderWidth: 2,
+                borderRadius: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(26, 32, 44, 0.95)',
+                    padding: 12,
+                    callbacks: {
+                        afterLabel: function(context) {
+                            const idx = context.dataIndex;
+                            const avgConf = [{% for day in metrics.daily_timeline %}{{ day.avg_confidence }}{% if not loop.last %}, {% endif %}{% endfor %}].reverse()[idx];
+                            return 'Avg Confidence: ' + avgConf.toFixed(1) + '%';
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        precision: 0,
+                        font: { size: 11, weight: '600' }
+                    },
+                    grid: {
+                        color: 'rgba(0, 0, 0, 0.05)'
+                    }
+                },
+                x: {
+                    ticks: {
+                        font: { size: 10, weight: '600' }
+                    },
+                    grid: {
+                        display: false
+                    }
+                }
+            }
+        }
+    });
+
+    // Confidence Distribution Doughnut Chart
+    const confCtx = document.getElementById('confidenceChart');
+    new Chart(confCtx, {
+        type: 'doughnut',
+        data: {
+            labels: ['High (≥85%)', 'Medium (70-84%)', 'Low (<70%)'],
+            datasets: [{
+                data: [
+                    {{ metrics.high_confidence_count }},
+                    {{ metrics.medium_confidence_count }},
+                    {{ metrics.low_confidence_count }}
+                ],
+                backgroundColor: [
+                    'rgba(72, 187, 120, 0.9)',
+                    'rgba(237, 137, 54, 0.9)',
+                    'rgba(245, 101, 101, 0.9)'
+                ],
+                borderWidth: 0,
+                hoverOffset: 8
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        font: { size: 12, weight: '600' },
+                        padding: 15
+                    }
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(26, 32, 44, 0.95)',
+                    padding: 12,
+                    callbacks: {
+                        label: function(context) {
+                            const total = {{ metrics.total_decisions }};
+                            const percentage = total > 0 ? ((context.parsed / total) * 100).toFixed(1) : 0;
+                            return context.label + ': ' + context.parsed + ' (' + percentage + '%)';
+                        }
+                    }
+                }
+            }
+        }
+    });
+</script>
+
+<!-- Export to Excel -->
+{% set export_type = 'audit' %}
+{% include 'executive_export_button.html' %}
+
+<!-- Print/PDF Export -->
+{% include 'executive_print.html' %}
+
+{% endblock %}

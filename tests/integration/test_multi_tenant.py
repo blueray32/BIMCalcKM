@@ -347,7 +347,7 @@ async def test_org_id_required_for_candidate_generation(db_session: AsyncSession
     Per audit fix: org_id is required for multi-tenant filtering.
     """
     # Create item without org_id
-    item_no_org = Item(
+    item_no_org = Item.model_construct(
         id=uuid4(),
         org_id=None,  # Missing org_id
         project_id="test-project",

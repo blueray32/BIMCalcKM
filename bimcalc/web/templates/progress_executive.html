@@ -1,0 +1,798 @@
+{% extends "base.html" %}
+
+{% block title %}Progress - BIMCalc Executive Dashboard{% endblock %}
+
+{% block extra_styles %}
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap');
+
+    body {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    /* Executive Header */
+    .executive-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 3rem 2rem;
+        margin: -2rem -2rem 2rem -2rem;
+        border-radius: 0 0 1rem 1rem;
+        box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+    }
+
+    .executive-header h1 {
+        font-size: 2.5rem;
+        font-weight: 800;
+        margin: 0 0 0.5rem 0;
+        text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .executive-header .subtitle {
+        font-size: 1.125rem;
+        opacity: 0.9;
+        font-weight: 300;
+    }
+
+    /* Animated Progress Ring */
+    .progress-ring-container {
+        position: relative;
+        width: 280px;
+        height: 280px;
+        margin: 0 auto;
+    }
+
+    .progress-ring {
+        transform: rotate(-90deg);
+        filter: drop-shadow(0 4px 12px rgba(102, 126, 234, 0.4));
+    }
+
+    .progress-ring-circle {
+        transition: stroke-dashoffset 1.5s cubic-bezier(0.4, 0, 0.2, 1);
+        animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+        0%, 100% { filter: drop-shadow(0 0 8px rgba(102, 126, 234, 0.6)); }
+        50% { filter: drop-shadow(0 0 20px rgba(102, 126, 234, 0.9)); }
+    }
+
+    .progress-value {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        text-align: center;
+    }
+
+    .progress-value .number {
+        font-size: 4rem;
+        font-weight: 800;
+        line-height: 1;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+
+    .progress-value .label {
+        font-size: 0.875rem;
+        color: #718096;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-top: 0.5rem;
+    }
+
+    /* Executive KPI Cards */
+    .kpi-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 1.5rem;
+        margin: 2rem 0;
+    }
+
+    .kpi-card {
+        background: white;
+        border-radius: 1rem;
+        padding: 1.5rem;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.05), 0 1px 3px rgba(0,0,0,0.1);
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .kpi-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+    }
+
+    .kpi-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 12px 24px rgba(0,0,0,0.1), 0 4px 8px rgba(0,0,0,0.06);
+    }
+
+    .kpi-card .icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        margin-bottom: 1rem;
+    }
+
+    .kpi-card.primary .icon { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+    .kpi-card.success .icon { background: linear-gradient(135deg, #48bb78 0%, #38a169 100%); }
+    .kpi-card.warning .icon { background: linear-gradient(135deg, #ed8936 0%, #dd6b20 100%); }
+    .kpi-card.danger .icon { background: linear-gradient(135deg, #f56565 0%, #e53e3e 100%); }
+
+    .kpi-card .value {
+        font-size: 2.5rem;
+        font-weight: 700;
+        color: #2d3748;
+        line-height: 1;
+        margin-bottom: 0.5rem;
+    }
+
+    .kpi-card .label {
+        font-size: 0.875rem;
+        color: #718096;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .kpi-card .trend {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-top: 0.75rem;
+        font-size: 0.875rem;
+        font-weight: 600;
+    }
+
+    .trend.up { color: #48bb78; }
+    .trend.down { color: #f56565; }
+    .trend.stable { color: #718096; }
+
+    /* Timeline Gantt Chart */
+    .timeline-container {
+        background: white;
+        border-radius: 1rem;
+        padding: 2rem;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        margin: 2rem 0;
+    }
+
+    .timeline-header {
+        font-size: 1.5rem;
+        font-weight: 700;
+        margin-bottom: 2rem;
+        color: #2d3748;
+    }
+
+    .timeline {
+        position: relative;
+        padding-left: 200px;
+    }
+
+    .timeline-item {
+        position: relative;
+        margin-bottom: 2rem;
+        min-height: 60px;
+    }
+
+    .timeline-label {
+        position: absolute;
+        left: -200px;
+        width: 180px;
+        font-weight: 600;
+        color: #4a5568;
+        font-size: 0.875rem;
+        padding-right: 1rem;
+        text-align: right;
+    }
+
+    .timeline-bar-container {
+        height: 40px;
+        background: #f7fafc;
+        border-radius: 8px;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .timeline-bar {
+        height: 100%;
+        border-radius: 8px;
+        transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
+        display: flex;
+        align-items: center;
+        padding: 0 1rem;
+        color: white;
+        font-weight: 600;
+        font-size: 0.875rem;
+        position: relative;
+    }
+
+    .timeline-bar.completed {
+        background: linear-gradient(90deg, #48bb78 0%, #38a169 100%);
+        animation: slideIn 1s ease-out;
+    }
+
+    .timeline-bar.in-progress {
+        background: linear-gradient(90deg, #4299e1 0%, #3182ce 100%);
+        animation: slideIn 1s ease-out;
+    }
+
+    .timeline-bar.not-started {
+        background: #e2e8f0;
+        color: #718096;
+    }
+
+    @keyframes slideIn {
+        from {
+            width: 0;
+            opacity: 0;
+        }
+        to {
+            opacity: 1;
+        }
+    }
+
+    .timeline-percentage {
+        margin-left: 1rem;
+        font-weight: 700;
+        color: #2d3748;
+    }
+
+    /* Chart Containers with Elevation */
+    .chart-card {
+        background: white;
+        border-radius: 1rem;
+        padding: 2rem;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.05), 0 1px 3px rgba(0,0,0,0.1);
+        transition: all 0.3s ease;
+    }
+
+    .chart-card:hover {
+        box-shadow: 0 12px 24px rgba(0,0,0,0.1), 0 4px 8px rgba(0,0,0,0.06);
+    }
+
+    .chart-header {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: #2d3748;
+        margin-bottom: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    /* Health Score Badge */
+    .health-score {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 1rem;
+        border-radius: 2rem;
+        font-weight: 700;
+        font-size: 0.875rem;
+        background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+        color: white;
+        box-shadow: 0 4px 12px rgba(72, 187, 120, 0.3);
+    }
+
+    .health-score.excellent { background: linear-gradient(135deg, #48bb78 0%, #38a169 100%); }
+    .health-score.good { background: linear-gradient(135deg, #4299e1 0%, #3182ce 100%); }
+    .health-score.fair { background: linear-gradient(135deg, #ed8936 0%, #dd6b20 100%); }
+    .health-score.poor { background: linear-gradient(135deg, #f56565 0%, #e53e3e 100%); }
+
+    /* Action Buttons Enhanced */
+    .action-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin: 2rem 0;
+    }
+
+    .action-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.75rem;
+        padding: 1.25rem 1.5rem;
+        border-radius: 0.75rem;
+        font-weight: 600;
+        text-decoration: none;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        font-size: 0.9375rem;
+    }
+
+    .action-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 16px rgba(0,0,0,0.15);
+    }
+
+    .action-btn.primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+
+    .action-btn.success {
+        background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+        color: white;
+    }
+
+    .action-btn.danger {
+        background: linear-gradient(135deg, #f56565 0%, #e53e3e 100%);
+        color: white;
+    }
+
+    /* Print Styles */
+    @media print {
+        .executive-header {
+            background: #667eea !important;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+
+        .kpi-card, .chart-card {
+            page-break-inside: avoid;
+            box-shadow: none !important;
+            border: 1px solid #e2e8f0;
+        }
+
+        .action-grid {
+            display: none;
+        }
+
+        nav, .project-selector {
+            display: none;
+        }
+    }
+
+    /* Sparkline */
+    .sparkline {
+        display: inline-block;
+        width: 60px;
+        height: 20px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Executive Header -->
+<div class="executive-header">
+    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+        <div>
+            <h1>📈 Project Progress Dashboard</h1>
+            <div class="subtitle">
+                <strong>{{ project_id }}</strong> in {{ org_id }} |
+                Last updated: {{ metrics.computed_at.strftime('%B %d, %Y at %H:%M UTC') }}
+            </div>
+        </div>
+        <a href="/progress?org={{ org_id }}&project={{ project_id }}&view=standard"
+           style="background: rgba(255,255,255,0.2); color: white; padding: 0.75rem 1.5rem; border-radius: 0.5rem; text-decoration: none; font-weight: 600; display: inline-flex; align-items: center; gap: 0.5rem; backdrop-filter: blur(10px);">
+            <span>←</span>
+            <span>Standard View</span>
+        </a>
+    </div>
+</div>
+
+<!-- Executive Navigation -->
+{% set current_page = 'progress' %}
+{% include 'executive_nav.html' %}
+
+<!-- Overall Progress Section -->
+<div style="display: grid; grid-template-columns: 1fr 2fr; gap: 2rem; margin-bottom: 2rem;">
+    <div style="background: white; border-radius: 1rem; padding: 2rem; box-shadow: 0 4px 6px rgba(0,0,0,0.05); text-align: center;">
+        <h3 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 1rem; color: #2d3748;">Overall Completion</h3>
+
+        <div class="progress-ring-container">
+            <svg class="progress-ring" width="280" height="280">
+                <!-- Background circle -->
+                <circle
+                    cx="140"
+                    cy="140"
+                    r="120"
+                    stroke="#f7fafc"
+                    stroke-width="20"
+                    fill="none"
+                />
+                <!-- Gradient definition -->
+                <defs>
+                    <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" style="stop-color:#667eea;stop-opacity:1" />
+                        <stop offset="100%" style="stop-color:#764ba2;stop-opacity:1" />
+                    </linearGradient>
+                </defs>
+                <!-- Progress circle -->
+                <circle
+                    class="progress-ring-circle"
+                    cx="140"
+                    cy="140"
+                    r="120"
+                    stroke="url(#progressGradient)"
+                    stroke-width="20"
+                    fill="none"
+                    stroke-dasharray="{{ 2 * 3.14159 * 120 }}"
+                    stroke-dashoffset="{{ 2 * 3.14159 * 120 * (1 - metrics.overall_completion / 100) }}"
+                    stroke-linecap="round"
+                />
+            </svg>
+            <div class="progress-value">
+                <div class="number">{{ "%.0f"|format(metrics.overall_completion) }}%</div>
+                <div class="label">Complete</div>
+            </div>
+        </div>
+
+        <div style="margin-top: 2rem;">
+            {% set health_score = 'excellent' if metrics.overall_completion >= 90 else 'good' if metrics.overall_completion >= 70 else 'fair' if metrics.overall_completion >= 50 else 'poor' %}
+            <span class="health-score {{ health_score }}">
+                {% if health_score == 'excellent' %}🌟 Excellent Progress
+                {% elif health_score == 'good' %}✅ On Track
+                {% elif health_score == 'fair' %}⚠️ Needs Attention
+                {% else %}🚨 Action Required
+                {% endif %}
+            </span>
+        </div>
+    </div>
+
+    <!-- KPI Summary Cards -->
+    <div class="kpi-grid" style="align-content: start;">
+        <div class="kpi-card primary">
+            <div class="icon">📦</div>
+            <div class="value">{{ "{:,}".format(metrics.total_items) }}</div>
+            <div class="label">Total Items</div>
+            <div class="trend stable">
+                <span>↔</span>
+                <span>Imported from Revit</span>
+            </div>
+        </div>
+
+        <div class="kpi-card success">
+            <div class="icon">✓</div>
+            <div class="value">{{ "{:,}".format(metrics.matched_items) }}</div>
+            <div class="label">Items Matched</div>
+            <div class="trend up">
+                <span>↑</span>
+                <span>{{ "%.0f"|format((metrics.matched_items / metrics.total_items * 100) if metrics.total_items > 0 else 0) }}% completion</span>
+            </div>
+        </div>
+
+        <div class="kpi-card warning">
+            <div class="icon">⏳</div>
+            <div class="value">{{ "{:,}".format(metrics.pending_review) }}</div>
+            <div class="label">Pending Review</div>
+            <div class="trend {{ 'down' if metrics.pending_review < metrics.total_items * 0.1 else 'stable' }}">
+                <span>{% if metrics.pending_review < metrics.total_items * 0.1 %}↓{% else %}→{% endif %}</span>
+                <span>Needs approval</span>
+            </div>
+        </div>
+
+        <div class="kpi-card {{ 'danger' if metrics.flagged_critical > 0 else 'success' }}">
+            <div class="icon">{% if metrics.flagged_critical > 0 %}⚠️{% else %}🛡️{% endif %}</div>
+            <div class="value">{{ "{:,}".format(metrics.flagged_critical) }}</div>
+            <div class="label">Critical Flags</div>
+            <div class="trend {{ 'up' if metrics.flagged_critical > 0 else 'stable' }}">
+                <span>{% if metrics.flagged_critical > 0 %}⚠{% else %}✓{% endif %}</span>
+                <span>{% if metrics.flagged_critical > 0 %}Require attention{% else %}All clear{% endif %}</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Workflow Timeline (Gantt Style) -->
+<div class="timeline-container">
+    <div class="timeline-header">🔄 Workflow Progress Timeline</div>
+    <div class="timeline">
+        <div class="timeline-item">
+            <div class="timeline-label">1. Revit Import</div>
+            <div class="timeline-bar-container">
+                <div class="timeline-bar completed" style="width: {{ metrics.stage_import.completion_percent }}%;">
+                    ✓ Completed
+                </div>
+            </div>
+            <span class="timeline-percentage">{{ "%.0f"|format(metrics.stage_import.completion_percent) }}%</span>
+        </div>
+
+        <div class="timeline-item">
+            <div class="timeline-label">2. Classification</div>
+            <div class="timeline-bar-container">
+                <div class="timeline-bar {{ 'completed' if metrics.stage_classification.status == 'completed' else 'in-progress' }}" style="width: {{ metrics.stage_classification.completion_percent }}%;">
+                    {% if metrics.stage_classification.status == 'completed' %}✓ Completed{% else %}⏳ In Progress{% endif %}
+                </div>
+            </div>
+            <span class="timeline-percentage">{{ "%.0f"|format(metrics.stage_classification.completion_percent) }}%</span>
+        </div>
+
+        <div class="timeline-item">
+            <div class="timeline-label">3. Price Matching</div>
+            <div class="timeline-bar-container">
+                <div class="timeline-bar {{ 'completed' if metrics.stage_matching.status == 'completed' else 'in-progress' }}" style="width: {{ metrics.stage_matching.completion_percent }}%;">
+                    {% if metrics.stage_matching.status == 'completed' %}✓ Completed{% else %}⏳ {{ "%.0f"|format(metrics.stage_matching.completion_percent) }}%{% endif %}
+                </div>
+            </div>
+            <span class="timeline-percentage">{{ "%.0f"|format(metrics.stage_matching.completion_percent) }}%</span>
+        </div>
+
+        <div class="timeline-item">
+            <div class="timeline-label">4. Review & Approval</div>
+            <div class="timeline-bar-container">
+                <div class="timeline-bar {{ 'completed' if metrics.stage_review.status == 'completed' else 'in-progress' if metrics.stage_review.status == 'in_progress' else 'not-started' }}" style="width: {{ metrics.stage_review.completion_percent }}%;">
+                    {% if metrics.stage_review.status == 'completed' %}✓ Completed
+                    {% elif metrics.stage_review.status == 'in_progress' %}⏳ {{ "%.0f"|format(metrics.stage_review.completion_percent) }}%
+                    {% else %}Not Started
+                    {% endif %}
+                </div>
+            </div>
+            <span class="timeline-percentage">{{ "%.0f"|format(metrics.stage_review.completion_percent) }}%</span>
+        </div>
+    </div>
+</div>
+
+<!-- Charts Grid -->
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin: 2rem 0;">
+    <!-- Confidence Distribution -->
+    <div class="chart-card">
+        <div class="chart-header">
+            📊 Match Confidence Quality
+        </div>
+        <div style="position: relative; height: 300px; width: 100%;">
+            <canvas id="confidenceChart"></canvas>
+        </div>
+        <div style="margin-top: 1.5rem; font-size: 0.875rem; color: #718096; line-height: 1.8;">
+            <div><strong style="color: #48bb78;">● High (≥85%):</strong> Auto-approved</div>
+            <div><strong style="color: #4299e1;">● Medium (70-84%):</strong> Manual review</div>
+            <div><strong style="color: #f56565;">● Low (&lt;70%):</strong> User decision</div>
+        </div>
+    </div>
+
+    <!-- Classification Coverage -->
+    <div class="chart-card">
+        <div class="chart-header">
+            🏗️ Top Classification Codes
+        </div>
+        {% if metrics.classification_coverage %}
+        <div style="position: relative; height: 300px; width: 100%;">
+            <canvas id="classificationChart"></canvas>
+        </div>
+        {% else %}
+        <div style="text-align: center; padding: 4rem 0; color: #cbd5e0;">
+            <div style="font-size: 3rem; margin-bottom: 1rem;">📋</div>
+            <div style="font-weight: 600; color: #718096;">No classification data available</div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Action Items -->
+<div class="chart-card">
+    <div class="chart-header">⚡ Recommended Next Actions</div>
+    <div class="action-grid">
+        {% if metrics.flagged_critical > 0 %}
+        <a href="/review?org={{ org_id }}&project={{ project_id }}&severity=Critical-Veto" class="action-btn danger">
+            <span>🚨</span>
+            <span>Resolve {{ metrics.flagged_critical }} Critical Flags</span>
+        </a>
+        {% endif %}
+
+        {% if metrics.pending_review > 0 %}
+        <a href="/review?org={{ org_id }}&project={{ project_id }}" class="action-btn primary">
+            <span>📋</span>
+            <span>Review {{ metrics.pending_review }} Items</span>
+        </a>
+        {% endif %}
+
+        {% if metrics.matched_items < metrics.total_items %}
+        <a href="/match?org={{ org_id }}&project={{ project_id }}" class="action-btn primary">
+            <span>🔍</span>
+            <span>Continue Matching</span>
+        </a>
+        {% endif %}
+
+        <a href="/reports?org={{ org_id }}&project={{ project_id }}" class="action-btn success">
+            <span>📊</span>
+            <span>Generate Cost Report</span>
+        </a>
+
+        <a href="javascript:window.print()" class="action-btn" style="background: #e2e8f0; color: #2d3748;">
+            <span>🖨️</span>
+            <span>Print Executive Summary</span>
+        </a>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<!-- Chart.js with Advanced Configs -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+
+<script>
+// Global Chart Defaults
+Chart.defaults.font.family = "'Inter', sans-serif";
+Chart.defaults.plugins.legend.labels.usePointStyle = true;
+Chart.defaults.plugins.legend.labels.padding = 15;
+
+// Confidence Distribution (Doughnut with Animation)
+const confidenceCtx = document.getElementById('confidenceChart');
+new Chart(confidenceCtx, {
+    type: 'doughnut',
+    data: {
+        labels: ['High Confidence (≥85%)', 'Medium (70-84%)', 'Low (<70%)'],
+        datasets: [{
+            data: [{{ metrics.confidence_high }}, {{ metrics.confidence_medium }}, {{ metrics.confidence_low }}],
+            backgroundColor: [
+                'rgba(72, 187, 120, 0.9)',
+                'rgba(66, 153, 225, 0.9)',
+                'rgba(245, 101, 101, 0.9)'
+            ],
+            borderWidth: 0,
+            hoverOffset: 15
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        cutout: '70%',
+        animation: {
+            animateRotate: true,
+            animateScale: true,
+            duration: 1500,
+            easing: 'easeInOutQuart'
+        },
+        plugins: {
+            legend: {
+                position: 'bottom',
+                labels: {
+                    font: {
+                        size: 13,
+                        weight: '600'
+                    },
+                    padding: 20
+                }
+            },
+            tooltip: {
+                backgroundColor: 'rgba(26, 32, 44, 0.95)',
+                padding: 12,
+                titleFont: {
+                    size: 14,
+                    weight: 'bold'
+                },
+                bodyFont: {
+                    size: 13
+                },
+                borderColor: 'rgba(255, 255, 255, 0.1)',
+                borderWidth: 1,
+                callbacks: {
+                    label: function(context) {
+                        const total = {{ metrics.confidence_high + metrics.confidence_medium + metrics.confidence_low }};
+                        const percentage = total > 0 ? ((context.parsed / total) * 100).toFixed(1) : 0;
+                        return context.label + ': ' + context.parsed + ' items (' + percentage + '%)';
+                    }
+                }
+            }
+        }
+    }
+});
+
+{% if metrics.classification_coverage %}
+// Classification Coverage (Horizontal Bar)
+const classCtx = document.getElementById('classificationChart');
+new Chart(classCtx, {
+    type: 'bar',
+    data: {
+        labels: [{% for cls in metrics.classification_coverage %}'Code {{ cls.code }}'{% if not loop.last %}, {% endif %}{% endfor %}],
+        datasets: [{
+            label: 'Matched',
+            data: [{% for cls in metrics.classification_coverage %}{{ cls.matched }}{% if not loop.last %}, {% endif %}{% endfor %}],
+            backgroundColor: 'rgba(72, 187, 120, 0.9)',
+            borderRadius: 6,
+            borderSkipped: false
+        }, {
+            label: 'Unmatched',
+            data: [{% for cls in metrics.classification_coverage %}{{ cls.total - cls.matched }}{% if not loop.last %}, {% endif %}{% endfor %}],
+            backgroundColor: 'rgba(226, 232, 240, 0.9)',
+            borderRadius: 6,
+            borderSkipped: false
+        }]
+    },
+    options: {
+        indexAxis: 'y',
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: {
+            duration: 1500,
+            easing: 'easeInOutQuart',
+            delay: (context) => {
+                return context.dataIndex * 100;
+            }
+        },
+        scales: {
+            x: {
+                stacked: true,
+                beginAtZero: true,
+                grid: {
+                    display: false
+                },
+                ticks: {
+                    font: {
+                        size: 12,
+                        weight: '600'
+                    }
+                }
+            },
+            y: {
+                stacked: true,
+                grid: {
+                    display: false
+                },
+                ticks: {
+                    font: {
+                        size: 12,
+                        weight: '600'
+                    }
+                }
+            }
+        },
+        plugins: {
+            legend: {
+                position: 'bottom',
+                labels: {
+                    font: {
+                        size: 13,
+                        weight: '600'
+                    },
+                    padding: 20
+                }
+            },
+            tooltip: {
+                backgroundColor: 'rgba(26, 32, 44, 0.95)',
+                padding: 12,
+                borderColor: 'rgba(255, 255, 255, 0.1)',
+                borderWidth: 1,
+                callbacks: {
+                    title: function(context) {
+                        return 'Classification ' + context[0].label;
+                    },
+                    afterBody: function(context) {
+                        const dataIndex = context[0].dataIndex;
+                        const coverage = [{% for cls in metrics.classification_coverage %}{{ cls.percent }}{% if not loop.last %}, {% endif %}{% endfor %}];
+                        return '\nCoverage: ' + coverage[dataIndex].toFixed(1) + '%';
+                    }
+                }
+            }
+        }
+    }
+});
+{% endif %}
+
+// Smooth scroll to sections
+document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+    anchor.addEventListener('click', function (e) {
+        e.preventDefault();
+        const target = document.querySelector(this.getAttribute('href'));
+        if (target) {
+            target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    });
+});
+</script>
+
+<!-- Export to Excel -->
+{% set export_type = 'progress' %}
+{% include 'executive_export_button.html' %}
+
+<!-- Print/PDF Export -->
+{% include 'executive_print.html' %}
+
+{% endblock %}

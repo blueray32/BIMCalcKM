@@ -1,0 +1,628 @@
+{% extends "base.html" %}
+
+{% block title %}Cost Report - BIMCalc Executive Dashboard{% endblock %}
+
+{% block extra_styles %}
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap');
+
+    body {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    /* Executive Header */
+    .executive-header {
+        background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+        color: white;
+        padding: 3rem 2rem;
+        margin: -2rem -2rem 2rem -2rem;
+        border-radius: 0 0 1rem 1rem;
+        box-shadow: 0 10px 30px rgba(72, 187, 120, 0.3);
+    }
+
+    .executive-header h1 {
+        font-size: 2.5rem;
+        font-weight: 800;
+        margin: 0 0 0.5rem 0;
+        text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .executive-header .subtitle {
+        font-size: 1.125rem;
+        opacity: 0.9;
+        font-weight: 300;
+    }
+
+    /* Cost Ring */
+    .cost-ring-container {
+        position: relative;
+        width: 280px;
+        height: 280px;
+        margin: 0 auto;
+    }
+
+    .cost-ring {
+        transform: rotate(-90deg);
+        filter: drop-shadow(0 4px 12px rgba(72, 187, 120, 0.4));
+    }
+
+    .cost-value {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        text-align: center;
+    }
+
+    .cost-value .number {
+        font-size: 2.5rem;
+        font-weight: 800;
+        line-height: 1;
+        background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+
+    .cost-value .label {
+        font-size: 0.875rem;
+        color: #718096;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-top: 0.5rem;
+    }
+
+    /* KPI Cards */
+    .kpi-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 1.5rem;
+        margin: 2rem 0;
+    }
+
+    .kpi-card {
+        background: white;
+        border-radius: 1rem;
+        padding: 1.5rem;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.05), 0 1px 3px rgba(0,0,0,0.1);
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .kpi-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 12px 24px rgba(0,0,0,0.1), 0 4px 8px rgba(0,0,0,0.06);
+    }
+
+    .kpi-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: linear-gradient(90deg, #48bb78 0%, #38a169 100%);
+    }
+
+    .kpi-card.danger::before {
+        background: linear-gradient(90deg, #f56565 0%, #c53030 100%);
+    }
+
+    .kpi-card.warning::before {
+        background: linear-gradient(90deg, #ed8936 0%, #dd6b20 100%);
+    }
+
+    .kpi-label {
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: #718096;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 0.5rem;
+    }
+
+    .kpi-value {
+        font-size: 2.5rem;
+        font-weight: 800;
+        color: #2d3748;
+        line-height: 1;
+    }
+
+    .kpi-subtitle {
+        font-size: 0.875rem;
+        color: #a0aec0;
+        margin-top: 0.5rem;
+    }
+
+    /* Confidence Breakdown */
+    .confidence-breakdown {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1rem;
+        margin: 2rem 0;
+    }
+
+    .confidence-item {
+        background: white;
+        border-radius: 0.75rem;
+        padding: 1.5rem;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        text-align: center;
+        border-left: 4px solid;
+    }
+
+    .confidence-item.high {
+        border-color: #48bb78;
+    }
+
+    .confidence-item.medium {
+        border-color: #4299e1;
+    }
+
+    .confidence-item.low {
+        border-color: #f56565;
+    }
+
+    .confidence-item-label {
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: #718096;
+        margin-bottom: 0.5rem;
+    }
+
+    .confidence-item-value {
+        font-size: 2rem;
+        font-weight: 800;
+        line-height: 1;
+    }
+
+    .confidence-item.high .confidence-item-value {
+        color: #48bb78;
+    }
+
+    .confidence-item.medium .confidence-item-value {
+        color: #4299e1;
+    }
+
+    .confidence-item.low .confidence-item-value {
+        color: #f56565;
+    }
+
+    /* Chart Cards */
+    .chart-card {
+        background: white;
+        border-radius: 1rem;
+        padding: 2rem;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.05), 0 1px 3px rgba(0,0,0,0.1);
+        transition: all 0.3s ease;
+    }
+
+    .chart-card:hover {
+        box-shadow: 0 12px 24px rgba(0,0,0,0.1), 0 4px 8px rgba(0,0,0,0.06);
+    }
+
+    .chart-header {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: #2d3748;
+        margin-bottom: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    /* Action Buttons */
+    .action-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1rem;
+        margin: 2rem 0;
+    }
+
+    .action-btn {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 1.25rem 1.5rem;
+        border-radius: 0.75rem;
+        text-decoration: none;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+
+    .action-btn span:first-child {
+        font-size: 1.5rem;
+    }
+
+    .action-btn.success {
+        background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+        color: white;
+    }
+
+    .action-btn.primary {
+        background: linear-gradient(135deg, #4299e1 0%, #3182ce 100%);
+        color: white;
+    }
+
+    .action-btn.warning {
+        background: linear-gradient(135deg, #ed8936 0%, #dd6b20 100%);
+        color: white;
+    }
+
+    .action-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 16px rgba(0,0,0,0.15);
+    }
+
+    /* Risk Badge */
+    .risk-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 1rem;
+        border-radius: 2rem;
+        font-weight: 700;
+        font-size: 0.875rem;
+        margin-top: 1rem;
+    }
+
+    .risk-badge.high {
+        background: #fff5f5;
+        color: #c53030;
+        border: 2px solid #f56565;
+    }
+
+    .risk-badge.medium {
+        background: #fffaf0;
+        color: #c05621;
+        border: 2px solid #ed8936;
+    }
+
+    .risk-badge.low {
+        background: #f0fff4;
+        color: #2f855a;
+        border: 2px solid #48bb78;
+    }
+
+    /* Cost formatting */
+    .cost {
+        font-family: 'Courier New', monospace;
+        font-weight: 600;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Executive Header -->
+<div class="executive-header">
+    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+        <div>
+            <h1>💰 Financial Summary</h1>
+            <div class="subtitle">Cost breakdown for {{ project_id }}</div>
+        </div>
+        <a href="/reports?org={{ org_id }}&project={{ project_id }}"
+           style="background: rgba(255,255,255,0.2); color: white; padding: 0.75rem 1.5rem; border-radius: 0.5rem; text-decoration: none; font-weight: 600; display: inline-flex; align-items: center; gap: 0.5rem; backdrop-filter: blur(10px);">
+            <span>←</span>
+            <span>Generate Report</span>
+        </a>
+    </div>
+</div>
+
+<!-- Executive Navigation -->
+{% set current_page = 'reports' %}
+{% include 'executive_nav.html' %}
+
+<!-- Cost Overview -->
+<div class="chart-card" style="margin-bottom: 2rem;">
+    <div style="display: grid; grid-template-columns: 280px 1fr; gap: 3rem; align-items: center;">
+        <!-- Cost Ring -->
+        <div>
+            <div class="cost-ring-container">
+                <svg class="cost-ring" width="280" height="280">
+                    <circle cx="140" cy="140" r="120" fill="none" stroke="#e2e8f0" stroke-width="24"></circle>
+                    <circle
+                        id="costCircle"
+                        cx="140"
+                        cy="140"
+                        r="120"
+                        fill="none"
+                        stroke="#48bb78"
+                        stroke-width="24"
+                        stroke-dasharray="754"
+                        stroke-dashoffset="{% if metrics.total_items > 0 %}{{ 754 - (754 * (metrics.matched_items / metrics.total_items)) }}{% else %}754{% endif %}"
+                        stroke-linecap="round"
+                        style="transition: stroke-dashoffset 1.5s cubic-bezier(0.4, 0, 0.2, 1);"></circle>
+                </svg>
+                <div class="cost-value">
+                    <div class="number">€{{ "%.0f"|format(metrics.total_cost_net / 1000) }}K</div>
+                    <div class="label">Total Cost</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Cost Breakdown -->
+        <div>
+            <h2 style="font-size: 1.5rem; font-weight: 700; margin-bottom: 1.5rem; color: #2d3748;">Cost by Confidence Level</h2>
+            <div class="confidence-breakdown">
+                <div class="confidence-item high">
+                    <div class="confidence-item-label">💎 High Confidence</div>
+                    <div class="confidence-item-value cost">€{{ "%.0f"|format(metrics.high_confidence_cost / 1000) }}K</div>
+                    <div style="font-size: 0.75rem; color: #718096; margin-top: 0.5rem;">≥85% confidence</div>
+                </div>
+                <div class="confidence-item medium">
+                    <div class="confidence-item-label">⚖️ Medium Confidence</div>
+                    <div class="confidence-item-value cost">€{{ "%.0f"|format(metrics.medium_confidence_cost / 1000) }}K</div>
+                    <div style="font-size: 0.75rem; color: #718096; margin-top: 0.5rem;">70-84% confidence</div>
+                </div>
+                <div class="confidence-item low">
+                    <div class="confidence-item-label">⚠️ Low Confidence</div>
+                    <div class="confidence-item-value cost">€{{ "%.0f"|format(metrics.low_confidence_cost / 1000) }}K</div>
+                    <div style="font-size: 0.75rem; color: #718096; margin-top: 0.5rem;">&lt;70% confidence</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- KPI Cards -->
+{% set _total_cost_net = metrics.total_cost_net %}
+{% set risk_ratio = (metrics.high_risk_total_cost / _total_cost_net) if _total_cost_net else 0 %}
+{% set high_conf_ratio = (metrics.high_confidence_cost / _total_cost_net) if _total_cost_net else 0 %}
+<div class="kpi-grid">
+    <div class="kpi-card">
+        <div class="kpi-label">Total Project Cost</div>
+        <div class="kpi-value cost">€{{ "{:,.0f}".format(metrics.total_cost_net) }}</div>
+        <div class="kpi-subtitle">Excluding VAT</div>
+    </div>
+
+    <div class="kpi-card">
+        <div class="kpi-label">Total with VAT</div>
+        <div class="kpi-value cost">€{{ "{:,.0f}".format(metrics.total_cost_gross) }}</div>
+        <div class="kpi-subtitle">Including VAT (23%)</div>
+    </div>
+
+    <div class="kpi-card {% if metrics.match_percentage >= 90 %}{% elif metrics.match_percentage >= 70 %}warning{% else %}danger{% endif %}">
+        <div class="kpi-label">Match Coverage</div>
+        <div class="kpi-value">{{ "%.1f"|format(metrics.match_percentage) }}%</div>
+        <div class="kpi-subtitle">{{ metrics.matched_items }}/{{ metrics.total_items }} items</div>
+    </div>
+
+    <div class="kpi-card {% if risk_ratio > 0.2 %}danger{% elif risk_ratio > 0.1 %}warning{% endif %}">
+        <div class="kpi-label">At-Risk Cost</div>
+        <div class="kpi-value cost">€{{ "{:,.0f}".format(metrics.high_risk_total_cost) }}</div>
+        <div class="kpi-subtitle">Low confidence items</div>
+    </div>
+</div>
+
+<!-- Risk Alert -->
+{% if risk_ratio > 0.2 %}
+<div class="risk-badge high">
+    🔴 {{ "%.1f"|format(risk_ratio * 100) }}% of costs have low confidence - review recommended
+</div>
+{% elif risk_ratio > 0.1 %}
+<div class="risk-badge medium">
+    🟡 {{ "%.1f"|format(risk_ratio * 100) }}% of costs need verification
+</div>
+{% elif _total_cost_net > 0 %}
+<div class="risk-badge low">
+    ✓ {{ "%.1f"|format(high_conf_ratio * 100) }}% of costs have high confidence!
+</div>
+{% endif %}
+
+<!-- Charts Grid -->
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin: 2rem 0;">
+    <!-- Cost Distribution by Classification -->
+    <div class="chart-card">
+        <div class="chart-header">
+            🏗️ Cost Distribution
+        </div>
+        {% if metrics.cost_by_classification %}
+        <div style="position: relative; height: 300px; width: 100%;">
+            <canvas id="costDistributionChart"></canvas>
+        </div>
+        {% else %}
+        <div style="text-align: center; padding: 4rem 0; color: #cbd5e0;">
+            <div style="font-size: 3rem; margin-bottom: 1rem;">📊</div>
+            <div style="font-weight: 600; color: #718096;">No cost data available</div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Top 10 Expensive Items -->
+    <div class="chart-card">
+        <div class="chart-header">
+            💎 Top Cost Drivers
+        </div>
+        {% if metrics.top_10_expensive %}
+        <div style="position: relative; height: 300px; width: 100%;">
+            <canvas id="expensiveItemsChart"></canvas>
+        </div>
+        {% else %}
+        <div style="text-align: center; padding: 4rem 0; color: #cbd5e0;">
+            <div style="font-size: 3rem; margin-bottom: 1rem;">💰</div>
+            <div style="font-weight: 600; color: #718096;">No matched items</div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- High Risk Items Table -->
+{% if metrics.high_risk_items %}
+<div class="chart-card">
+    <div class="chart-header">
+        ⚠️ High-Risk Items (Low Confidence × High Cost)
+    </div>
+    <div style="overflow-x: auto;">
+        <table style="width: 100%; border-collapse: collapse;">
+            <thead>
+                <tr style="background: #f7fafc; text-align: left;">
+                    <th style="padding: 0.75rem; font-weight: 600; color: #4a5568;">Family / Type</th>
+                    <th style="padding: 0.75rem; font-weight: 600; color: #4a5568;">Quantity</th>
+                    <th style="padding: 0.75rem; font-weight: 600; color: #4a5568;">Unit Price</th>
+                    <th style="padding: 0.75rem; font-weight: 600; color: #4a5568;">Total Cost</th>
+                    <th style="padding: 0.75rem; font-weight: 600; color: #4a5568;">Confidence</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in metrics.high_risk_items[:10] %}
+                <tr style="border-bottom: 1px solid #e2e8f0;">
+                    <td style="padding: 0.75rem;">
+                        <div style="font-weight: 600; color: #2d3748;">{{ item.family }}</div>
+                        <div style="font-size: 0.875rem; color: #718096;">{{ item.type }}</div>
+                    </td>
+                    <td style="padding: 0.75rem;">{{ "%.0f"|format(item.quantity) }}</td>
+                    <td style="padding: 0.75rem;" class="cost">€{{ "{:,.2f}".format(item.unit_price) }}</td>
+                    <td style="padding: 0.75rem; font-weight: 700;" class="cost">€{{ "{:,.0f}".format(item.total_cost) }}</td>
+                    <td style="padding: 0.75rem;">
+                        <span style="padding: 0.25rem 0.75rem; border-radius: 1rem; font-size: 0.875rem; font-weight: 600; background: {% if item.confidence >= 70 %}#bee3f8{% else %}#fed7d7{% endif %}; color: {% if item.confidence >= 70 %}#2c5282{% else %}#9b2c2c{% endif %};">
+                            {{ "%.1f"|format(item.confidence) }}%
+                        </span>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+<!-- Action Items -->
+<div class="chart-card">
+    <div class="chart-header">⚡ Recommended Actions</div>
+    <div class="action-grid">
+        <a href="/reports/generate?org={{ org_id }}&project={{ project_id }}&format=xlsx" class="action-btn success">
+            <span>📥</span>
+            <span>Download Excel Report</span>
+        </a>
+
+        <a href="/reports/generate?org={{ org_id }}&project={{ project_id }}&format=csv" class="action-btn success">
+            <span>📄</span>
+            <span>Download CSV Report</span>
+        </a>
+
+        {% if metrics.high_risk_items %}
+        <a href="/review?org={{ org_id }}&project={{ project_id }}" class="action-btn warning">
+            <span>🔍</span>
+            <span>Review Low Confidence Items</span>
+        </a>
+        {% endif %}
+
+        <a href="/progress?org={{ org_id }}&project={{ project_id }}&view=executive" class="action-btn primary">
+            <span>📊</span>
+            <span>View Project Progress</span>
+        </a>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+// Cost Distribution by Classification (Doughnut)
+{% if metrics.cost_by_classification %}
+const distCtx = document.getElementById('costDistributionChart');
+new Chart(distCtx, {
+    type: 'doughnut',
+    data: {
+        labels: [{% for cls in metrics.cost_by_classification %}'Code {{ cls.code }}'{% if not loop.last %}, {% endif %}{% endfor %}],
+        datasets: [{
+            data: [{% for cls in metrics.cost_by_classification %}{{ cls.total_cost }}{% if not loop.last %}, {% endif %}{% endfor %}],
+            backgroundColor: [
+                'rgba(72, 187, 120, 0.9)',
+                'rgba(66, 153, 225, 0.9)',
+                'rgba(159, 122, 234, 0.9)',
+                'rgba(237, 137, 54, 0.9)',
+                'rgba(245, 101, 101, 0.9)'
+            ],
+            borderWidth: 0,
+            hoverOffset: 8
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                position: 'bottom',
+                labels: {
+                    font: {
+                        size: 12,
+                        weight: '600'
+                    },
+                    padding: 15
+                }
+            },
+            tooltip: {
+                backgroundColor: 'rgba(26, 32, 44, 0.95)',
+                padding: 12,
+                callbacks: {
+                    label: function(context) {
+                        const total = {{ metrics.total_cost_net }};
+                        const percentage = total > 0 ? ((context.parsed / total) * 100).toFixed(1) : 0;
+                        return context.label + ': €' + context.parsed.toLocaleString('en-US', {maximumFractionDigits: 0}) + ' (' + percentage + '%)';
+                    }
+                }
+            }
+        }
+    }
+});
+{% endif %}
+
+// Top Expensive Items (Horizontal Bar)
+{% if metrics.top_10_expensive %}
+const expCtx = document.getElementById('expensiveItemsChart');
+new Chart(expCtx, {
+    type: 'bar',
+    data: {
+        labels: [{% for item in metrics.top_10_expensive[:5] %}'{{ item.family[:20] }}'{% if not loop.last %}, {% endif %}{% endfor %}],
+        datasets: [{
+            label: 'Total Cost (€)',
+            data: [{% for item in metrics.top_10_expensive[:5] %}{{ item.total_cost }}{% if not loop.last %}, {% endif %}{% endfor %}],
+            backgroundColor: [{% for item in metrics.top_10_expensive[:5] %}{% if item.confidence >= 85 %}'rgba(72, 187, 120, 0.9)'{% elif item.confidence >= 70 %}'rgba(66, 153, 225, 0.9)'{% else %}'rgba(245, 101, 101, 0.9)'{% endif %}{% if not loop.last %}, {% endif %}{% endfor %}],
+            borderRadius: 6
+        }]
+    },
+    options: {
+        indexAxis: 'y',
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+            x: {
+                beginAtZero: true,
+                ticks: {
+                    callback: function(value) {
+                        return '€' + (value / 1000).toFixed(0) + 'K';
+                    }
+                }
+            }
+        },
+        plugins: {
+            legend: {
+                display: false
+            },
+            tooltip: {
+                backgroundColor: 'rgba(26, 32, 44, 0.95)',
+                padding: 12,
+                callbacks: {
+                    label: function(context) {
+                        return 'Cost: €' + context.parsed.x.toLocaleString('en-US', {maximumFractionDigits: 0});
+                    }
+                }
+            }
+        }
+    }
+});
+{% endif %}
+</script>
+
+<!-- Export to Excel -->
+{% set export_type = 'reports' %}
+{% include 'executive_export_button.html' %}
+
+<!-- Print/PDF Export -->
+{% include 'executive_print.html' %}
+
+{% endblock %}

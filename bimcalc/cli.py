@@ -426,6 +426,99 @@ def migrate(
     run_migration(execute=execute, rollback=rollback)
 
 
+@app.command(name="sync-crail4")
+def sync_crail4_command(
+    org_id: str = typer.Option("acme-construction", "--org", help="Organization ID"),
+    target_scheme: str = typer.Option("UniClass2015", "--scheme", help="Target classification scheme"),
+    full_sync: bool = typer.Option(False, "--full-sync", help="Ignore delta window and fetch all data"),
+    classifications: Optional[str] = typer.Option(
+        None, "--classifications", help="Comma-separated classification codes to filter"
+    ),
+    region: Optional[str] = typer.Option(None, "--region", help="Region filter (e.g., UK, IE)"),
+):
+    """Trigger Crail4 AI price synchronization."""
+    from bimcalc.integration.crail4_sync import sync_crail4_prices
+
+    delta_days = None if full_sync else 7
+    class_filter = None
+    if classifications:
+        class_filter = [code.strip() for code in classifications.split(",") if code.strip()]
+
+    console.print(
+        f"[bold]Crail4 Sync:[/bold] org={org_id}, delta_days={delta_days}, target_scheme={target_scheme}"
+    )
+
+    async def _sync():
+        try:
+            result = await sync_crail4_prices(
+                org_id=org_id,
+                target_scheme=target_scheme,
+                delta_days=delta_days,
+                classification_filter=class_filter,
+                region=region,
+            )
+            console.print(f"Status: {result.get('status')}")
+            console.print(f"Items loaded: {result.get('items_loaded', 0)}")
+            if rejection := result.get("transform_rejections"):
+                console.print(f"Transform rejections: {rejection}")
+            if errors := result.get("errors"):
+                console.print(f"[yellow]Errors:[/yellow] {errors}")
+        except Exception as exc:
+            console.print(f"[red]Crail4 sync failed: {exc}[/red]")
+            raise
+
+    asyncio.run(_sync())
+
+
+@app.command(name="import-csv-prices")
+def import_csv_prices_command(
+    file_path: Path = typer.Argument(..., help="Path to CSV or Excel file"),
+    org_id: str = typer.Option("acme-construction", "--org", help="Organization ID"),
+    vendor: str = typer.Option(..., "--vendor", help="Vendor/supplier name (e.g., CEF, Rexel)"),
+    sheet_name: Optional[str] = typer.Option(None, "--sheet", help="Sheet name for Excel files"),
+):
+    """Import supplier price list from CSV or Excel file.
+
+    Example:
+        bimcalc import-csv-prices data/prices/cef_pricelist.xlsx --vendor CEF --sheet "Cable Management"
+    """
+    from bimcalc.integration.csv_price_importer import import_supplier_pricelist
+
+    if not file_path.exists():
+        console.print(f"[red]Error: File not found: {file_path}[/red]")
+        raise typer.Exit(1)
+
+    console.print(f"[bold]Importing CSV Prices:[/bold] {file_path}")
+    console.print(f"Vendor: {vendor}, Org: {org_id}")
+
+    async def _import():
+        try:
+            result = await import_supplier_pricelist(
+                file_path=str(file_path),
+                org_id=org_id,
+                vendor_name=vendor,
+                sheet_name=sheet_name,
+            )
+
+            # Display results
+            console.print(f"\n[green]✓ Import completed successfully[/green]")
+            console.print(f"Run ID: {result['run_id']}")
+            console.print(f"Items received: {result['items_received']}")
+            console.print(f"Items loaded: {result['items_loaded']}")
+            console.print(f"Items rejected: {result['items_rejected']}")
+
+            if result['rejection_reasons']:
+                console.print("\n[yellow]Rejection reasons:[/yellow]")
+                for reason, count in result['rejection_reasons'].items():
+                    console.print(f"  {reason}: {count}")
+
+        except Exception as exc:
+            console.print(f"[red]CSV import failed: {exc}[/red]")
+            raise
+
+    asyncio.run(_import())
+
+
 @app.command(name="sync-prices")
 def sync_prices_cmd(
     config_file: Path = typer.Option(

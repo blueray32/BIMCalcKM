@@ -136,6 +136,6 @@ def price_items_catalog() -> list[PriceItem]:
 def setup_test_env(monkeypatch):
     """Set up test environment variables."""
     # Set DATABASE_URL for config tests
-    monkeypatch.setenv("DATABASE_URL", "sqlite:///:memory:")
+    monkeypatch.setenv("DATABASE_URL", "sqlite+aiosqlite:///:memory:")
     monkeypatch.setenv("DEFAULT_ORG_ID", "test-org")
     monkeypatch.setenv("LOG_LEVEL", "DEBUG")

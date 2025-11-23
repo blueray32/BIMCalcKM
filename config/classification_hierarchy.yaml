@@ -88,6 +88,18 @@ trust_levels:
     priority: 50
     description: "Keyword pattern matching in family/type names"
     rules:
+      # Electrical keywords
+      - family_contains: ["tray", "containment", "ladder"]
+        classification_code: 2650
+      - family_contains: ["light", "luminaire", "lamp", "fixture"]
+        classification_code: 2603
+      - family_contains: ["socket", "outlet", "receptacle", "switch"]
+        classification_code: 2601
+      - family_contains: ["panel", "switchboard", "distribution"]
+        classification_code: 2601
+      - family_contains: ["fire alarm", "smoke detector", "heat detector"]
+        classification_code: 2801
+
       # HVAC keywords
       - family_contains: ["duct", "diffuser", "grille", "register", "vav"]
         classification_code: 2302
@@ -101,18 +113,6 @@ trust_levels:
         classification_code: 2301
       - family_contains: ["sink", "toilet", "urinal", "shower", "faucet"]
         classification_code: 2211
-
-      # Electrical keywords
-      - family_contains: ["light", "luminaire", "lamp", "fixture"]
-        classification_code: 2603
-      - family_contains: ["socket", "outlet", "receptacle", "switch"]
-        classification_code: 2601
-      - family_contains: ["panel", "switchboard", "distribution"]
-        classification_code: 2601
-      - family_contains: ["tray", "containment", "ladder"]
-        classification_code: 2650
-      - family_contains: ["fire alarm", "smoke detector", "heat detector"]
-        classification_code: 2801
 
   - name: Unknown
     priority: 0

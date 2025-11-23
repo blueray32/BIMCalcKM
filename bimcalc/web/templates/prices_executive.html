@@ -1,0 +1,388 @@
+{% extends "base.html" %}
+
+{% block title %}Price Data Quality - BIMCalc Executive{% endblock %}
+
+{% block content %}
+<!-- Teal/Cyan Theme for Prices -->
+<style>
+    .executive-header {
+        background: linear-gradient(135deg, #0d9488 0%, #14b8a6 100%);
+    }
+</style>
+
+<!-- Executive Navigation -->
+{% set current_page = 'prices' %}
+{% include 'executive_nav.html' %}
+
+{% set current_items = metrics.current_price_items %}
+{% set total_price_items = metrics.total_price_items %}
+{% set stale_pct = ((metrics.stale_prices_count / current_items) * 100)|round(1) if current_items else 0 %}
+{% set coverage_pct = ((current_items / total_price_items) * 100)|round(1) if total_price_items else 0 %}
+{% set updated_pct = ((metrics.prices_updated_last_30_days / current_items) * 100)|round(1) if current_items else 0 %}
+{% set fresh_pct = (((current_items - metrics.stale_prices_count) / current_items) * 100)|round(1) if current_items else 0 %}
+
+<!-- Header -->
+<div class="executive-header">
+    <h1>💰 Price Data Quality Dashboard</h1>
+    <p class="subtitle">Pricebook Health, Coverage & Staleness Metrics</p>
+    <p style="margin-top: 0.5rem; opacity: 0.9;">
+        Organization: <strong>{{ org_id }}</strong> |
+        Generated: <strong>{{ metrics.computed_at.strftime("%B %d, %Y at %H:%M") }}</strong>
+    </p>
+</div>
+
+<!-- Alert Banners -->
+{% if current_items and metrics.stale_prices_count > current_items * 0.2 %}
+<div class="alert-banner">
+    <div class="alert-icon">⚠️</div>
+    <div class="alert-content">
+        <div class="alert-title">High Staleness Detected</div>
+        <div class="alert-body">
+            <strong>{{ metrics.stale_prices_count }}</strong> price items ({{ stale_pct }}%) are over 1 year old.
+            <a href="/ingest?org={{ org_id }}">Update pricebook data</a>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% if metrics.classification_coverage_pct < 70 %}
+<div class="alert-banner warning">
+    <div class="alert-icon">📋</div>
+    <div class="alert-content">
+        <div class="alert-title">Low Classification Coverage</div>
+        <div class="alert-body">
+            Only <strong>{{ metrics.classification_coverage_pct|round(1) }}%</strong> of expected classifications have prices.
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Quality Score Ring -->
+<div class="chart-card">
+    <div class="chart-header">📊 Price Data Quality Score</div>
+    <div style="display: flex; align-items: center; justify-content: center; padding: 2rem; gap: 4rem;">
+        <!-- Quality Ring -->
+        <div class="health-ring-container">
+            <svg class="health-ring" width="240" height="240">
+                <circle cx="120" cy="120" r="100" fill="none" stroke="#e2e8f0" stroke-width="20"></circle>
+                <circle
+                    cx="120"
+                    cy="120"
+                    r="100"
+                    fill="none"
+                    stroke="{% if metrics.quality_score >= 85 %}#0d9488{% elif metrics.quality_score >= 70 %}#14b8a6{% elif metrics.quality_score >= 50 %}#f59e0b{% else %}#ef4444{% endif %}"
+                    stroke-width="20"
+                    stroke-dasharray="628"
+                    stroke-dashoffset="{{ 628 - (628 * (metrics.quality_score / 100)) }}"
+                    stroke-linecap="round"
+                    style="transition: stroke-dashoffset 1.5s cubic-bezier(0.4, 0, 0.2, 1);"></circle>
+            </svg>
+            <div class="health-value">
+                <div class="health-number">{{ metrics.quality_score }}</div>
+                <div class="health-label">Quality Score</div>
+                <div class="health-status">{{ metrics.quality_status }}</div>
+            </div>
+        </div>
+
+        <!-- Quality Factors -->
+        <div style="flex: 1; max-width: 500px;">
+            <h3 style="margin-bottom: 1.5rem; color: #1f2937; font-size: 1.25rem;">Quality Factors</h3>
+            <div style="display: flex; flex-direction: column; gap: 1rem;">
+                <div class="progress-item">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                        <span style="font-weight: 600; color: #4b5563;">Current Items</span>
+                        <span style="font-weight: 700; color: #0d9488;">{{ coverage_pct }}%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: {{ coverage_pct }}%; background: #0d9488;"></div>
+                    </div>
+                </div>
+
+                <div class="progress-item">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                        <span style="font-weight: 600; color: #4b5563;">Classification Coverage</span>
+                        <span style="font-weight: 700; color: #14b8a6;">{{ metrics.classification_coverage_pct|round(1) }}%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: {{ metrics.classification_coverage_pct|round(1) }}%; background: #14b8a6;"></div>
+                    </div>
+                </div>
+
+                <div class="progress-item">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                        <span style="font-weight: 600; color: #4b5563;">Updated Last 30 Days</span>
+                        <span style="font-weight: 700; color: #10b981;">{{ updated_pct }}%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: {{ updated_pct }}%; background: #10b981;"></div>
+                    </div>
+                </div>
+
+                <div class="progress-item">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                        <span style="font-weight: 600; color: #4b5563;">Non-Stale (<1 year)</span>
+                        <span style="font-weight: 700; color: #059669;">{{ fresh_pct }}%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: {{ fresh_pct }}%; background: #059669;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- KPIs Grid -->
+<div class="kpi-grid">
+    <!-- Inventory KPI -->
+    <div class="kpi-card">
+        <div class="kpi-icon" style="background: linear-gradient(135deg, #0d9488 0%, #14b8a6 100%);">📦</div>
+        <div class="kpi-content">
+            <div class="kpi-label">Total Price Items</div>
+            <div class="kpi-value">{{ "{:,}".format(metrics.total_price_items) }}</div>
+            <div class="kpi-detail">
+                <span style="color: #0d9488; font-weight: 600;">{{ "{:,}".format(metrics.current_price_items) }}</span> current ·
+                <span style="color: #6b7280;">{{ "{:,}".format(metrics.historical_price_items) }}</span> historical
+            </div>
+        </div>
+    </div>
+
+    <!-- Price Range KPI -->
+    <div class="kpi-card">
+        <div class="kpi-icon" style="background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%);">💶</div>
+        <div class="kpi-content">
+            <div class="kpi-label">Price Range</div>
+            <div class="kpi-value" style="font-size: 1.5rem;">{{ metrics.currency }} {{ "{:,.2f}".format(metrics.avg_unit_price if metrics.avg_unit_price else 0) }}</div>
+            <div class="kpi-detail">
+                Min: {{ metrics.currency }} {{ "{:,.2f}".format(metrics.min_unit_price if metrics.min_unit_price else 0) }} ·
+                Max: {{ metrics.currency }} {{ "{:,.2f}".format(metrics.max_unit_price if metrics.max_unit_price else 0) }}
+            </div>
+        </div>
+    </div>
+
+    <!-- Classification KPI -->
+    <div class="kpi-card">
+        <div class="kpi-icon" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">🏷️</div>
+        <div class="kpi-content">
+            <div class="kpi-label">Classification Coverage</div>
+            <div class="kpi-value">{{ metrics.classification_coverage_pct|round(1) }}%</div>
+            <div class="kpi-detail">
+                {{ metrics.classifications_with_prices }} of {{ metrics.total_classifications }} codes
+            </div>
+        </div>
+    </div>
+
+    <!-- Freshness KPI -->
+    <div class="kpi-card">
+        <div class="kpi-icon" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">⏱️</div>
+        <div class="kpi-content">
+            <div class="kpi-label">Data Freshness</div>
+            <div class="kpi-value">{{ metrics.avg_age_days|round(0) if metrics.avg_age_days else 0 }} days</div>
+            <div class="kpi-detail">
+                {% if metrics.stale_prices_count > 0 %}
+                <span style="color: #ef4444; font-weight: 600;">{{ "{:,}".format(metrics.stale_prices_count) }}</span> stale (>1yr)
+                {% else %}
+                <span style="color: #10b981; font-weight: 600;">✓ No stale prices</span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Charts Row -->
+<div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 2rem; margin-bottom: 2rem;">
+    <!-- VAT Distribution -->
+    <div class="chart-card">
+        <div class="chart-header">📊 VAT Distribution</div>
+        <div class="chart-container" style="height: 250px;">
+            <canvas id="vatChart"></canvas>
+        </div>
+    </div>
+
+    <!-- Currency Distribution -->
+    <div class="chart-card">
+        <div class="chart-header">💱 Currency Mix</div>
+        <div style="padding: 2rem;">
+            {% if metrics.currencies_found|length > 1 %}
+            <div class="alert-banner warning" style="margin-bottom: 1rem;">
+                <div class="alert-icon" style="font-size: 1.5rem;">⚠️</div>
+                <div class="alert-content">
+                    <div class="alert-body">Multiple currencies detected: {{ metrics.currencies_found|join(', ') }}</div>
+                </div>
+            </div>
+            {% endif %}
+            <div style="text-align: center;">
+                <div style="font-size: 3rem; color: #0d9488; margin-bottom: 0.5rem;">{{ metrics.currency }}</div>
+                <div style="color: #6b7280; font-weight: 600;">Primary Currency</div>
+                <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #e5e7eb;">
+                    <div style="display: flex; justify-content: space-around; text-align: center;">
+                        <div>
+                            <div style="font-size: 1.5rem; font-weight: 700; color: #0d9488;">{{ unique_vendors }}</div>
+                            <div style="color: #6b7280; font-size: 0.875rem;">Vendors</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 1.5rem; font-weight: 700; color: #14b8a6;">{{ metrics.classifications_with_prices }}</div>
+                            <div style="color: #6b7280; font-size: 0.875rem;">Classifications</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Top Classifications Table -->
+{% if metrics.top_classifications %}
+<div class="chart-card">
+    <div class="chart-header">🏆 Top Classifications by Price Count</div>
+    <div style="overflow-x: auto;">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Classification Code</th>
+                    <th style="text-align: right;">Count</th>
+                    <th style="text-align: right;">Avg Price</th>
+                    <th style="text-align: right;">Min Price</th>
+                    <th style="text-align: right;">Max Price</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for cls in metrics.top_classifications %}
+                <tr>
+                    <td><span class="badge badge-info">{{ cls.code }}</span></td>
+                    <td style="text-align: right; font-weight: 600;">{{ "{:,}".format(cls.count) }}</td>
+                    <td style="text-align: right;">{{ metrics.currency }} {{ "{:,.2f}".format(cls.avg_price) }}</td>
+                    <td style="text-align: right; color: #059669;">{{ metrics.currency }} {{ "{:,.2f}".format(cls.min_price) }}</td>
+                    <td style="text-align: right; color: #dc2626;">{{ metrics.currency }} {{ "{:,.2f}".format(cls.max_price) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+<!-- Top Expensive Items -->
+{% if metrics.top_10_expensive %}
+<div class="chart-card">
+    <div class="chart-header">💎 Most Expensive Price Items</div>
+    <div style="overflow-x: auto;">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Item Code</th>
+                    <th>Description</th>
+                    <th style="text-align: right;">Unit Price</th>
+                    <th>Vendor</th>
+                    <th style="text-align: center;">Last Updated</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in metrics.top_10_expensive %}
+                <tr>
+                    <td><code style="background: #f3f4f6; padding: 0.25rem 0.5rem; border-radius: 0.25rem;">{{ item.code }}</code></td>
+                    <td style="max-width: 300px;">{{ item.description }}</td>
+                    <td style="text-align: right; font-weight: 700; color: #dc2626;">{{ metrics.currency }} {{ "{:,.2f}".format(item.unit_price) }}</td>
+                    <td>{{ item.vendor }}</td>
+                    <td style="text-align: center;">{{ item.updated }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+<!-- Top Vendors -->
+{% if metrics.top_vendors %}
+<div class="chart-card">
+    <div class="chart-header">🏪 Top Vendors by Price Count</div>
+    <div style="overflow-x: auto;">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Vendor</th>
+                    <th style="text-align: right;">Price Items</th>
+                    <th style="text-align: right;">Avg Unit Price</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for vendor in metrics.top_vendors %}
+                <tr>
+                    <td style="font-weight: 600;">{{ vendor.vendor }}</td>
+                    <td style="text-align: right;">{{ "{:,}".format(vendor.count) }}</td>
+                    <td style="text-align: right; color: #0d9488; font-weight: 600;">{{ metrics.currency }} {{ "{:,.2f}".format(vendor.avg_price) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+<script>
+// Global Chart Defaults
+Chart.defaults.font.family = "'Inter', sans-serif";
+Chart.defaults.plugins.legend.labels.usePointStyle = true;
+
+// VAT Distribution Chart
+const vatCtx = document.getElementById('vatChart');
+new Chart(vatCtx, {
+    type: 'doughnut',
+    data: {
+        labels: ['VAT Specified', 'VAT Unspecified'],
+        datasets: [{
+            data: [{{ metrics.vat_specified_count }}, {{ metrics.vat_unspecified_count }}],
+            backgroundColor: [
+                'rgba(13, 148, 136, 0.9)',
+                'rgba(20, 184, 166, 0.9)'
+            ],
+            borderWidth: 0,
+            hoverOffset: 15
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        cutout: '65%',
+        plugins: {
+            legend: {
+                position: 'bottom',
+                labels: {
+                    font: {
+                        size: 13,
+                        weight: '600'
+                    },
+                    padding: 20
+                }
+            },
+            tooltip: {
+                backgroundColor: 'rgba(26, 32, 44, 0.95)',
+                padding: 12,
+                callbacks: {
+                    label: function(context) {
+                        const total = {{ metrics.vat_specified_count + metrics.vat_unspecified_count }};
+                        const percentage = total > 0 ? ((context.parsed / total) * 100).toFixed(1) : 0;
+                        return context.label + ': ' + context.parsed.toLocaleString() + ' (' + percentage + '%)';
+                    }
+                }
+            }
+        }
+    }
+});
+</script>
+
+<!-- Export to Excel -->
+{% set export_type = 'prices' %}
+{% include 'executive_export_button.html' %}
+
+<!-- Print/PDF Export -->
+{% include 'executive_print.html' %}
+
+{% endblock %}

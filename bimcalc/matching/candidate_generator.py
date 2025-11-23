@@ -118,11 +118,11 @@ class CandidateGenerator:
         if filters:
             stmt = stmt.where(and_(*filters))
 
-        # Optional unit filter (strict match)
-        if item.unit is not None:
-            stmt = stmt.where(
-                or_(PriceItemModel.unit == item.unit, PriceItemModel.unit.is_(None))
-            )
+        # Optional unit filter (strict match) - REMOVED to allow Unit Mismatch flags
+        # if item.unit is not None:
+        #     stmt = stmt.where(
+        #         or_(PriceItemModel.unit == item.unit, PriceItemModel.unit.is_(None))
+        #     )
 
         # Limit results
         stmt = stmt.limit(limit)
@@ -254,11 +254,11 @@ class CandidateGenerator:
         if filters:
             stmt = stmt.where(and_(*filters))
 
-        # Optional unit filter
-        if item.unit is not None:
-            stmt = stmt.where(
-                or_(PriceItemModel.unit == item.unit, PriceItemModel.unit.is_(None))
-            )
+        # Optional unit filter - REMOVED to allow Unit Mismatch flags
+        # if item.unit is not None:
+        #     stmt = stmt.where(
+        #         or_(PriceItemModel.unit == item.unit, PriceItemModel.unit.is_(None))
+        #     )
 
         # Limit to escape-hatch max
         stmt = stmt.limit(max_escape_hatch)

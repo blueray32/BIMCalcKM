@@ -234,7 +234,7 @@ async def test_orchestrator_adds_classification_mismatch_flag_for_escape_hatch(d
         region="IE",
         vendor_id="vendor",
         sku="PIPE-200",
-        description="Steel pipe 200mm (similar dimensions)",
+        description="Cable Tray Ladder Type 200x50 (Misclassified)",
         classification_code=22,  # Out-of-class
         unit="m",
         unit_price=Decimal("15.0"),

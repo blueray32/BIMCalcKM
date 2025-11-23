@@ -21,13 +21,16 @@ async def fetch_pending_reviews(
     flag_types: Sequence[str] | None = None,
     severity_filter: FlagSeverity | None = None,
     unmapped_only: bool = False,
+    classification_filter: str | None = None,
 ) -> list[ReviewRecord]:
     """Return latest manual-review items for the project.
 
     Args:
         unmapped_only: If True, only return items with no matched price (price_item_id IS NULL)
+        classification_filter: If provided, only return items with this classification code
     """
 
+    # Find the latest match result for each item (regardless of decision)
     latest_subquery = (
         select(
             MatchResultModel.item_id.label("item_id"),
@@ -37,12 +40,12 @@ async def fetch_pending_reviews(
         .where(
             ItemModel.org_id == org_id,
             ItemModel.project_id == project_id,
-            MatchResultModel.decision == "manual-review",
         )
         .group_by(MatchResultModel.item_id)
         .subquery()
     )
 
+    # Then filter for items whose latest decision is manual-review
     stmt = (
         select(MatchResultModel, ItemModel, PriceItemModel)
         .join(
@@ -54,6 +57,7 @@ async def fetch_pending_reviews(
         )
         .join(ItemModel, ItemModel.id == MatchResultModel.item_id)
         .outerjoin(PriceItemModel, MatchResultModel.price_item_id == PriceItemModel.id)
+        .where(MatchResultModel.decision == "manual-review")
         .order_by(MatchResultModel.timestamp.asc())
     )
 
@@ -84,12 +88,60 @@ async def fetch_pending_reviews(
             flags=flags,
         )
 
-        if not _matches_filters(record, flag_types, severity_filter, unmapped_only):
+        if not _matches_filters(record, flag_types, severity_filter, unmapped_only, classification_filter):
             continue
 
         review_records.append(record)
 
     return review_records
+
+
+async def fetch_available_classifications(
+    session: AsyncSession,
+    org_id: str,
+    project_id: str,
+) -> list[dict[str, str]]:
+    """Return all distinct classification codes in the project with counts.
+
+    Returns list of {code, name, count} dicts sorted by code.
+    """
+    # Classification code to name mapping (OmniClass/UniClass)
+    CLASSIFICATION_NAMES = {
+        "62": "Small Power",
+        "63": "Earthing & Bonding",
+        "64": "Lighting",
+        "66": "Containment",
+        "67": "Emergency Lighting",
+        "68": "Fire Detection",
+    }
+
+    stmt = (
+        select(
+            ItemModel.classification_code,
+            func.count(ItemModel.id).label("count")
+        )
+        .where(
+            ItemModel.org_id == org_id,
+            ItemModel.project_id == project_id,
+            ItemModel.classification_code.isnot(None)
+        )
+        .group_by(ItemModel.classification_code)
+        .order_by(ItemModel.classification_code)
+    )
+
+    rows = await session.execute(stmt)
+    classifications = []
+
+    for row in rows.all():
+        code = row.classification_code
+        name = CLASSIFICATION_NAMES.get(code, f"Class {code}")
+        classifications.append({
+            "code": code,
+            "name": name,
+            "count": row.count
+        })
+
+    return classifications
 
 
 async def fetch_review_record(
@@ -151,9 +203,14 @@ def _matches_filters(
     flag_types: Sequence[str] | None,
     severity_filter: FlagSeverity | None,
     unmapped_only: bool = False,
+    classification_filter: str | None = None,
 ) -> bool:
     # Filter for unmapped items (no matched price)
     if unmapped_only and record.price is not None:
+        return False
+
+    # Filter by classification code
+    if classification_filter and record.item.classification_code != classification_filter:
         return False
 
     if flag_types:
