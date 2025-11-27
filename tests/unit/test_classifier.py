@@ -65,7 +65,7 @@ class TestExplicitOverride:
 
         code = classifier.classify(item)
 
-        assert code == 2301
+        assert code == "2301"
 
     def test_uniformat_code_overrides_all(self):
         """Test uniformat_code has highest priority."""
@@ -81,7 +81,7 @@ class TestExplicitOverride:
 
         code = classifier.classify(item)
 
-        assert code == 2350
+        assert code == "2350"
 
     def test_omniclass_takes_priority_over_uniformat(self):
         """Test omniclass_code checked before uniformat_code."""
@@ -99,7 +99,7 @@ class TestExplicitOverride:
         code = classifier.classify(item)
 
         # Should use omniclass (first field in trust hierarchy)
-        assert code == 2301
+        assert code == "2301"
 
 
 class TestCuratedList:
@@ -121,7 +121,7 @@ class TestCuratedList:
         code = classifier.classify(item)
 
         # Should match curated list or fall through to category
-        assert code in (66, 2650, 9999)  # Electrical containment codes or unknown
+        assert code in ("66", "2650", "9999")  # Electrical containment codes or unknown
 
     def test_curated_list_family_only_match(self):
         """Test family-only match when type not in curated list."""
@@ -137,7 +137,7 @@ class TestCuratedList:
         code = classifier.classify(item)
 
         # Should match family or fall through
-        assert isinstance(code, int)
+        assert isinstance(code, str)
 
 
 class TestRevitCategorySystem:
@@ -158,7 +158,7 @@ class TestRevitCategorySystem:
 
         code = classifier.classify(item)
 
-        assert code == 2301  # HVAC equipment
+        assert code == "2301"  # HVAC equipment
 
     def test_plumbing_mechanical_equipment(self):
         """Test plumbing mechanical equipment classification."""
@@ -175,7 +175,7 @@ class TestRevitCategorySystem:
 
         code = classifier.classify(item)
 
-        assert code == 2211  # Plumbing fixtures
+        assert code == "2211"  # Plumbing fixtures
 
     def test_ducts_category(self):
         """Test Ducts category classification."""
@@ -191,7 +191,7 @@ class TestRevitCategorySystem:
 
         code = classifier.classify(item)
 
-        assert code == 2302  # HVAC distribution
+        assert code == "2302"  # HVAC distribution
 
     def test_pipe_fittings_category(self):
         """Test Pipe Fittings category classification."""
@@ -207,7 +207,7 @@ class TestRevitCategorySystem:
 
         code = classifier.classify(item)
 
-        assert code == 2215  # Pipe fittings & valves
+        assert code == "2215"  # Pipe fittings & valves
 
     def test_electrical_fixtures_category(self):
         """Test Electrical Fixtures category classification."""
@@ -223,7 +223,7 @@ class TestRevitCategorySystem:
 
         code = classifier.classify(item)
 
-        assert code == 2603  # Lighting & branch wiring
+        assert code == "2603"  # Lighting & branch wiring
 
     def test_cable_tray_category(self):
         """Test Cable Tray category classification."""
@@ -239,7 +239,7 @@ class TestRevitCategorySystem:
 
         code = classifier.classify(item)
 
-        assert code == 2650  # Cable management
+        assert code == "2650"  # Cable management
 
 
 class TestFallbackHeuristics:
@@ -258,7 +258,7 @@ class TestFallbackHeuristics:
 
         code = classifier.classify(item)
 
-        assert code == 2302  # HVAC distribution (diffuser keyword)
+        assert code == "2302"  # HVAC distribution (diffuser keyword)
 
     def test_valve_keyword_heuristic(self):
         """Test 'valve' keyword matches pipe fittings."""
@@ -273,7 +273,7 @@ class TestFallbackHeuristics:
 
         code = classifier.classify(item)
 
-        assert code == 2215  # Pipe fittings & valves
+        assert code == "2215"  # Pipe fittings & valves
 
     def test_light_keyword_heuristic(self):
         """Test 'light' keyword matches lighting."""
@@ -288,7 +288,7 @@ class TestFallbackHeuristics:
 
         code = classifier.classify(item)
 
-        assert code == 2603  # Lighting
+        assert code == "2603"  # Lighting
 
     def test_tray_keyword_heuristic(self):
         """Test 'tray' keyword matches cable management."""
@@ -303,7 +303,7 @@ class TestFallbackHeuristics:
 
         code = classifier.classify(item)
 
-        assert code == 2650  # Cable management
+        assert code == "2650"  # Cable management
 
     def test_case_insensitive_heuristics(self):
         """Test heuristics are case-insensitive."""
@@ -318,7 +318,7 @@ class TestFallbackHeuristics:
 
         code = classifier.classify(item)
 
-        assert code == 2215  # Should match 'valve' keyword
+        assert code == "2215"  # Should match 'valve' keyword
 
 
 class TestUnknown:
@@ -337,7 +337,7 @@ class TestUnknown:
 
         code = classifier.classify(item)
 
-        assert code == 9999  # Unknown classification
+        assert code == "9999"  # Unknown classification
 
 
 class TestClassificationOrder:
@@ -357,7 +357,7 @@ class TestClassificationOrder:
 
         code = classifier.classify(item)
 
-        assert code == 9999  # Explicit override wins
+        assert code == "9999"  # Explicit override wins
 
     def test_curated_beats_revit_category(self):
         """Test curated list has priority over Revit category."""
@@ -376,7 +376,7 @@ class TestClassificationOrder:
         code = classifier.classify(item)
 
         # Should use curated or category
-        assert code in (66, 2650)  # Either curated or category
+        assert code in ("66", "2650")  # Either curated or category
 
     def test_revit_category_beats_heuristics(self):
         """Test Revit category has priority over heuristics."""
@@ -392,7 +392,7 @@ class TestClassificationOrder:
 
         code = classifier.classify(item)
 
-        assert code == 2603  # Should use category match
+        assert code == "2603"  # Should use category match
 
     def test_heuristics_beats_unknown(self):
         """Test heuristics have priority over unknown."""
@@ -407,7 +407,7 @@ class TestClassificationOrder:
 
         code = classifier.classify(item)
 
-        assert code == 2215  # Should match heuristic, not unknown
+        assert code == "2215"  # Should match heuristic, not unknown
 
 
 class TestErrorHandling:
@@ -465,5 +465,5 @@ class TestConvenienceFunction:
 
         code = classify_item(item)
 
-        assert code == 2215  # Pipe fittings
-        assert isinstance(code, int)
+        assert code == "2215"  # Pipe fittings
+        assert isinstance(code, str)

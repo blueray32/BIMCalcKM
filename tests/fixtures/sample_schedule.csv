@@ -1,0 +1,5 @@
+Family,Type,Category,Classification Code,Quantity,Unit,Width,Height,Diameter,Angle,Material
+Cable Tray,300mm Width,Cable Trays,Pr_65_70_11_11,10,m,300,50,,,Galvanized Steel
+Duct Rectangular,500x300,Ducts,Pr_65_52_63_68,5,m,500,300,,,Galvanized Steel
+Pipe Standard,100mm,Pipes,Pr_65_52_63_63,20,m,,,100,,Copper
+Elbow,90 Degree,Pipe Fittings,Pr_65_52_63_26,4,ea,,,100,90,Copper

@@ -31,7 +31,7 @@ class TestClassificationToCanonicalKey:
 
         # Step 1: Classify
         classification_code = classify_item(item)
-        assert classification_code == 2215  # Pipe fittings
+        assert classification_code == "2215"  # Pipe fittings
 
         # Step 2: Set classification on item
         item.classification_code = classification_code
@@ -173,7 +173,7 @@ class TestEndToEndPipeline:
 
         # Step 1: Classify
         item.classification_code = classify_item(item)
-        assert item.classification_code == 2302  # HVAC distribution
+        assert item.classification_code == "2302"  # HVAC distribution
 
         # Step 2: Generate canonical key
         item.canonical_key = canonical_key(item)

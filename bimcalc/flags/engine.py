@@ -6,7 +6,7 @@ Produces Flag models with severity + message, enforcing Critical-Veto rules.
 from __future__ import annotations
 
 from collections.abc import Mapping
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Any
 
@@ -84,9 +84,9 @@ def compute_flags(item_attrs: Any, price_attrs: Any) -> list[Flag]:
             f"Material mismatch (item '{material_item}', price '{material_price}')",
         )
 
-    class_item = _to_int(_get(item_attrs, "classification_code"))
-    class_price = _to_int(_get(price_attrs, "classification_code"))
-    if class_item is not None and class_price is not None and class_item != class_price:
+    class_item = _normalize_str(_get(item_attrs, "classification_code"))
+    class_price = _normalize_str(_get(price_attrs, "classification_code"))
+    if class_item and class_price and class_item != class_price:
         flag(
             "Class Mismatch",
             FlagSeverity.CRITICAL_VETO,
@@ -94,7 +94,7 @@ def compute_flags(item_attrs: Any, price_attrs: Any) -> list[Flag]:
         )
 
     last_updated = _as_datetime(_get(price_attrs, "last_updated"))
-    if last_updated and last_updated < datetime.utcnow() - _STALE_PRICE_WINDOW:
+    if last_updated and last_updated < datetime.now(timezone.utc) - _STALE_PRICE_WINDOW:
         flag(
             "StalePrice",
             FlagSeverity.ADVISORY,
@@ -199,10 +199,15 @@ def _as_datetime(value: Any) -> datetime | None:
     if value is None:
         return None
     if isinstance(value, datetime):
+        if value.tzinfo is None:
+            return value.replace(tzinfo=timezone.utc)
         return value
     if isinstance(value, str):
         try:
-            return datetime.fromisoformat(value)
+            dt = datetime.fromisoformat(value)
+            if dt.tzinfo is None:
+                return dt.replace(tzinfo=timezone.utc)
+            return dt
         except ValueError:
             return None
     return None

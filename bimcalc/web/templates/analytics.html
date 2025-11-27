@@ -1,0 +1,338 @@
+{% extends "base.html" %}
+
+{% block title %}Analytics Dashboard - BIMCalc{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>📊 Analytics Dashboard</h1>
+    <p>Project intelligence insights for {{ project_id }}</p>
+</div>
+
+<!-- Charts Grid -->
+<div
+    style="display: grid; grid-template-columns: repeat(auto-fit, minmax(500px, 1fr)); gap: 2rem; margin-bottom: 2rem;">
+
+    <!-- Classification Breakdown -->
+    <div class="card">
+        <div class="card-header">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span>📦 Classification Breakdown</span>
+                <button onclick="loadClassificationChart()" class="btn btn-secondary"
+                    style="padding: 0.25rem 0.75rem; font-size: 0.875rem;">
+                    ↻ Refresh
+                </button>
+            </div>
+        </div>
+        <div class="card-body">
+            <canvas id="classificationChart" width="400" height="300"></canvas>
+            <div id="classificationLoading" style="text-align: center; padding: 2rem; color: #cbd5e0;">
+                Loading...
+            </div>
+        </div>
+    </div>
+
+    <!-- Compliance Timeline -->
+    <div class="card">
+        <div class="card-header">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span>📈 Compliance Trend</span>
+                <button onclick="loadComplianceChart()" class="btn btn-secondary"
+                    style="padding: 0.25rem 0.75rem; font-size: 0.875rem;">
+                    ↻ Refresh
+                </button>
+            </div>
+        </div>
+        <div class="card-body">
+            <canvas id="complianceChart" width="400" height="300"></canvas>
+            <div id="complianceLoading" style="text-align: center; padding: 2rem; color: #cbd5e0;">
+                Loading...
+            </div>
+        </div>
+    </div>
+
+    <!-- Cost Distribution -->
+    <div class="card">
+        <div class="card-header">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span>💰 Cost Distribution</span>
+                <button onclick="loadCostChart()" class="btn btn-secondary"
+                    style="padding: 0.25rem 0.75rem; font-size: 0.875rem;">
+                    ↻ Refresh
+                </button>
+            </div>
+        </div>
+        <div class="card-body">
+            <canvas id="costChart" width="400" height="300"></canvas>
+            <div id="costLoading" style="text-align: center; padding: 2rem; color: #cbd5e0;">
+                Loading...
+            </div>
+        </div>
+    </div>
+
+    <!-- Document Coverage -->
+    <div class="card">
+        <div class="card-header">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span>🗺️ Document Coverage</span>
+                <button onclick="loadCoverageChart()" class="btn btn-secondary"
+                    style="padding: 0.25rem 0.75rem; font-size: 0.875rem;">
+                    ↻ Refresh
+                </button>
+            </div>
+        </div>
+        <div class="card-body">
+            <div id="coverageMatrix" style="overflow-x: auto; min-height: 300px;">
+                <div style="text-align: center; padding: 2rem; color: #cbd5e0;">
+                    Loading...
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+    const org = '{{ org_id }}';
+    const project = '{{ project_id }}';
+
+    let classificationChart, complianceChart, costChart;
+
+    // Color palette
+    const colors = [
+        '#4299e1', '#48bb78', '#ed8936', '#f56565', '#9f7aea',
+        '#38b2ac', '#ed64a6', '#ecc94b', '#667eea', '#fc8181'
+    ];
+
+    async function loadClassificationChart() {
+        const canvas = document.getElementById('classificationChart');
+        const loading = document.getElementById('classificationLoading');
+
+        try {
+            loading.style.display = 'block';
+            canvas.style.display = 'none';
+
+            const response = await fetch(`/api/analytics/classification-breakdown?org=${org}&project=${project}`);
+            const data = await response.json();
+
+            const labels = Object.keys(data);
+            const values = Object.values(data);
+
+            if (classificationChart) classificationChart.destroy();
+
+            classificationChart = new Chart(canvas, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: values,
+                        backgroundColor: colors,
+                        borderWidth: 2,
+                        borderColor: '#fff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'right'
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function (context) {
+                                    const label = context.label || '';
+                                    const value = context.parsed || 0;
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const percentage = ((value / total) * 100).toFixed(1);
+                                    return `${label}: ${value} items (${percentage}%)`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            loading.style.display = 'none';
+            canvas.style.display = 'block';
+        } catch (error) {
+            console.error('Failed to load classification chart:', error);
+            loading.innerHTML = '<div class="message message-error">Failed to load chart</div>';
+        }
+    }
+
+    async function loadComplianceChart() {
+        const canvas = document.getElementById('complianceChart');
+        const loading = document.getElementById('complianceLoading');
+
+        try {
+            loading.style.display = 'block';
+            canvas.style.display = 'none';
+
+            const response = await fetch(`/api/analytics/compliance-timeline?org=${org}&project=${project}`);
+            const data = await response.json();
+
+            const labels = Object.keys(data);
+            const values = Object.values(data);
+
+            if (complianceChart) complianceChart.destroy();
+
+            complianceChart = new Chart(canvas, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'QA Completion %',
+                        data: values,
+                        borderColor: '#48bb78',
+                        backgroundColor: 'rgba(72, 187, 120, 0.1)',
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            ticks: {
+                                callback: function (value) {
+                                    return value + '%';
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: function (context) {
+                                    return `Completion: ${context.parsed.y.toFixed(2)}%`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            loading.style.display = 'none';
+            canvas.style.display = 'block';
+        } catch (error) {
+            console.error('Failed to load compliance chart:', error);
+            loading.innerHTML = '<div class="message message-error">Failed to load chart</div>';
+        }
+    }
+
+    async function loadCostChart() {
+        const canvas = document.getElementById('costChart');
+        const loading = document.getElementById('costLoading');
+
+        try {
+            loading.style.display = 'block';
+            canvas.style.display = 'none';
+
+            const response = await fetch(`/api/analytics/cost-distribution?org=${org}&project=${project}`);
+            const data = await response.json();
+
+            const labels = Object.keys(data);
+            const values = Object.values(data);
+
+            if (costChart) costChart.destroy();
+
+            costChart = new Chart(canvas, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Total Cost (€)',
+                        data: values,
+                        backgroundColor: '#4299e1',
+                        borderColor: '#3182ce',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function (value) {
+                                    return '€' + value.toLocaleString();
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: function (context) {
+                                    return `Cost: €${context.parsed.y.toLocaleString()}`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            loading.style.display = 'none';
+            canvas.style.display = 'block';
+        } catch (error) {
+            console.error('Failed to load cost chart:', error);
+            loading.innerHTML = '<div class="message message-error">Failed to load chart</div>';
+        }
+    }
+
+    async function loadCoverageChart() {
+        const container = document.getElementById('coverageMatrix');
+
+        try {
+            container.innerHTML = '<div style="text-align: center; padding: 2rem; color: #cbd5e0;">Loading...</div>';
+
+            const response = await fetch(`/api/analytics/document-coverage?org=${org}&project=${project}`);
+            const data = await response.json();
+
+            if (!data.classifications || !data.doc_types || data.classifications.length === 0) {
+                container.innerHTML = '<div style="text-align: center; padding: 2rem; color: #cbd5e0;">No coverage data available</div>';
+                return;
+            }
+
+            // Build heatmap table
+            let html = '<table style="width: 100%; border-collapse: collapse;">';
+            html += '<thead><tr><th style="padding: 0.5rem; background: #f7fafc; border: 1px solid #e2e8f0;">Classification</th>';
+            data.doc_types.forEach(type => {
+                html += `<th style="padding: 0.5rem; background: #f7fafc; border: 1px solid #e2e8f0; font-size: 0.75rem;">${type}</th>`;
+            });
+            html += '</tr></thead><tbody>';
+
+            data.classifications.forEach(classCode => {
+                html += `<tr><td style="padding: 0.5rem; border: 1px solid #e2e8f0; font-weight: 600;">${classCode}</td>`;
+                data.doc_types.forEach(type => {
+                    const count = data.matrix[classCode] && data.matrix[classCode][type] || 0;
+                    const color = count === 0 ? '#f7fafc' : count === 1 ? '#fef3c7' : count === 2 ? '#fed7aa' : '#fed7aa';
+                    html += `<td style="padding: 0.5rem; border: 1px solid #e2e8f0; text-align: center; background: ${color};">${count || '-'}</td>`;
+                });
+                html += '</tr>';
+            });
+            html += '</tbody></table>';
+
+            container.innerHTML = html;
+        } catch (error) {
+            console.error('Failed to load coverage matrix:', error);
+            container.innerHTML = '<div class="message message-error">Failed to load matrix</div>';
+        }
+    }
+
+    // Load all charts on page load
+    document.addEventListener('DOMContentLoaded', () => {
+        loadClassificationChart();
+        loadComplianceChart();
+        loadCostChart();
+        loadCoverageChart();
+    });
+</script>
+{% endblock %}

@@ -13,6 +13,7 @@ from sqlalchemy import (
     JSON,
     TIMESTAMP,
     CheckConstraint,
+    DateTime,
     Float,
     ForeignKey,
     Index,
@@ -24,8 +25,9 @@ from sqlalchemy import (
     Uuid,
     text,
 )
+from pgvector.sqlalchemy import Vector
 
-# from sqlalchemy.dialects.postgresql import UUID as PGUUID
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from sqlalchemy.sql import func
 
@@ -46,7 +48,7 @@ class ItemModel(Base):
     project_id: Mapped[str] = mapped_column(Text, nullable=False, index=True)
 
     # Classification
-    classification_code: Mapped[int | None] = mapped_column(Integer, index=True)
+    classification_code: Mapped[str | None] = mapped_column(Text, index=True)
     canonical_key: Mapped[str | None] = mapped_column(Text, index=True)
 
     # Revit metadata
@@ -73,12 +75,16 @@ class ItemModel(Base):
     # Audit
     source_file: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(
-        TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
+        DateTime(timezone=True), server_default=func.now(), nullable=False
     )
+    
+    # Flexible attributes for domain-specific data
+    attributes: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
 
     __table_args__ = (
         Index("idx_items_class", "classification_code"),  # CRITICAL for blocking
         Index("idx_items_canonical", "canonical_key"),  # CRITICAL for O(1) lookup
+        Index("idx_items_org_project_created", "org_id", "project_id", "created_at"),  # Items list performance
     )
 
 
@@ -100,8 +106,8 @@ class PriceItemModel(Base):
     item_code: Mapped[str] = mapped_column(Text, nullable=False, index=True)
     region: Mapped[str] = mapped_column(Text, nullable=False, index=True)
 
-    classification_code: Mapped[int] = mapped_column(
-        Integer, nullable=False, index=True
+    classification_code: Mapped[str] = mapped_column(
+        Text, nullable=False, index=True
     )  # Required for blocking
     vendor_id: Mapped[str | None] = mapped_column(Text, index=True)
     vendor_code: Mapped[str | None] = mapped_column(Text, index=True)
@@ -124,24 +130,24 @@ class PriceItemModel(Base):
     # Governance fields (data provenance & integrity)
     source_name: Mapped[str] = mapped_column(Text, nullable=False, index=True)
     source_currency: Mapped[str] = mapped_column(String(3), nullable=False)
-    original_effective_date: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True))
+    original_effective_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     # SCD Type-2 temporal fields
     valid_from: Mapped[datetime] = mapped_column(
-        TIMESTAMP(timezone=True), nullable=False, server_default=func.now()
+        DateTime(timezone=True), nullable=False, server_default=func.now()
     )
-    valid_to: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True))
+    valid_to: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     is_current: Mapped[bool] = mapped_column(nullable=False, default=True, index=True)
 
     # Audit & metadata
     last_updated: Mapped[datetime] = mapped_column(
-        TIMESTAMP(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now()
+        DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now()
     )
     vendor_note: Mapped[str | None] = mapped_column(Text)
     attributes: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
 
     created_at: Mapped[datetime] = mapped_column(
-        TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
+        DateTime(timezone=True), server_default=func.now(), nullable=False
     )
     import_run_id: Mapped[str | None] = mapped_column(
         Text, ForeignKey("price_import_runs.id", ondelete="SET NULL"), index=True
@@ -193,7 +199,7 @@ class PriceImportRunModel(Base):
     rejection_reasons: Mapped[dict | None] = mapped_column(JSON)
     error_message: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(
-        TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
+        DateTime(timezone=True), server_default=func.now(), nullable=False
     )
 
 
@@ -211,7 +217,7 @@ class ClassificationMappingModel(Base):
     confidence: Mapped[float] = mapped_column(Float, nullable=False, default=1.0)
     mapping_source: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(
-        TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
+        DateTime(timezone=True), server_default=func.now(), nullable=False
     )
     created_by: Mapped[str | None] = mapped_column(Text)
 
@@ -278,7 +284,7 @@ class MatchFlagModel(Base):
     message: Mapped[str] = mapped_column(Text, nullable=False)
 
     created_at: Mapped[datetime] = mapped_column(
-        TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
+        DateTime(timezone=True), server_default=func.now(), nullable=False
     )
 
     __table_args__ = (
@@ -330,6 +336,42 @@ class MatchResultModel(Base):
     )
 
 
+class ProjectClassificationMappingModel(Base):
+    """Project-specific classification code mappings.
+    
+    Allows projects to define their own local classification codes
+    (e.g., "61" from Tritex) and map them to standard BIMCalc codes
+    (e.g., "2601" for Electrical Distribution).
+    """
+
+    __tablename__ = "project_classification_mappings"
+
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    org_id: Mapped[str] = mapped_column(Text, nullable=False, index=True)
+    project_id: Mapped[str] = mapped_column(Text, nullable=False, index=True)
+
+    # The project-specific code (e.g., "61" from Tritex)
+    local_code: Mapped[str] = mapped_column(String(50), nullable=False)
+
+    # The standard BIMCalc code it maps to (e.g., "2601")
+    standard_code: Mapped[str] = mapped_column(String(50), nullable=False)
+
+    # Optional metadata
+    description: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    created_by: Mapped[str] = mapped_column(String(255), default="system", nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+
+    __table_args__ = (
+        # Unique constraint: one project can't have duplicate local codes
+        UniqueConstraint('org_id', 'project_id', 'local_code', name='uq_project_local_code'),
+        Index('idx_project_classification_lookup', 'org_id', 'project_id', 'local_code'),
+    )
+
+
+# Type alias for consistency
+DateTimeColumn = Text  # Stored as ISO8601 string
+
+
 class DataSyncLogModel(Base):
     """Granular logging for automated price data synchronization pipeline.
 
@@ -361,7 +403,7 @@ class DataSyncLogModel(Base):
     duration_seconds: Mapped[float | None] = mapped_column()
 
     created_at: Mapped[datetime] = mapped_column(
-        TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
+        DateTime(timezone=True), server_default=func.now(), nullable=False
     )
 
     __table_args__ = (
@@ -392,18 +434,161 @@ class DocumentModel(Base):
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
     title: Mapped[str] = mapped_column(Text, nullable=False)
     content: Mapped[str] = mapped_column(Text, nullable=False)
-    # embedding: Mapped[Optional[Vector]] = mapped_column(Vector(1536))  # Requires pgvector type
+    embedding: Mapped[Vector] = mapped_column(Vector(1536))  # Requires pgvector type
 
     # Document metadata (renamed to avoid SQLAlchemy conflict)
     doc_metadata: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
+    tags: Mapped[list[str]] = mapped_column(JSON, default=list, nullable=False)
     doc_type: Mapped[str | None] = mapped_column(Text, index=True)
     source_file: Mapped[str | None] = mapped_column(Text)
 
     created_at: Mapped[datetime] = mapped_column(
-        TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
+        DateTime(timezone=True), server_default=func.now(), nullable=False
     )
     updated_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class DocumentLinkModel(Base):
+    """Link between an Item and a Document (Many-to-Many)."""
+
+    __tablename__ = "document_links"
+
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    item_id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("items.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    document_id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("documents.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    
+    # Link metadata
+    link_type: Mapped[str] = mapped_column(Text, nullable=False) # e.g., "commissioning_cert", "manual", "contract"
+    confidence: Mapped[float] = mapped_column(Float, default=1.0)
+    created_by: Mapped[str] = mapped_column(Text, default="system")
+    
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    __table_args__ = (
+        UniqueConstraint("item_id", "document_id", name="uq_item_document_link"),
+    )
+
+
+class QAChecklistModel(Base):
+    """Auto-generated QA testing checklist for items."""
+    
+    __tablename__ = "qa_checklists"
+    
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    item_id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("items.id", ondelete="CASCADE"), nullable=False, unique=True, index=True
+    )
+    org_id: Mapped[str] = mapped_column(Text, nullable=False, index=True)
+    project_id: Mapped[str] = mapped_column(Text, nullable=False, index=True)
+    
+    # Checklist data (stored as JSON)
+    checklist_items: Mapped[dict] = mapped_column(JSON, nullable=False)  # {"items": [...]}
+    source_documents: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)  # {"docs": [...]}
+    
+    # Generation metadata
+    auto_generated: Mapped[bool] = mapped_column(default=True, nullable=False)
+    generated_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
+    )
+    
+    # Completion tracking
+    completed_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True))
+    completion_percent: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
+    
+    # Audit
+    created_by: Mapped[str] = mapped_column(Text, default="system", nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+    
+    __table_args__ = (
+        CheckConstraint("completion_percent >= 0 AND completion_percent <= 100", name="check_completion_range"),
+        Index("idx_qa_checklists_org_project", "org_id", "project_id"),
+    )
+
+
+class ChecklistTemplateModel(Base):
+    """Reusable checklist templates for common item types."""
+    
+    __tablename__ = "checklist_templates"
+    
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    
+    # Template metadata
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    description: Mapped[str | None] = mapped_column(Text)
+    
+    # Applicability
+    classification_codes: Mapped[list[str]] = mapped_column(JSON, default=list, nullable=False)
+    category: Mapped[str | None] = mapped_column(Text)  # Optional: Electrical, HVAC, etc.
+    
+    # Template content (same structure as checklist_items)
+    template_items: Mapped[dict] = mapped_column(JSON, nullable=False)
+    
+    # Template metadata
+    is_builtin: Mapped[bool] = mapped_column(default=False, nullable=False)
+    created_by: Mapped[str] = mapped_column(Text, default="system", nullable=False)
+    
+    # Usage tracking
+    usage_count: Mapped[int] = mapped_column(default=0, nullable=False)
+    
+    # Audit
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+    
+    __table_args__ = (
+        Index("idx_checklist_templates_codes", "classification_codes"),
+        Index("idx_checklist_templates_builtin", "is_builtin"),
+    )
+
+
+class ProjectModel(Base):
+    """Project metadata and configuration."""
+    
+    __tablename__ = "projects"
+    
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    
+    # Project identification
+    org_id: Mapped[str] = mapped_column(Text, nullable=False)
+    project_id: Mapped[str] = mapped_column(Text, nullable=False)
+    
+    # Metadata
+    display_name: Mapped[str] = mapped_column(Text, nullable=False)
+    description: Mapped[str | None] = mapped_column(Text)
+    
+    # Status
+    status: Mapped[str] = mapped_column(Text, default="active", nullable=False)  # active, archived, completed
+    
+    # Dates
+    start_date: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True))
+    target_completion: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True))
+    
+    # Audit
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    created_by: Mapped[str] = mapped_column(Text, default="system", nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+    
+    __table_args__ = (
+        UniqueConstraint("org_id", "project_id", name="uq_projects_org_project"),
+        Index("idx_projects_org", "org_id"),
+        Index("idx_projects_status", "status"),
     )
 
 

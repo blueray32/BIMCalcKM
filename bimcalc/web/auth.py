@@ -7,17 +7,23 @@ For production, integrate with proper identity provider (OAuth, SAML, etc.).
 from __future__ import annotations
 
 import hashlib
+import json
 import os
 import secrets
 from datetime import datetime, timedelta
 
+import redis
 from fastapi import Cookie, HTTPException, Request
 
-# Session store (in-memory for simplicity, use Redis for production)
-SESSIONS: dict[str, dict] = {}
+# Redis connection for session storage
+def get_redis_client() -> redis.Redis:
+    """Get Redis client for session storage."""
+    redis_url = os.environ.get("REDIS_URL", "redis://redis:6379/0")
+    return redis.from_url(redis_url, decode_responses=True)
 
 # Session expiry
 SESSION_EXPIRY_HOURS = 24
+SESSION_EXPIRY_SECONDS = SESSION_EXPIRY_HOURS * 3600
 
 
 def get_credentials() -> tuple[str, str]:
@@ -53,11 +59,21 @@ def create_session(username: str) -> str:
         str: Session token
     """
     session_token = secrets.token_urlsafe(32)
-    SESSIONS[session_token] = {
+    redis_client = get_redis_client()
+    
+    session_data = {
         "username": username,
-        "created_at": datetime.utcnow(),
-        "expires_at": datetime.utcnow() + timedelta(hours=SESSION_EXPIRY_HOURS),
+        "created_at": datetime.utcnow().isoformat(),
+        "expires_at": (datetime.utcnow() + timedelta(hours=SESSION_EXPIRY_HOURS)).isoformat(),
     }
+    
+    # Store in Redis with TTL
+    redis_client.setex(
+        f"session:{session_token}",
+        SESSION_EXPIRY_SECONDS,
+        json.dumps(session_data)
+    )
+    
     return session_token
 
 
@@ -73,16 +89,26 @@ def validate_session(session_token: str | None) -> str | None:
     if not session_token:
         return None
 
-    session = SESSIONS.get(session_token)
-    if not session:
+    redis_client = get_redis_client()
+    session_data_str = redis_client.get(f"session:{session_token}")
+    
+    if not session_data_str:
         return None
 
-    # Check if session expired
-    if datetime.utcnow() > session["expires_at"]:
-        del SESSIONS[session_token]
+    try:
+        session_data = json.loads(session_data_str)
+        
+        # Check if session expired (Redis TTL should handle this, but double-check)
+        expires_at = datetime.fromisoformat(session_data["expires_at"])
+        if datetime.utcnow() > expires_at:
+            redis_client.delete(f"session:{session_token}")
+            return None
+        
+        return session_data["username"]
+    except (json.JSONDecodeError, KeyError, ValueError):
+        # Invalid session data
+        redis_client.delete(f"session:{session_token}")
         return None
-
-    return session["username"]
 
 
 def require_auth(request: Request, session: str | None = Cookie(default=None)) -> str:
@@ -137,16 +163,17 @@ def logout(session_token: str | None) -> None:
     Args:
         session_token: Session token to invalidate
     """
-    if session_token and session_token in SESSIONS:
-        del SESSIONS[session_token]
+    if session_token:
+        redis_client = get_redis_client()
+        redis_client.delete(f"session:{session_token}")
 
 
 def cleanup_expired_sessions() -> None:
-    """Remove expired sessions from memory."""
-    now = datetime.utcnow()
-    expired = [
-        token for token, session in SESSIONS.items()
-        if now > session["expires_at"]
-    ]
-    for token in expired:
-        del SESSIONS[token]
+    """Remove expired sessions from Redis.
+    
+    Note: Redis TTL automatically handles expiration, so this is mainly
+    for manual cleanup if needed.
+    """
+    # Redis TTL handles expiration automatically, but we can still implement
+    # manual cleanup if needed for monitoring or other purposes
+    pass

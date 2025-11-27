@@ -30,7 +30,15 @@ async def sync_crail4_prices(
         updated_since = datetime.utcnow() - timedelta(days=delta_days)
 
     async with get_session() as session:
+        # Load schema if available
+        import os
+        schema_path = os.getenv("CRAIL4_JSON_CSS_SCHEMA_PATH", "config/tlc_schema.json")
+        
         async with Crail4Client() as client:
+            # Load schema manually if client doesn't pick it up from env
+            if os.path.exists(schema_path):
+                client.json_css_schema = client._load_optional_json(schema_path)
+                
             raw_items = await client.fetch_all_items(
                 classification_filter=classification_filter,
                 updated_since=updated_since,
@@ -39,29 +47,18 @@ async def sync_crail4_prices(
 
         logger.info("Fetched %s items from Crail4", len(raw_items))
         if not raw_items:
-            return {
-                "status": "no_data",
-                "items_fetched": 0,
-                "items_loaded": 0,
-                "rejection_reasons": {},
-            }
-
-        mapper = ClassificationMapper(session, org_id)
-        transformer = Crail4Transformer(mapper, target_scheme)
-        valid_items, rejection_stats = await transformer.transform_batch(raw_items)
-        logger.info(
-            "Transformed %s items (%s rejected)",
-            len(valid_items),
-            sum(rejection_stats.values()),
-        )
-
-    if not valid_items:
-        return {
-            "status": "no_valid_items",
-            "items_fetched": len(raw_items),
-            "items_loaded": 0,
-            "rejection_reasons": rejection_stats,
-        }
+            logger.info("No items fetched from Crail4")
+            valid_items = []
+            rejection_stats = {}
+        else:
+            mapper = ClassificationMapper(session, org_id)
+            transformer = Crail4Transformer(mapper, target_scheme)
+            valid_items, rejection_stats = await transformer.transform_batch(raw_items)
+            logger.info(
+                "Transformed %s items (%s rejected)",
+                len(valid_items),
+                sum(rejection_stats.values()),
+            )
 
     payload = {
         "org_id": org_id,

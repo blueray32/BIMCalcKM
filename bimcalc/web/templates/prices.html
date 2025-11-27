@@ -1,86 +1,501 @@
 {% extends "base.html" %}
 
-{% block title %}Price Items - BIMCalc{% endblock %}
+{% block title %}Prices & Vendor Intelligence{% endblock %}
 
 {% block content %}
-<div class="page-header">
-    <h1>💰 Price Items</h1>
-    <p>View current and historical pricing data</p>
-</div>
+<div class="container" style="max-width: 1200px; margin: 2rem auto; padding: 0 1rem;">
+    <div class="header"
+        style="margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center;">
+        <div>
+            <h1 style="font-size: 2rem; margin-bottom: 0.5rem;">💰 Price Intelligence</h1>
+            <p style="color: #666;">Manage vendor price lists and analyze quotes</p>
+        </div>
+    </div>
 
-<div style="background: white; padding: 1.5rem; border-radius: 0.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 2rem;">
-    <form method="get" style="display: flex; align-items: center; gap: 1rem;">
-        <label style="display: flex; align-items: center; gap: 0.5rem;">
-            <input type="checkbox" name="current_only" {% if current_only %}checked{% endif %} onchange="this.form.submit()" />
-            <span>Show current prices only</span>
-        </label>
-        <span style="margin-left: auto; color: #718096;">Total: {{ total }} items</span>
-    </form>
-</div>
+    <!-- Search and Filter Form -->
+    <div
+        style="background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 1.5rem; margin-bottom: 2rem;">
+        <form method="GET" action="/prices-legacy"
+            style="display: grid; grid-template-columns: 2fr 1fr 1fr 1fr auto; gap: 1rem; align-items: end;">
+            <input type="hidden" name="org" value="{{ org_id }}">
+            <input type="hidden" name="project" value="{{ project_id }}">
 
-<div style="background: white; padding: 1.5rem; border-radius: 0.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-    {% if prices %}
-    <table style="width: 100%; border-collapse: collapse; font-size: 0.875rem;">
-        <thead>
-            <tr style="border-bottom: 2px solid #e2e8f0; text-align: left;">
-                <th style="padding: 0.75rem; font-size: 0.875rem; color: #718096;">Item Code</th>
-                <th style="padding: 0.75rem; font-size: 0.875rem; color: #718096;">Description</th>
-                <th style="padding: 0.75rem; font-size: 0.875rem; color: #718096;">Classification</th>
-                <th style="padding: 0.75rem; font-size: 0.875rem; color: #718096;">Price</th>
-                <th style="padding: 0.75rem; font-size: 0.875rem; color: #718096;">Unit</th>
-                <th style="padding: 0.75rem; font-size: 0.875rem; color: #718096;">Region</th>
-                <th style="padding: 0.75rem; font-size: 0.875rem; color: #718096;">Source</th>
-                <th style="padding: 0.75rem; font-size: 0.875rem; color: #718096;">Valid From</th>
-                <th style="padding: 0.75rem; font-size: 0.875rem; color: #718096;">Status</th>
-                <th style="padding: 0.75rem; font-size: 0.875rem; color: #718096;">Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for price in prices %}
-            <tr style="border-bottom: 1px solid #e2e8f0;">
-                <td style="padding: 0.75rem; font-weight: 600;">{{ price.item_code }}</td>
-                <td style="padding: 0.75rem; max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="{{ price.description }}">
-                    {{ price.description }}
-                </td>
-                <td style="padding: 0.75rem;">{{ price.classification_code }}</td>
-                <td style="padding: 0.75rem; font-weight: 600;">{{ price.currency }} {{ "%.2f"|format(price.unit_price) }}</td>
-                <td style="padding: 0.75rem;">{{ price.unit }}</td>
-                <td style="padding: 0.75rem;">
-                    <span style="background: #edf2f7; padding: 0.25rem 0.5rem; border-radius: 0.25rem; font-size: 0.75rem;">{{ price.region }}</span>
-                </td>
-                <td style="padding: 0.75rem; font-size: 0.75rem; color: #718096;">{{ price.source_name }}</td>
-                <td style="padding: 0.75rem;">{{ price.valid_from.strftime('%Y-%m-%d') }}</td>
-                <td style="padding: 0.75rem;">
-                    {% if price.is_current %}
-                    <span style="background: #c6f6d5; color: #22543d; padding: 0.25rem 0.5rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600;">CURRENT</span>
-                    {% else %}
-                    <span style="background: #e2e8f0; color: #4a5568; padding: 0.25rem 0.5rem; border-radius: 9999px; font-size: 0.75rem;">EXPIRED</span>
-                    {% endif %}
-                </td>
-                <td style="padding: 0.75rem;">
-                    <a href="/prices/history/{{ price.item_code }}?region={{ price.region }}" style="color: #4299e1; text-decoration: none; font-size: 0.875rem;">
-                        📊 History
-                    </a>
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+            <div>
+                <label for="search" style="display: block; font-weight: 600; margin-bottom: 0.5rem;">🔍 Search</label>
+                <input type="search" id="search" name="search" value="{{ search }}"
+                    placeholder="Search description, SKU, code..."
+                    style="width: 100%; padding: 0.75rem; border: 1px solid #cbd5e0; border-radius: 6px;">
+            </div>
 
-    {% if total_pages > 1 %}
-    <div style="margin-top: 1.5rem; display: flex; justify-content: center; gap: 0.5rem;">
-        {% if page > 1 %}
-        <a href="?page={{ page - 1 }}&current_only={{ 'on' if current_only else '' }}" style="padding: 0.5rem 1rem; background: #edf2f7; border-radius: 0.375rem; text-decoration: none; color: #2d3748;">Previous</a>
-        {% endif %}
-        <span style="padding: 0.5rem 1rem;">Page {{ page }} of {{ total_pages }}</span>
-        {% if page < total_pages %}
-        <a href="?page={{ page + 1 }}&current_only={{ 'on' if current_only else '' }}" style="padding: 0.5rem 1rem; background: #edf2f7; border-radius: 0.375rem; text-decoration: none; color: #2d3748;">Next</a>
+            <div>
+                <label for="vendor" style="display: block; font-weight: 600; margin-bottom: 0.5rem;">🏢 Vendor</label>
+                <select id="vendor" name="vendor"
+                    style="width: 100%; padding: 0.75rem; border: 1px solid #cbd5e0; border-radius: 6px;">
+                    <option value="">All Vendors</option>
+                    {% for v in vendors %}
+                    <option value="{{ v }}" {% if vendor==v %}selected{% endif %}>{{v}}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div>
+                <label for="classification" style="display: block; font-weight: 600; margin-bottom: 0.5rem;">📁
+                    Classification</label>
+                <select id="classification" name="classification"
+                    style="width: 100%; padding: 0.75rem; border: 1px solid #cbd5e0; border-radius: 6px;">
+                    <option value="">All Classifications</option>
+                    {% for c in classifications %}
+                    <option value="{{ c }}" {% if classification==c %}selected{% endif %}>{{ c }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div>
+                <label for="region" style="display: block; font-weight: 600; margin-bottom: 0.5rem;">🌍 Region</label>
+                <select id="region" name="region"
+                    style="width: 100%; padding: 0.75rem; border: 1px solid #cbd5e0; border-radius: 6px;">
+                    <option value="">All Regions</option>
+                    {% for r in regions %}
+                    <option value="{{ r }}" {%if region==r %}selected{% endif %}>{{ r }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div style="display: flex; gap: 0.5rem;">
+                <button type="submit"
+                    style="background: #3182ce; color: white; padding: 0.75rem 1.5rem; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">Filter</button>
+                <a href="/prices-legacy?org={{ org_id }}&project={{ project_id }}"
+                    style="background: #edf2f7; color: #4a5568; padding: 0.75rem 1.5rem; border-radius: 6px; text-decoration: none; font-weight: 600;">Clear</a>
+            </div>
+        </form>
+
+        <!-- Current/History Toggle -->
+        <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #e2e8f0;">
+            <label style="display: flex; align-items: center; cursor: pointer;">
+                <input type="checkbox" id="current-toggle" {% if current_only %}checked{% endif %}
+                    onchange="toggleHistory(this)" style="margin-right: 0.5rem;">
+                <span style="font-weight: 500;">Show current prices only (hide history)</span>
+            </label>
+        </div>
+    </div>
+
+    <!-- AI Analysis Section -->
+    <div id="upload-zone"
+        style="background: white; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); padding: 3rem; text-align: center; border: 2px dashed #cbd5e0; margin-bottom: 3rem; transition: all 0.2s;">
+        <div id="upload-prompt">
+            <div style="font-size: 3rem; margin-bottom: 1rem;">📄</div>
+            <h3 style="font-size: 1.25rem; color: #2d3748; margin-bottom: 0.5rem;">Drop Vendor Quote (PDF) Here</h3>
+            <p style="color: #718096; margin-bottom: 1.5rem;">AI will extract line items, prices, and descriptions
+                automatically.</p>
+            <input type="file" id="file-input" accept=".pdf" style="display: none;" onchange="handleFileSelect(this)">
+            <button onclick="document.getElementById('file-input').click()"
+                style="background: #edf2f7; color: #4a5568; padding: 0.75rem 1.5rem; border: 1px solid #cbd5e0; border-radius: 6px; cursor: pointer; font-weight: 600;">
+                Browse Files
+            </button>
+
+            <div style="margin-top: 1.5rem; border-top: 1px solid #e2e8f0; padding-top: 1.5rem;">
+                <p style="color: #718096; margin-bottom: 0.5rem; font-size: 0.875rem;">Or fetch from URL:</p>
+                <div style="display: flex; gap: 0.5rem; justify-content: center; max-width: 500px; margin: 0 auto;">
+                    <input type="url" id="url-input" placeholder="https://example.com/quote.pdf"
+                        style="flex: 1; padding: 0.5rem 1rem; border: 1px solid #cbd5e0; border-radius: 6px;">
+                    <button onclick="handleUrl()"
+                        style="background: #4299e1; color: white; padding: 0.5rem 1rem; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">
+                        Fetch
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div id="upload-loading" style="display: none;">
+            <div class="spinner"
+                style="border: 4px solid #f3f3f3; border-top: 4px solid #805ad5; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto 1rem;">
+            </div>
+            <h3 style="color: #805ad5;">Analyzing Document...</h3>
+            <p style="color: #718096;">Extracting data with GPT-4o</p>
+        </div>
+    </div>
+
+    <!-- Analysis Results (Hidden initially) -->
+    <div id="analysis-results" style="display: none; margin-bottom: 3rem;">
+        <div
+            style="background: white; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); padding: 2rem; border-left: 4px solid #48bb78;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                <h3 style="margin: 0;">✨ Extracted Items</h3>
+                <div style="display: flex; gap: 1rem;">
+                    <button onclick="discardResults()"
+                        style="color: #e53e3e; background: none; border: none; cursor: pointer; font-weight: 600;">Discard</button>
+                    <button onclick="saveResults()"
+                        style="background: #48bb78; color: white; padding: 0.5rem 1.5rem; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">
+                        Save to Database
+                    </button>
+                </div>
+            </div>
+
+            <div style="overflow-x: auto;">
+                <table style="width: 100%; border-collapse: collapse;">
+                    <thead>
+                        <tr style="background: #f7fafc; border-bottom: 2px solid #e2e8f0;">
+                            <th style="padding: 0.75rem; text-align: left;">Code</th>
+                            <th style="padding: 0.75rem; text-align: left;">Description</th>
+                            <th style="padding: 0.75rem; text-align: right;">Qty</th>
+                            <th style="padding: 0.75rem; text-align: center;">Unit</th>
+                            <th style="padding: 0.75rem; text-align: right;">Price</th>
+                            <th style="padding: 0.75rem; text-align: right;">Total</th>
+                        </tr>
+                    </thead>
+                    <tbody id="results-body">
+                        <!-- Items injected here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Existing Price Items -->
+    <div style="background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 2rem;">
+        <div
+            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; border-bottom: 2px solid #3182ce; padding-bottom: 0.5rem;">
+            <h2 style="font-size: 1.5rem; margin: 0;">📚 Price Book ({{ total }} items)</h2>
+            <a href="/prices/export?org={{ org_id }}&project={{ project_id }}{% if search %}&search={{ search }}{% endif %}{% if vendor %}&vendor={{ vendor }}{% endif %}{% if classification %}&classification={{ classification }}{% endif %}{% if region %}&region={{ region }}{% endif %}&current_only={{ current_only }}"
+                style="background: #3182ce; color: white; padding: 0.5rem 1rem; border-radius: 6px; text-decoration: none; font-weight: 600; display: inline-flex; align-items: center; gap: 0.5rem;">
+                <span>📥</span>
+                <span>Export to Excel</span>
+            </a>
+        </div>
+
+        {% if prices %}
+        <div style="overflow-x: auto;">
+            <table style="width: 100%; border-collapse: collapse;">
+                <thead>
+                    <tr style="background: #f7fafc; border-bottom: 2px solid #e2e8f0;">
+                        <th style="padding: 0.75rem; text-align: left;">Vendor</th>
+                        <th style="padding: 0.75rem; text-align: left;">Code</th>
+                        <th style="padding: 0.75rem; text-align: left;">Description</th>
+                        <th style="padding: 0.75rem; text-align: center;">Unit</th>
+                        <th style="padding: 0.75rem; text-align: right;">Price</th>
+                        <th style="padding: 0.75rem; text-align: center;">Valid From</th>
+                        <th style="padding: 0.75rem; text-align: center;">Valid To</th>
+                        <th style="padding: 0.75rem; text-align: center;">Status</th>
+                        <th style="padding: 0.75rem; text-align: left;">Source</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in prices %}
+                    <tr class="{% if item.is_current %}current-row{% endif %}"
+                        style="border-bottom: 1px solid #e2e8f0;">
+                        <td style="padding: 0.75rem; color: #666;">{{ item.vendor_id or '-' }}</td>
+                        <td style="padding: 0.75rem; font-family: monospace;">{{ item.item_code }}</td>
+                        <td style="padding: 0.75rem;">
+                            <a href="/prices/{{ item.id }}?org={{ org_id }}&project={{ project_id }}"
+                                style="text-decoration: none; color: inherit;">
+                                <strong>{{ item.description }}</strong>
+                            </a>
+                        </td>
+                        <td style="padding: 0.75rem; text-align: center;">{{ item.unit }}</td>
+                        <td style="padding: 0.75rem; text-align: right; font-weight: 600;">
+                            {{ "%.2f"|format(item.unit_price) }} {{ item.currency }}
+                        </td>
+                        <td style="padding: 0.75rem; text-align: center; font-size: 0.875rem; color: #666;">
+                            {{ item.valid_from.strftime('%Y-%m-%d') if item.valid_from else '-' }}
+                        </td>
+                        <td style="padding: 0.75rem; text-align: center; font-size: 0.875rem; color: #666;">
+                            {{ item.valid_to.strftime('%Y-%m-%d') if item.valid_to else '-' }}
+                        </td>
+                        <td style="padding: 0.75rem; text-align: center;">
+                            {% if item.is_current %}
+                            <span
+                                style="background: #48bb78; color: white; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600;">CURRENT</span>
+                            {% else %}
+                            <span
+                                style="background: #cbd5e0; color: #4a5568; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem;">Historical</span>
+                            {% endif %}
+                        </td>
+                        <td style="padding: 0.75rem;">
+                            <span
+                                style="background: #edf2f7; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem;">
+                                {{ item.source_name }}
+                            </span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div style="text-align: center; padding: 3rem; color: #999;">
+            <p>No price items found. Upload a quote to get started!</p>
+        </div>
         {% endif %}
     </div>
-    {% endif %}
-
-    {% else %}
-    <p style="text-align: center; color: #718096; padding: 2rem;">No price items found.</p>
-    {% endif %}
 </div>
+
+<style>
+    @keyframes spin {
+        0% {
+            transform: rotate(0deg);
+        }
+
+        100% {
+            transform: rotate(360deg);
+        }
+    }
+
+    .drag-over {
+        background: #ebf8ff !important;
+        border-color: #3182ce !important;
+    }
+
+    .current-row {
+        background: #f0fff4;
+    }
+</style>
+
+<script>
+    const uploadZone = document.getElementById('upload-zone');
+    let extractedItems = [];
+
+    // Drag & Drop Handlers
+    uploadZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        uploadZone.classList.add('drag-over');
+    });
+
+    uploadZone.addEventListener('dragleave', () => {
+        uploadZone.classList.remove('drag-over');
+    });
+
+    uploadZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        uploadZone.classList.remove('drag-over');
+        const files = e.dataTransfer.files;
+        if (files.length > 0) handleFile(files[0]);
+    });
+
+    function handleFileSelect(input) {
+        if (input.files.length > 0) handleFile(input.files[0]);
+    }
+
+    async function handleFile(file) {
+        if (file.type !== 'application/pdf') {
+            showError('Invalid file type. Please upload a PDF file.');
+            return;
+        }
+
+        // Show loading
+        document.getElementById('upload-prompt').style.display = 'none';
+        document.getElementById('upload-loading').style.display = 'block';
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+            const response = await fetch('/api/intelligence/analyze-quote', {
+                method: 'POST',
+                body: formData
+            });
+
+            const result = await response.json();
+
+            if (result.error) {
+                showError('Analysis failed: ' + result.error, true);
+                return;
+            }
+
+            if (!result.items || result.items.length === 0) {
+                showError('No items found in the document. Please check that the PDF contains a price list or quote.', true);
+                return;
+            }
+
+            extractedItems = result.items || [];
+            displayResults(extractedItems);
+
+        } catch (error) {
+            console.error(error);
+            showError('An error occurred during upload. Please try again.', true);
+        }
+    }
+
+    async function handleUrl() {
+        const url = document.getElementById('url-input').value;
+        if (!url) {
+            showError('Please enter a URL.');
+            return;
+        }
+
+        // Validate URL format
+        try {
+            new URL(url);
+        } catch (e) {
+            showError('Invalid URL format. Please enter a valid URL.');
+            return;
+        }
+
+        // Show loading
+        document.getElementById('upload-prompt').style.display = 'none';
+        document.getElementById('upload-loading').style.display = 'block';
+
+        try {
+            const response = await fetch('/api/intelligence/analyze-url', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ url: url })
+            });
+
+            const result = await response.json();
+
+            if (result.error) {
+                showError('Analysis failed: ' + result.error, true);
+                return;
+            }
+
+            if (!result.items || result.items.length === 0) {
+                showError('No items found at the URL. Please check that the URL points to a valid quote document.', true);
+                return;
+            }
+
+            extractedItems = result.items || [];
+            displayResults(extractedItems);
+
+        } catch (error) {
+            console.error(error);
+            showError('An error occurred during URL fetch. Please check the URL and try again.', true);
+        }
+    }
+
+    function showError(message, showRetry = false) {
+        const uploadZone = document.getElementById('upload-zone');
+        const uploadPrompt = document.getElementById('upload-prompt');
+        const uploadLoading = document.getElementById('upload-loading');
+
+        uploadPrompt.style.display = 'none';
+        uploadLoading.style.display = 'none';
+
+        const errorDiv = document.createElement('div');
+        errorDiv.id = 'upload-error';
+        errorDiv.style.cssText = 'text-align: center; padding: 2rem;';
+        errorDiv.innerHTML = `
+            <div style="font-size: 3rem; margin-bottom: 1rem; color: #e53e3e;">⚠️</div>
+            <h3 style="color: #c53030; margin-bottom: 0.5rem;">Upload Error</h3>
+            <p style="color: #718096; margin-bottom: 1.5rem;">${message}</p>
+            ${showRetry ? '<button onclick="resetUpload()" class="btn btn-primary">Try Again</button>' : ''}
+        `;
+
+        // Remove old error if exists
+        const oldError = document.getElementById('upload-error');
+        if (oldError) {
+            oldError.remove();
+        }
+
+        uploadZone.appendChild(errorDiv);
+    }
+
+    function displayResults(items) {
+        const tbody = document.getElementById('results-body');
+        tbody.innerHTML = '';
+
+        items.forEach(item => {
+            const tr = document.createElement('tr');
+            tr.style.borderBottom = '1px solid #e2e8f0';
+            tr.innerHTML = `
+                <td style="padding: 0.75rem; font-family: monospace;">${item.vendor_code || '-'}</td>
+                <td style="padding: 0.75rem;">${item.description}</td>
+                <td style="padding: 0.75rem; text-align: right;">${item.quantity || 1}</td>
+                <td style="padding: 0.75rem; text-align: center;">${item.unit || 'ea'}</td>
+                <td style="padding: 0.75rem; text-align: right; font-weight: 600;">${item.unit_price}</td>
+                <td style="padding: 0.75rem; text-align: right;">${item.total_price || '-'}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+        document.getElementById('upload-zone').style.display = 'none';
+        document.getElementById('analysis-results').style.display = 'block';
+    }
+
+    function discardResults() {
+        if (confirm('Are you sure you want to discard these results?')) {
+            resetUpload();
+        }
+    }
+
+    function resetUpload() {
+        document.getElementById('analysis-results').style.display = 'none';
+        document.getElementById('upload-zone').style.display = 'block';
+        document.getElementById('upload-prompt').style.display = 'block';
+        document.getElementById('upload-loading').style.display = 'none';
+
+        // Remove error div if exists
+        const errorDiv = document.getElementById('upload-error');
+        if (errorDiv) {
+            errorDiv.remove();
+        }
+
+        document.getElementById('file-input').value = '';
+        document.getElementById('url-input').value = '';
+        extractedItems = [];
+    }
+
+    async function saveResults() {
+        if (extractedItems.length === 0) {
+            showError('No items to save.');
+            return;
+        }
+
+        // Validate items before saving
+        const invalidItems = extractedItems.filter(item =>
+            !item.description || !item.unit_price || item.unit_price <= 0
+        );
+
+        if (invalidItems.length > 0) {
+            showError(`Cannot save: ${invalidItems.length} item(s) are missing required fields (description or valid price).`);
+            return;
+        }
+
+        // Show loading state
+        const saveButton = event.target;
+        const originalText = saveButton.innerHTML;
+        saveButton.innerHTML = 'Saving...';
+        saveButton.disabled = true;
+
+        try {
+            const response = await fetch('/api/prices/save-extracted', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    org_id: '{{ org_id }}',
+                    items: extractedItems
+                })
+            });
+
+            const result = await response.json();
+
+            if (result.status === 'success') {
+                // Show success message
+                const resultsDiv = document.getElementById('analysis-results');
+                resultsDiv.innerHTML = `
+                    <div style="text-align: center; padding: 3rem;">
+                        <div style="font-size: 3rem; margin-bottom: 1rem; color: #48bb78;">✅</div>
+                        <h3 style="color: #2f855a; margin-bottom: 0.5rem;">Success!</h3>
+                        <p style="color: #718096; margin-bottom: 1.5rem;">Successfully saved ${result.count} items to the database.</p>
+                        <button onclick="window.location.reload()" class="btn btn-primary">View Updated Prices</button>
+                    </div>
+                `;
+            } else {
+                saveButton.innerHTML = originalText;
+                saveButton.disabled = false;
+                showError('Failed to save items: ' + (result.message || 'Unknown error'));
+            }
+        } catch (error) {
+            console.error(error);
+            saveButton.innerHTML = originalText;
+            saveButton.disabled = false;
+            showError('Error saving items. Please try again.');
+        }
+    }
+
+    function toggleHistory(checkbox) {
+        const url = new URL(window.location);
+        url.searchParams.set('current_only', checkbox.checked ? 'true' : 'false');
+        window.location = url.toString();
+    }
+</script>
 {% endblock %}

@@ -182,9 +182,11 @@
         <thead>
             <tr>
                 <th>Classification</th>
-                <th>Item</th>
-                <th>Candidate Match</th>
-                <th>Confidence</th>
+                <th>Flags</th>
+                <th>Documents</th>
+                <th>🤖 Recommended</th>
+                <th>Actions</th>
+                <th>Documents</th>
                 <th>Flags</th>
                 <th>Action</th>
             </tr>
@@ -298,6 +300,14 @@
                     <span class="badge badge-danger">{{ "%.0f"|format(record.confidence_score) }}%</span>
                     {% endif %}
                 </td>
+                <td id="docs-{{ record.item.id }}" hx-get="/api/items/{{ record.item.id }}/documents" hx-trigger="load"
+                    hx-swap="innerHTML" style="font-size: 0.875rem;">
+                    <span class="text-muted">Loading...</span>
+                </td>
+                <td id="recommendations-{{ record.item.id }}" hx-get="/api/items/{{ record.item.id }}/recommendations"
+                    hx-trigger="load" hx-swap="innerHTML" style="font-size: 0.875rem;">
+                    <span class="text-muted">🤖 Analyzing...</span>
+                </td>
                 <td>
                     {% if record.flags %}
                     {% for flag in record.flags %}
@@ -346,6 +356,24 @@
                                 Approve
                             </button>
                         </div>
+                    </form>
+
+                    <!-- Reject Form -->
+                    <form method="post" action="/review/reject" onsubmit="showLoading()" style="margin-top: 0.5rem;">
+                        <input type="hidden" name="match_result_id" value="{{ record.match_result_id }}" />
+                        <input type="hidden" name="org" value="{{ org_id }}" />
+                        <input type="hidden" name="project" value="{{ project_id }}" />
+                        <input type="hidden" name="flag" value="{{ flag_filter }}" />
+                        <input type="hidden" name="severity" value="{{ severity_filter }}" />
+                        <input type="hidden" name="unmapped_only" value="{{ 'on' if unmapped_only else '' }}" />
+                        <input type="hidden" name="classification"
+                            value="{{ classification_filter if classification_filter != 'all' else '' }}" />
+
+                        <button type="submit"
+                            style="width: 100%; background: #fff; color: #e53e3e; border: 1px solid #e53e3e; padding: 0.5rem 1rem; border-radius: 0.375rem; cursor: pointer; font-weight: 600; transition: all 0.2s;"
+                            onmouseover="this.style.background='#fff5f5'" onmouseout="this.style.background='#fff'">
+                            Reject Match
+                        </button>
                     </form>
                 </td>
             </tr>

@@ -47,6 +47,14 @@ async def ingest_schedule(
     if not file_path.exists():
         raise FileNotFoundError(f"Schedule file not found: {file_path}")
 
+    # Check file size limit (50MB max)
+    MAX_FILE_SIZE_MB = 50
+    file_size_mb = file_path.stat().st_size / (1024 * 1024)
+    if file_size_mb > MAX_FILE_SIZE_MB:
+        raise ValueError(
+            f"File too large ({file_size_mb:.1f}MB). Maximum allowed: {MAX_FILE_SIZE_MB}MB"
+        )
+
     # Read file (CSV or XLSX)
     if file_path.suffix.lower() == ".csv":
         df = pd.read_csv(file_path)
@@ -54,6 +62,13 @@ async def ingest_schedule(
         df = pd.read_excel(file_path)
     else:
         raise ValueError(f"Unsupported file format: {file_path.suffix}. Use CSV or XLSX.")
+
+    # Check row count limit
+    MAX_ROWS = 50000
+    if len(df) > MAX_ROWS:
+        raise ValueError(
+            f"Too many rows ({len(df):,}). Maximum allowed: {MAX_ROWS:,}"
+        )
 
     # Validate required columns
     required_cols = {"Family", "Type"}
@@ -105,6 +120,22 @@ async def ingest_schedule(
                 material=material,
                 source_file=str(file_path),
             )
+
+            # Check for duplicate before inserting
+            from sqlalchemy import select
+            existing_item = await session.execute(
+                select(ItemModel).where(
+                    ItemModel.org_id == org_id,
+                    ItemModel.project_id == project_id,
+                    ItemModel.family == family,
+                    ItemModel.type_name == type_name,
+                )
+            )
+            
+            if existing_item.scalar_one_or_none():
+                # Item already exists - skip or update
+                errors.append(f"Row {idx}: Duplicate item (Family='{family}', Type='{type_name}') - skipped")
+                continue
 
             session.add(item_model)
             success_count += 1

@@ -1,0 +1,24 @@
+{% if recommendations %}
+{% for rec in recommendations %}
+<div style="margin: 0.5rem 0; padding: 0.5rem; background: #f7fafc; border-radius: 0.25rem;">
+    <div style="font-size: 0.875rem; color: #2d3748;">{{ rec.title }}</div>
+    {% if rec.score >= 0.8 %}
+    <div style="font-size: 0.75rem; color: #38a169;">
+        Relevance: {{ (rec.score * 100)|round|int }}%
+    </div>
+    {% elif rec.score >= 0.6 %}
+    <div style="font-size: 0.75rem; color: #d69e2e;">
+        Relevance: {{ (rec.score * 100)|round|int }}%
+    </div>
+    {% else %}
+    <div style="font-size: 0.75rem; color: #718096;">
+        Relevance: {{ (rec.score * 100)|round|int }}%
+    </div>
+    {% endif %}
+</div>
+{% endfor %}
+{% else %}
+<div style="padding: 1rem; text-align: center; color: #cbd5e0; font-size: 0.875rem;">
+    No recommendations yet
+</div>
+{% endif %}

@@ -40,9 +40,12 @@ from bimcalc.db.models import (
     MatchResultModel,
     PriceImportRunModel,
     PriceItemModel,
+    DocumentModel,
+    DocumentLinkModel,
 )
 from bimcalc.ingestion.pricebooks import ingest_pricebook
 from bimcalc.ingestion.schedules import ingest_schedule
+from bimcalc.intelligence.notifications import get_email_notifier, get_slack_notifier
 from bimcalc.integration.classification_mapper import ClassificationMapper
 from bimcalc.integration.crail4_transformer import Crail4Transformer
 from bimcalc.matching.orchestrator import MatchOrchestrator
@@ -113,6 +116,16 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
         except Exception as exc:
             logger.error("request_failed", error=str(exc))
             raise
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    """Handle HTTP exceptions, specifically for redirects."""
+    if exc.status_code in [301, 302, 303, 307, 308] and exc.headers and "Location" in exc.headers:
+        return RedirectResponse(url=exc.headers["Location"], status_code=exc.status_code)
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": exc.detail},
+    )
 
 app.add_middleware(RequestLoggingMiddleware)
 # Authentication enabled by default (disable with BIMCALC_AUTH_DISABLED=true for development)
@@ -250,6 +263,7 @@ async def dashboard(
 
         prices_result = await session.execute(
             select(func.count()).select_from(PriceItemModel).where(
+                PriceItemModel.org_id == org_id,
                 PriceItemModel.is_current == True
             )
         )
@@ -336,6 +350,66 @@ async def progress_dashboard(
         },
     )
 
+
+
+@app.get("/progress/export")
+async def progress_export(
+    request: Request,
+    org: str | None = None,
+    project: str | None = None,
+):
+    """Export progress metrics to Excel."""
+    from bimcalc.reporting.progress import compute_progress_metrics
+    import pandas as pd
+    from io import BytesIO
+    from datetime import datetime
+
+    org_id, project_id = _get_org_project(request, org, project)
+
+    async with get_session() as session:
+        metrics = await compute_progress_metrics(session, org_id, project_id)
+
+    # Create Excel file
+    output = BytesIO()
+    with pd.ExcelWriter(output, engine="openpyxl") as writer:
+        # Summary Sheet
+        summary_data = [
+            {"Metric": "Project", "Value": project_id},
+            {"Metric": "Organization", "Value": org_id},
+            {"Metric": "Generated At", "Value": datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")},
+            {"Metric": "Overall Completion", "Value": f"{metrics.overall_completion:.1f}%"},
+            {"Metric": "Total Items", "Value": metrics.total_items},
+            {"Metric": "Matched Items", "Value": metrics.matched_items},
+            {"Metric": "Pending Review", "Value": metrics.pending_review},
+            {"Metric": "Critical Flags", "Value": metrics.flagged_critical},
+        ]
+        pd.DataFrame(summary_data).to_excel(writer, sheet_name="Summary", index=False)
+
+        # Classification Breakdown
+        if metrics.classification_coverage:
+            class_data = [
+                {
+                    "Code": c.code,
+                    "Total": c.total,
+                    "Matched": c.matched,
+                    "Coverage %": f"{c.percent:.1f}%"
+                }
+                for c in metrics.classification_coverage
+            ]
+            pd.DataFrame(class_data).to_excel(writer, sheet_name="Classifications", index=False)
+
+    output.seek(0)
+    filename = f"progress_{org_id}_{project_id}_{datetime.now().strftime('%Y%m%d')}.xlsx"
+    
+    headers = {
+        "Content-Disposition": f"attachment; filename={filename}"
+    }
+    
+    return Response(
+        content=output.getvalue(),
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers=headers
+    )
 
 @app.get("/api/pipeline/status")
 async def get_pipeline_status(
@@ -579,6 +653,56 @@ async def approve_item(
 # File Upload & Ingestion
 # ============================================================================
 
+
+@app.post("/review/reject")
+async def reject_review(
+    request: Request,
+    match_result_id: str = Form(...),
+    org: str = Form(...),
+    project: str = Form(...),
+    flag: str | None = Form(default=None),
+    severity: str | None = Form(default=None),
+    unmapped_only: str | None = Form(default=None),
+    classification: str | None = Form(default=None),
+):
+    """Reject a suggested match."""
+    org_id, project_id = _get_org_project(request, org, project)
+
+    async with get_session() as session:
+        # Get match result
+        result = await session.execute(
+            select(MatchResultModel).where(MatchResultModel.id == match_result_id)
+        )
+        match_result = result.scalar_one_or_none()
+
+        if not match_result:
+            raise HTTPException(status_code=404, detail="Match result not found")
+
+        # Update status to rejected
+        match_result.decision = "rejected"
+        match_result.decision_reason = "Manual rejection via web UI"
+        match_result.reviewed_at = datetime.utcnow()
+        match_result.reviewed_by = "web-ui"  # In real app, use user ID
+
+        await session.commit()
+
+    # Redirect back to dashboard with filters preserved
+    params = {
+        "org": org_id,
+        "project": project_id,
+        "flag": flag,
+        "severity": severity,
+        "unmapped_only": unmapped_only,
+        "classification": classification,
+    }
+    # Remove None values
+    query_string = "&".join(f"{k}={v}" for k, v in params.items() if v and v != "None")
+    
+    return RedirectResponse(
+        url=f"/review?{query_string}", 
+        status_code=303
+    )
+
 @app.get("/ingest", response_class=HTMLResponse)
 async def ingest_page(request: Request, org: str | None = None, project: str | None = None):
     """File upload page for schedules and price books."""
@@ -623,7 +747,30 @@ async def ingest_schedules(
     except Exception as e:
         if temp_path.exists():
             temp_path.unlink()
-        raise HTTPException(status_code=500, detail=str(e))
+        
+        # Send alerts
+        error_msg = str(e)
+        email_notifier = get_email_notifier()
+        slack_notifier = get_slack_notifier()
+        
+        # Background tasks for alerts to not block response too long (or use BackgroundTasks)
+        # For now, await them as they are async and shouldn't take too long
+        try:
+            await email_notifier.send_ingestion_failure_alert(
+                recipients=["admin@bimcalc.com"],  # TODO: Configure recipients
+                filename=file.filename,
+                error_message=error_msg,
+                org_id=org
+            )
+            await slack_notifier.post_ingestion_failure_alert(
+                filename=file.filename,
+                error_message=error_msg,
+                org_id=org
+            )
+        except Exception as alert_err:
+            print(f"Failed to send alerts: {alert_err}")
+
+        raise HTTPException(status_code=500, detail=error_msg)
 
 
 @app.post("/ingest/prices")
@@ -655,7 +802,28 @@ async def ingest_prices(
     except Exception as e:
         if temp_path.exists():
             temp_path.unlink()
-        raise HTTPException(status_code=500, detail=str(e))
+            
+        # Send alerts
+        error_msg = str(e)
+        email_notifier = get_email_notifier()
+        slack_notifier = get_slack_notifier()
+        
+        try:
+            await email_notifier.send_ingestion_failure_alert(
+                recipients=["admin@bimcalc.com"],
+                filename=file.filename,
+                error_message=error_msg,
+                org_id=f"Vendor: {vendor}"
+            )
+            await slack_notifier.post_ingestion_failure_alert(
+                filename=file.filename,
+                error_message=error_msg,
+                org_id=f"Vendor: {vendor}"
+            )
+        except Exception as alert_err:
+            print(f"Failed to send alerts: {alert_err}")
+            
+        raise HTTPException(status_code=500, detail=error_msg)
 
     # Clean up
     temp_path.unlink()
@@ -775,32 +943,71 @@ async def items_list(
     org: str | None = None,
     project: str | None = None,
     page: int = Query(default=1, ge=1),
+    search: str | None = Query(default=None),
+    category: str | None = Query(default=None),
 ):
-    """List and manage items."""
+    """List and manage items with search and filter."""
     org_id, project_id = _get_org_project(request, org, project)
     per_page = 50
     offset = (page - 1) * per_page
 
     async with get_session() as session:
-        # Get items with pagination
-        stmt = (
-            select(ItemModel)
-            .where(ItemModel.org_id == org_id, ItemModel.project_id == project_id)
-            .order_by(ItemModel.created_at.desc())
-            .limit(per_page)
-            .offset(offset)
+        # Build query with filters
+        stmt = select(ItemModel).where(
+            ItemModel.org_id == org_id,
+            ItemModel.project_id == project_id,
         )
+
+        # Apply search filter (family, type, category)
+        if search:
+            search_term = f"%{search}%"
+            stmt = stmt.where(
+                (ItemModel.family.ilike(search_term))
+                | (ItemModel.type_name.ilike(search_term))
+                | (ItemModel.category.ilike(search_term))
+            )
+
+        # Apply category filter
+        if category:
+            stmt = stmt.where(ItemModel.category == category)
+
+        # Get total count with filters
+        count_stmt = select(func.count()).select_from(ItemModel).where(
+            ItemModel.org_id == org_id,
+            ItemModel.project_id == project_id,
+        )
+        if search:
+            search_term = f"%{search}%"
+            count_stmt = count_stmt.where(
+                (ItemModel.family.ilike(search_term))
+                | (ItemModel.type_name.ilike(search_term))
+                | (ItemModel.category.ilike(search_term))
+            )
+        if category:
+            count_stmt = count_stmt.where(ItemModel.category == category)
+
+        count_result = await session.execute(count_stmt)
+        total_items = count_result.scalar_one()
+        total_pages = (total_items + per_page - 1) // per_page
+
+        # Apply pagination and ordering
+        stmt = stmt.order_by(ItemModel.created_at.desc()).limit(per_page).offset(offset)
         result = await session.execute(stmt)
         items = result.scalars().all()
 
-        # Get total count
-        count_result = await session.execute(
-            select(func.count()).select_from(ItemModel).where(
+        # Get distinct categories for filter dropdown
+        categories_stmt = (
+            select(ItemModel.category)
+            .where(
                 ItemModel.org_id == org_id,
                 ItemModel.project_id == project_id,
+                ItemModel.category.isnot(None),
             )
+            .distinct()
+            .order_by(ItemModel.category)
         )
-        total = count_result.scalar_one()
+        categories_result = await session.execute(categories_stmt)
+        categories = [c for c in categories_result.scalars().all() if c]
 
     return templates.TemplateResponse(
         "items.html",
@@ -810,9 +1017,163 @@ async def items_list(
             "org_id": org_id,
             "project_id": project_id,
             "page": page,
+            "total_pages": total_pages,
+            "total": total_items,
             "per_page": per_page,
-            "total": total,
-            "total_pages": (total + per_page - 1) // per_page,
+            "search": search or "",
+            "category": category or "",
+            "categories": categories,
+        },
+    )
+
+
+@app.get("/items/export")
+async def items_export(
+    org: str | None = None,
+    project: str | None = None,
+    search: str | None = Query(default=None),
+    category: str | None = Query(default=None),
+):
+    """Export items to Excel file."""
+    org_id, project_id = _get_org_project(None, org, project)
+
+    async with get_session() as session:
+        # Build query with same filters as list view
+        stmt = select(ItemModel).where(
+            ItemModel.org_id == org_id,
+            ItemModel.project_id == project_id,
+        )
+
+        if search:
+            search_term = f"%{search}%"
+            stmt = stmt.where(
+                (ItemModel.family.ilike(search_term))
+                | (ItemModel.type_name.ilike(search_term))
+                | (ItemModel.category.ilike(search_term))
+            )
+
+        if category:
+            stmt = stmt.where(ItemModel.category == category)
+
+        stmt = stmt.order_by(ItemModel.created_at.desc())
+        result = await session.execute(stmt)
+        items = result.scalars().all()
+
+    # Create Excel file
+    from io import BytesIO
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, Alignment
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Items"
+
+    # Header row
+    headers = [
+        "Family",
+        "Type",
+        "Category",
+        "Classification",
+        "Canonical Key",
+        "Quantity",
+        "Unit",
+        "Width (mm)",
+        "Height (mm)",
+        "DN (mm)",
+        "Angle (°)",
+        "Material",
+        "Created At",
+    ]
+    ws.append(headers)
+
+    # Style header
+    for cell in ws[1]:
+        cell.font = Font(bold=True)
+        cell.alignment = Alignment(horizontal="center")
+
+    # Data rows
+    for item in items:
+        ws.append(
+            [
+                item.family,
+                item.type_name,
+                item.category or "",
+                item.classification_code or "",
+                item.canonical_key or "",
+                float(item.quantity) if item.quantity else "",
+                item.unit or "",
+                item.width_mm or "",
+                item.height_mm or "",
+                item.dn_mm or "",
+                item.angle_deg or "",
+                item.material or "",
+                item.created_at.strftime("%Y-%m-%d %H:%M") if item.created_at else "",
+            ]
+        )
+
+    # Auto-size columns
+    for column in ws.columns:
+        max_length = 0
+        column_letter = column[0].column_letter
+        for cell in column:
+            if cell.value:
+                max_length = max(max_length, len(str(cell.value)))
+        ws.column_dimensions[column_letter].width = min(max_length + 2, 50)
+
+    # Save to BytesIO
+    output = BytesIO()
+    wb.save(output)
+    output.seek(0)
+
+    # Return as downloadable file
+    filename = f"items_{org_id}_{project_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+    return StreamingResponse(
+        output,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
+    )
+
+
+
+@app.get("/items/{item_id}", response_class=HTMLResponse)
+async def item_detail(
+    item_id: UUID,
+    request: Request,
+    org: str | None = None,
+    project: str | None = None,
+):
+    """View item details."""
+    org_id, project_id = _get_org_project(request, org, project)
+
+    async with get_session() as session:
+        result = await session.execute(
+            select(ItemModel).where(
+                ItemModel.id == item_id,
+                ItemModel.org_id == org_id,
+                ItemModel.project_id == project_id,
+            )
+        )
+        item = result.scalar_one_or_none()
+
+        if not item:
+            return templates.TemplateResponse(
+                "error.html",
+                {
+                    "request": request,
+                    "message": "Item not found",
+                    "org_id": org_id,
+                    "project_id": project_id,
+                },
+                status_code=404,
+            )
+
+    return templates.TemplateResponse(
+        "item_detail.html",
+        {
+            "request": request,
+            "item": item,
+            "org_id": org_id,
+            "project_id": project_id,
         },
     )
 
@@ -955,6 +1316,42 @@ async def reports_page(
         },
     )
 
+
+
+@app.get("/reports/generate")
+async def generate_report(
+    request: Request,
+    org: str | None = None,
+    project: str | None = None,
+    format: str = Query("xlsx", regex="^(xlsx|pdf|csv)$"),
+    as_of: str | None = Query(None),
+):
+    """Generate and download financial reports."""
+    from bimcalc.reporting.financial_metrics import compute_financial_metrics
+    from bimcalc.reporting.export_utils import export_reports_to_excel, export_reports_to_pdf
+    
+    org_id, project_id = _get_org_project(request, org, project)
+
+    # TODO: Handle as_of timestamp for temporal reporting (SCD2)
+    # For now, we use current state as per existing logic
+    
+    async with get_session() as session:
+        metrics = await compute_financial_metrics(session, org_id, project_id)
+
+    if format == "pdf":
+        content = export_reports_to_pdf(metrics, org_id, project_id)
+        media_type = "application/pdf"
+        filename = f"financial_report_{org_id}_{project_id}_{datetime.now().strftime('%Y%m%d')}.pdf"
+    else:
+        content = export_reports_to_excel(metrics, org_id, project_id)
+        media_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        filename = f"financial_report_{org_id}_{project_id}_{datetime.now().strftime('%Y%m%d')}.xlsx"
+
+    headers = {
+        "Content-Disposition": f"attachment; filename={filename}"
+    }
+    
+    return Response(content=content, media_type=media_type, headers=headers)
 
 @app.get("/reports/generate")
 async def generate_report_endpoint(
@@ -1317,23 +1714,20 @@ async def price_history(
     )
 
 
-@app.get("/prices", response_class=HTMLResponse)
+@app.get("/prices-legacy", response_class=HTMLResponse)
 async def prices_list(
     request: Request,
     org: str | None = None,
-    project: str | None = None,  # Added project parameter for consistent navigation
+    project: str | None = None,
     view: str | None = Query(default=None),
     current_only: bool = Query(default=True),
     page: int = Query(default=1, ge=1),
+    search: str | None = Query(default=None),
+    vendor: str | None = Query(default=None),
+    classification: str | None = Query(default=None),
+    region: str | None = Query(default=None),
 ):
-    """List all price items with optional history or executive view.
-
-    Supports two views:
-    - view=executive: Price data quality dashboard for stakeholders
-    - (default): Paginated price list table
-
-    Note: Prices are org-scoped, but project param is used for navigation consistency
-    """
+    """List all price items with search, filters, and optional history or executive view."""
     org_id, project_id = _get_org_project(request, org, project)
 
     # Executive view: Show price quality metrics
@@ -1343,8 +1737,7 @@ async def prices_list(
         async with get_session() as session:
             metrics = await compute_price_metrics(session, org_id)
 
-            # Get pending review count for navigation badge (project-scoped)
-            # Count DISTINCT items with latest decision = manual-review
+            # Get pending review count for navigation badge
             pending_query = text("""
                 WITH ranked_results AS (
                     SELECT
@@ -1371,39 +1764,113 @@ async def prices_list(
                 "request": request,
                 "metrics": metrics,
                 "org_id": org_id,
-                "project_id": project_id,  # Pass project for navigation consistency
+                "project_id": project_id,
                 "unique_vendors": metrics.unique_vendors,
                 "current_page": "prices",
                 "pending_count": pending_count,
             },
         )
 
-    # Default view: Paginated table
+    # Default view: Paginated table with search and filters
     per_page = 50
     offset = (page - 1) * per_page
 
     async with get_session() as session:
-        # Build query
-        stmt = select(PriceItemModel).order_by(
-            PriceItemModel.item_code,
-            PriceItemModel.valid_from.desc(),
-        )
+        # Build query with filters
+        stmt = select(PriceItemModel).where(PriceItemModel.org_id == org_id)
 
         if current_only:
             stmt = stmt.where(PriceItemModel.is_current == True)
 
-        stmt = stmt.limit(per_page).offset(offset)
+        # Apply search filter (description, SKU, item_code)
+        if search:
+            search_term = f"%{search}%"
+            stmt = stmt.where(
+                (PriceItemModel.description.ilike(search_term))
+                | (PriceItemModel.sku.ilike(search_term))
+                | (PriceItemModel.item_code.ilike(search_term))
+            )
+
+        # Apply vendor filter
+        if vendor:
+            stmt = stmt.where(PriceItemModel.vendor_id == vendor)
+
+        # Apply classification filter
+        if classification:
+            stmt = stmt.where(PriceItemModel.classification_code == classification)
+
+        # Apply region filter
+        if region:
+            stmt = stmt.where(PriceItemModel.region == region)
+
+        # Get total count with filters
+        count_stmt = select(func.count()).select_from(PriceItemModel).where(
+            PriceItemModel.org_id == org_id
+        )
+        if current_only:
+            count_stmt = count_stmt.where(PriceItemModel.is_current == True)
+        if search:
+            search_term = f"%{search}%"
+            count_stmt = count_stmt.where(
+                (PriceItemModel.description.ilike(search_term))
+                | (PriceItemModel.sku.ilike(search_term))
+                | (PriceItemModel.item_code.ilike(search_term))
+            )
+        if vendor:
+            count_stmt = count_stmt.where(PriceItemModel.vendor_id == vendor)
+        if classification:
+            count_stmt = count_stmt.where(PriceItemModel.classification_code == classification)
+        if region:
+            count_stmt = count_stmt.where(PriceItemModel.region == region)
+
+        count_result = await session.execute(count_stmt)
+        total = count_result.scalar_one()
+        total_pages = (total + per_page - 1) // per_page
+
+        # Apply pagination and ordering
+        stmt = stmt.order_by(
+            PriceItemModel.item_code,
+            PriceItemModel.valid_from.desc(),
+        ).limit(per_page).offset(offset)
 
         result = await session.execute(stmt)
         prices = result.scalars().all()
 
-        # Get total count
-        count_stmt = select(func.count()).select_from(PriceItemModel)
-        if current_only:
-            count_stmt = count_stmt.where(PriceItemModel.is_current == True)
+        # Get distinct vendors for filter dropdown
+        vendors_stmt = (
+            select(PriceItemModel.vendor_id)
+            .where(
+                PriceItemModel.org_id == org_id,
+                PriceItemModel.vendor_id.isnot(None),
+            )
+            .distinct()
+            .order_by(PriceItemModel.vendor_id)
+        )
+        vendors_result = await session.execute(vendors_stmt)
+        vendors = [v for v in vendors_result.scalars().all() if v]
 
-        count_result = await session.execute(count_stmt)
-        total = count_result.scalar_one()
+        # Get distinct classifications
+        classifications_stmt = (
+            select(PriceItemModel.classification_code)
+            .where(
+                PriceItemModel.org_id == org_id,
+                PriceItemModel.classification_code.isnot(None),
+            )
+            .distinct()
+            .order_by(PriceItemModel.classification_code)
+        )
+        classifications_result = await session.execute(classifications_stmt)
+        classifications = [c for c in classifications_result.scalars().all() if c]
+
+        # Get distinct regions
+        regions_stmt = (
+            select(PriceItemModel.region)
+            .where(PriceItemModel.org_id == org_id)
+            .distinct()
+            .order_by(PriceItemModel.region)
+        )
+        regions_result = await session.execute(regions_stmt)
+        regions = [r for r in regions_result.scalars().all() if r]
 
     return templates.TemplateResponse(
         "prices.html",
@@ -1414,7 +1881,210 @@ async def prices_list(
             "page": page,
             "per_page": per_page,
             "total": total,
-            "total_pages": (total + per_page - 1) // per_page,
+            "total_pages": total_pages,
+            "org_id": org_id,
+            "project_id": project_id,
+            "search": search or "",
+            "vendor": vendor or "",
+            "classification": classification or "",
+            "region": region or "",
+            "vendors": vendors,
+            "classifications": classifications,
+            "regions": regions,
+        },
+    )
+
+@app.get("/prices/export")
+async def prices_export(
+    org: str | None = None,
+    project: str | None = None,
+    search: str | None = Query(default=None),
+    vendor: str | None = Query(default=None),
+    classification: str | None = Query(default=None),
+    region: str | None = Query(default=None),
+    current_only: bool = Query(default=True),
+):
+    """Export prices to Excel file."""
+    org_id, project_id = _get_org_project(None, org, project)
+
+    async with get_session() as session:
+        # Build query with same filters as list view
+        stmt = select(PriceItemModel).where(PriceItemModel.org_id == org_id)
+
+        if current_only:
+            stmt = stmt.where(PriceItemModel.is_current == True)
+
+        if search:
+            search_term = f"%{search}%"
+            stmt = stmt.where(
+                (PriceItemModel.description.ilike(search_term))
+                | (PriceItemModel.sku.ilike(search_term))
+                | (PriceItemModel.item_code.ilike(search_term))
+            )
+
+        if vendor:
+            stmt = stmt.where(PriceItemModel.vendor_id == vendor)
+
+        if classification:
+            stmt = stmt.where(PriceItemModel.classification_code == classification)
+
+        if region:
+            stmt = stmt.where(PriceItemModel.region == region)
+
+        stmt = stmt.order_by(
+            PriceItemModel.item_code,
+            PriceItemModel.valid_from.desc(),
+        )
+        result = await session.execute(stmt)
+        prices = result.scalars().all()
+
+    # Create Excel file
+    from io import BytesIO
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, Alignment
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Prices"
+
+    # Header row
+    headers = [
+        "Vendor ID",
+        "Item Code",
+        "SKU",
+        "Description",
+        "Classification",
+        "Unit",
+        "Unit Price",
+        "Currency",
+        "VAT Rate",
+        "Region",
+        "Width (mm)",
+        "Height (mm)",
+        "DN (mm)",
+        "Angle (°)",
+        "Material",
+        "Valid From",
+        "Valid To",
+        "Is Current",
+        "Source",
+        "Last Updated",
+    ]
+    ws.append(headers)
+
+    # Style header
+    for cell in ws[1]:
+        cell.font = Font(bold=True)
+        cell.alignment = Alignment(horizontal="center")
+
+    # Data rows
+    for price in prices:
+        ws.append(
+            [
+                price.vendor_id or "",
+                price.item_code,
+                price.sku,
+                price.description,
+                price.classification_code,
+                price.unit,
+                float(price.unit_price),
+                price.currency,
+                float(price.vat_rate) if price.vat_rate else "",
+                price.region,
+                price.width_mm or "",
+                price.height_mm or "",
+                price.dn_mm or "",
+                price.angle_deg or "",
+                price.material or "",
+                price.valid_from.strftime("%Y-%m-%d") if price.valid_from else "",
+                price.valid_to.strftime("%Y-%m-%d") if price.valid_to else "",
+                "Yes" if price.is_current else "No",
+                price.source_name,
+                price.last_updated.strftime("%Y-%m-%d %H:%M") if price.last_updated else "",
+            ]
+        )
+
+    # Auto-size columns
+    for column in ws.columns:
+        max_length = 0
+        column_letter = column[0].column_letter
+        for cell in column:
+            if cell.value:
+                max_length = max(max_length, len(str(cell.value)))
+        ws.column_dimensions[column_letter].width = min(max_length + 2, 50)
+
+    # Save to BytesIO
+    output = BytesIO()
+    wb.save(output)
+    output.seek(0)
+
+    # Return as downloadable file
+    filters_str = f"_{'current' if current_only else 'history'}"
+    if search:
+        filters_str += f"_search-{search[:10]}"
+    if vendor:
+        filters_str += f"_vendor-{vendor}"
+    filename = f"prices_{org_id}{filters_str}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+    return StreamingResponse(
+        output,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
+    )
+
+
+
+
+
+@app.get("/prices/{price_id}", response_class=HTMLResponse)
+async def price_detail(
+    price_id: UUID,
+    request: Request,
+    org: str | None = None,
+    project: str | None = None,
+):
+    """View price details including SCD Type-2 history."""
+    org_id, project_id = _get_org_project(request, org, project)
+
+    async with get_session() as session:
+        # Get the specific price
+        result = await session.execute(
+            select(PriceItemModel).where(
+                PriceItemModel.id == price_id,
+                PriceItemModel.org_id == org_id,
+            )
+        )
+        price = result.scalar_one_or_none()
+
+        if not price:
+            return templates.TemplateResponse(
+                "error.html",
+                {
+                    "request": request,
+                    "message": "Price not found",
+                    "org_id": org_id,
+                    "project_id": project_id,
+                },
+                status_code=404,
+            )
+
+        # Get price history (all versions of this item_code + region)
+        history_result = await session.execute(
+            select(PriceItemModel)
+            .where(
+                PriceItemModel.org_id == org_id,
+                PriceItemModel.item_code == price.item_code,
+                PriceItemModel.region == price.region,
+            )
+            .order_by(PriceItemModel.valid_from.desc())
+        )
+        price_history = history_result.scalars().all()
+
+    return templates.TemplateResponse(
+        "price_detail.html",
+        {
+            "request": request,
+            "price": price,
+            "price_history": price_history,
             "org_id": org_id,
             "project_id": project_id,
         },
@@ -1467,7 +2137,7 @@ async def bulk_import_prices(request: BulkPriceImportRequest):
         await session.flush()
 
         try:
-            mapper = ClassificationMapper(session, request.org_id)
+            mapper = ClassificationMapper(session, request.org_id, request.items[0].get("project_id") if request.items else None)
             transformer = Crail4Transformer(mapper, request.target_scheme)
 
             valid_items, rejection_stats = await transformer.transform_batch(request.items)
@@ -1475,8 +2145,7 @@ async def bulk_import_prices(request: BulkPriceImportRequest):
             loaded_count = 0
             for item_data in valid_items:
                 try:
-                    classification_value = item_data["classification_code"]
-                    classification_code = int(str(classification_value).split()[0])
+                    classification_code = str(item_data["classification_code"])
                 except (KeyError, ValueError) as exc:
                     rejection_stats["transform_error"] = rejection_stats.get("transform_error", 0) + 1
                     errors.append(
@@ -1621,7 +2290,7 @@ async def crail4_config_page(
                     COALESCE(SUM(items_loaded), 0) as total_items_imported,
                     COALESCE(SUM(items_rejected), 0) as total_items_rejected
                 FROM price_import_runs
-                WHERE org_id = :org_id AND source = 'crail4'
+                WHERE org_id = :org_id AND (source = 'crail4' OR source = 'crail4_api')
             """)
             stats_result = await session.execute(stats_query, {"org_id": org_id})
             stats_row = stats_result.fetchone()
@@ -1655,18 +2324,20 @@ async def crail4_config_page(
 
         # Get import runs history
         try:
+            from bimcalc.db.models import PriceImportRunModel
             import_runs_stmt = (
                 select(PriceImportRunModel)
                 .where(
                     PriceImportRunModel.org_id == org_id,
-                    PriceImportRunModel.source == "crail4"
+                    (PriceImportRunModel.source == "crail4") | (PriceImportRunModel.source == "crail4_api")
                 )
                 .order_by(PriceImportRunModel.started_at.desc())
                 .limit(20)
             )
             import_runs_result = await session.execute(import_runs_stmt)
             import_runs = import_runs_result.scalars().all()
-        except Exception:
+        except Exception as e:
+            print(f"Error fetching import runs: {e}")
             await session.rollback()
             import_runs = []
 
@@ -1788,6 +2459,7 @@ async def trigger_crail4_sync(
             org_id=org_id,
             full_sync=full_sync
         )
+        print(f"Enqueued Crail4 sync job: {job.job_id} for org {org_id}")
 
         # Return HTML fragment for HTMX
         return HTMLResponse(f"""
@@ -2158,3 +2830,1384 @@ async def export_prices(
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
+
+
+# ============================================================================
+# Documents & Project Intelligence
+# ============================================================================
+
+@app.get("/documents", response_class=HTMLResponse)
+async def documents_page(
+    request: Request,
+    org: str | None = None,
+    project: str | None = None,
+    q: str | None = Query(default=None),
+    tag: str | None = Query(default=None),
+):
+    """Project Intelligence / Documents Search Page."""
+    org_id, project_id = _get_org_project(request, org, project)
+
+    return templates.TemplateResponse(
+        "documents.html",
+        {
+            "request": request,
+            "org_id": org_id,
+            "project_id": project_id,
+            "query": q,
+            "tag": tag,
+        },
+    )
+
+
+@app.get("/api/documents/search")
+async def search_documents(
+    q: str | None = Query(default=None),
+    tag: str | None = Query(default=None),
+    org: str = Query(...),
+    project: str = Query(...),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+):
+    """Search documents with pagination.
+    
+    Args:
+        q: Search query
+        tag: Filter by tag
+        org: Organization ID
+        project: Project ID
+        page: Page number (1-indexed)
+        page_size: Items per page (max 100)
+    """
+    async with get_session() as session:
+        # Base query
+        stmt = select(DocumentModel).where(
+            DocumentModel.org_id == org,
+            DocumentModel.project_id == project,
+        )
+
+        # Apply filters
+        if tag:
+            # Filter for documents with this tag
+            stmt = stmt.where(DocumentModel.tags.contains([tag]))
+
+        if q:
+            # Simple text search on title and content
+            stmt = stmt.where(
+                (DocumentModel.title.ilike(f"%{q}%")) |
+                (DocumentModel.content.ilike(f"%{q}%"))
+            )
+
+        # Get total count (before pagination)
+        count_stmt = select(func.count()).select_from(stmt.subquery())
+        total_result = await session.execute(count_stmt)
+        total_count = total_result.scalar()
+
+        # Apply pagination
+        offset = (page - 1) * page_size
+        stmt = stmt.offset(offset).limit(page_size).order_by(DocumentModel.created_at.desc())
+
+        result = await session.execute(stmt)
+        docs = result.scalars().all()
+
+        # Calculate pagination metadata
+        total_pages = (total_count + page_size - 1) // page_size  # Ceiling division
+
+        return {
+            "results": [
+                {
+                    "id": str(d.id),
+                    "title": d.title,
+                    "document_type": d.document_type,
+                    "tags": d.tags or [],
+                    "source_file": d.source_file,
+                    "created_at": d.created_at.isoformat(),
+                }
+                for d in docs
+            ],
+            "pagination": {
+                "page": page,
+                "page_size": page_size,
+                "total_count": total_count,
+                "total_pages": total_pages,
+                "has_next": page < total_pages,
+                "has_prev": page > 1,
+            }
+        }
+
+
+@app.get("/api/items/{item_id}/recommendations")
+async def get_item_recommendations(item_id: UUID, request: Request):
+    """Get AI-recommended documents for an item."""
+    from bimcalc.intelligence.recommendations import get_document_recommendations
+    
+    async with get_session() as session:
+        # Get item
+        item = await session.get(ItemModel, item_id)
+        if not item:
+            raise HTTPException(status_code=404, detail="Item not found")
+        
+        # Get recommendations
+        recommendations = await get_document_recommendations(session, item, limit=5)
+        
+        # Return HTML template
+        return templates.TemplateResponse(
+            "partials/recommendations.html",
+            {"request": request, "recommendations": recommendations}
+        )
+
+
+@app.get("/api/items/{item_id}/documents")
+async def get_item_documents(item_id: UUID):
+    """Get documents linked to a specific item."""
+    async with get_session() as session:
+        stmt = (
+            select(DocumentModel, DocumentLinkModel)
+            .join(DocumentLinkModel)
+            .where(DocumentLinkModel.item_id == item_id)
+        )
+        result = await session.execute(stmt)
+        
+        links = []
+        for doc, link in result:
+            links.append({
+                "id": str(doc.id),
+                "title": doc.title,
+                "type": doc.doc_type,
+                "tags": doc.tags,
+                "link_type": link.link_type,
+                "confidence": link.confidence,
+                "url": f"/documents?q={doc.title}" # Placeholder link
+            })
+            
+        return links
+
+
+# ============================================================================
+# Compliance & QA Tracking
+# ============================================================================
+
+@app.get("/compliance", response_class=HTMLResponse)
+async def compliance_dashboard(
+    request: Request,
+    org: str | None = None,
+    project: str | None = None,
+):
+    """Compliance & QA tracking dashboard."""
+    org_id, project_id = _get_org_project(request, org, project)
+
+    return templates.TemplateResponse(
+        "compliance.html",
+        {
+            "request": request,
+            "org_id": org_id,
+            "project_id": project_id,
+        },
+    )
+
+
+@app.get("/api/compliance/metrics")
+async def get_compliance_metrics(
+    org: str = Query(...),
+    project: str = Query(...),
+):
+    """Get compliance metrics for project."""
+    from bimcalc.reporting.compliance_metrics import compute_compliance_metrics_cached
+
+    async with get_session() as session:
+        metrics = await compute_compliance_metrics_cached(session, org, project)
+
+        return {
+            "total_items": metrics.total_items,
+            "items_with_qa": metrics.items_with_qa,
+            "completion_percent": metrics.completion_percent,
+            "coverage_by_classification": metrics.coverage_by_classification,
+            "items_without_qa": metrics.items_without_qa,
+            "computed_at": metrics.computed_at.isoformat(),
+        }
+
+
+# ============================================================================
+# Vendor Intelligence & Prices Dashboard
+# ============================================================================
+
+@app.get("/prices", response_class=HTMLResponse)
+async def prices_dashboard(
+    request: Request,
+    org: str | None = None,
+    project: str | None = None,
+):
+    """Render the Prices & Vendor Intelligence dashboard."""
+    org_id, project_id = _get_org_project(request, org, project)
+    
+    async with get_session() as session:
+        # Fetch recent price items
+        from bimcalc.db.models import PriceItemModel
+        stmt = (
+            select(PriceItemModel)
+            .where(PriceItemModel.org_id == org_id, PriceItemModel.is_current == True)
+            .order_by(PriceItemModel.last_updated.desc())
+            .limit(50)
+        )
+        result = await session.execute(stmt)
+        price_items = result.scalars().all()
+
+    return templates.TemplateResponse(
+        "prices.html",
+        {
+            "request": request,
+            "org_id": org_id,
+            "project_id": project_id,
+            "price_items": price_items,
+        },
+    )
+
+
+@app.post("/api/intelligence/analyze-quote")
+async def analyze_quote(
+    file: UploadFile = File(...),
+    current_user: str = Depends(require_auth) if AUTH_ENABLED else "user",
+):
+    """Analyze an uploaded quote/invoice PDF."""
+    if not file.filename.lower().endswith('.pdf'):
+        raise HTTPException(status_code=400, detail="Only PDF files are supported")
+
+    try:
+        content = await file.read()
+        
+        from bimcalc.intelligence.vendors import VendorAnalyzer
+        analyzer = VendorAnalyzer()
+        result = await analyzer.extract_quote_data(content, file.filename)
+        
+        return result
+    except Exception as e:
+        logger.error(f"Analysis failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/intelligence/analyze-url")
+async def analyze_url(
+    payload: dict,
+    current_user: str = Depends(require_auth) if AUTH_ENABLED else "user",
+):
+    """Analyze a PDF from a URL."""
+    url = payload.get("url")
+    if not url:
+        raise HTTPException(status_code=400, detail="URL is required")
+
+    try:
+        from bimcalc.intelligence.vendors import VendorAnalyzer
+        analyzer = VendorAnalyzer()
+        result = await analyzer.fetch_and_analyze_url(url)
+        
+        return result
+    except Exception as e:
+        logger.error(f"URL analysis failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/prices/save-extracted")
+async def save_extracted_prices(
+    request: Request,
+    payload: dict,
+    current_user: str = Depends(require_auth) if AUTH_ENABLED else "user",
+):
+    """Save extracted price items to the database."""
+    org_id = payload.get("org_id", "default")
+    items = payload.get("items", [])
+    
+    if not items:
+        return {"status": "no_items", "count": 0}
+
+    async with get_session() as session:
+        from bimcalc.db.models import PriceItemModel
+        
+        saved_count = 0
+        for item in items:
+            # Create new price item
+            new_item = PriceItemModel(
+                org_id=org_id,
+                item_code=item.get("vendor_code") or f"UNKNOWN-{uuid4().hex[:8]}",
+                region="EU", # Default for now
+                classification_code=0, # Default/Unknown
+                vendor_code=item.get("vendor_code"),
+                sku=item.get("vendor_code") or "UNKNOWN",
+                description=item.get("description"),
+                unit=item.get("unit") or "ea",
+                unit_price=Decimal(str(item.get("unit_price", 0))),
+                currency=item.get("currency", "EUR"),
+                source_name="AI_EXTRACTION",
+                source_currency=item.get("currency", "EUR"),
+                is_current=True
+            )
+            session.add(new_item)
+            saved_count += 1
+        
+        await session.commit()
+    
+    return {"status": "success", "count": saved_count}
+
+
+# ================================================================================
+# Projects
+# ================================================================================
+
+@app.get("/projects", response_class=HTMLResponse)
+async def projects_page(
+    request: Request,
+    org: str | None = None,
+):
+    """Projects management page."""
+    org_id = org or request.cookies.get("org_id", "default")
+    
+    return templates.TemplateResponse(
+        "projects.html",
+        {
+            "request": request,
+            "org_id": org_id,
+        }
+    )
+
+
+# ================================================================================
+# Analytics Dashboard
+# ============================================================================
+
+@app.get("/analytics", response_class=HTMLResponse)
+async def analytics_dashboard(
+    request: Request,
+    org: str | None = None,
+    project: str | None = None,
+):
+    """Advanced analytics dashboard with charts."""
+    org_id, project_id = _get_org_project(request, org, project)
+
+    return templates.TemplateResponse(
+        "analytics.html",
+        {
+            "request": request,
+            "org_id": org_id,
+            "project_id": project_id,
+        },
+    )
+
+
+@app.get("/risk-dashboard", response_class=HTMLResponse)
+async def risk_dashboard_page(
+    request: Request,
+    org: str | None = None,
+    project: str | None = None,
+):
+    """Risk dashboard showing high-risk items."""
+    org_id, project_id = _get_org_project(request, org, project)
+
+    return templates.TemplateResponse(
+        "risk_dashboard.html",
+        {
+            "request": request,
+            "org_id": org_id,
+            "project_id": project_id,
+        },
+    )
+
+
+@app.get("/api/analytics/classification-breakdown")
+async def get_classification_breakdown_api(
+    org: str = Query(...),
+    project: str = Query(...),
+):
+    """Get classification breakdown data."""
+    from bimcalc.reporting.analytics import get_classification_breakdown
+    
+    async with get_session() as session:
+        data = await get_classification_breakdown(session, org, project)
+        return data
+
+
+@app.get("/api/analytics/compliance-timeline")
+async def get_compliance_timeline_api(
+    org: str = Query(...),
+    project: str = Query(...),
+):
+    """Get compliance timeline data."""
+    from bimcalc.reporting.analytics import get_compliance_timeline
+    
+    async with get_session() as session:
+        data = await get_compliance_timeline(session, org, project)
+        return data
+
+
+@app.get("/api/analytics/cost-distribution")
+async def get_cost_distribution_api(
+    org: str = Query(...),
+    project: str = Query(...),
+):
+    """Get cost distribution data."""
+    from bimcalc.reporting.analytics import get_cost_by_classification
+    
+    async with get_session() as session:
+        data = await get_cost_by_classification(session, org, project)
+        return data
+
+
+@app.get("/api/analytics/document-coverage")
+async def get_document_coverage_api(
+    org: str = Query(...),
+    project: str = Query(...),
+):
+    """Get document coverage matrix data."""
+    from bimcalc.reporting.analytics import get_document_coverage_matrix
+    
+    async with get_session() as session:
+        data = await get_document_coverage_matrix(session, org, project)
+        return data
+
+
+# ============================================================================
+# Risk Scoring
+# ============================================================================
+
+@app.get("/api/items/{item_id}/risk")
+async def get_item_risk_score(item_id: UUID):
+    """Get risk score for a specific item."""
+    from bimcalc.intelligence.risk_scoring import get_risk_score_cached
+    from bimcalc.db.models import DocumentLinkModel
+    from sqlalchemy import select
+    
+    async with get_session() as session:
+        # Get item
+        item = await session.get(ItemModel, item_id)
+        if not item:
+            raise HTTPException(status_code=404, detail="Item not found")
+        
+        # Get linked documents
+        doc_query = (
+            select(DocumentModel)
+            .join(DocumentLinkModel)
+            .where(DocumentLinkModel.item_id == item_id)
+        )
+        doc_result = await session.execute(doc_query)
+        documents = list(doc_result.scalars())
+        
+        # Get match result (if any)
+        match_query = select(MatchResultModel).where(
+            MatchResultModel.item_id == item_id,
+            MatchResultModel.decision == "auto-accepted"
+        ).limit(1)
+        match_result = await session.execute(match_query)
+        match = match_result.scalar_one_or_none()
+        
+        # Calculate risk
+        risk = await get_risk_score_cached(item, documents, match)
+        
+        return {
+            "item_id": risk.item_id,
+            "score": risk.score,
+            "level": risk.level,
+            "factors": risk.factors,
+            "recommendations": risk.recommendations
+        }
+
+
+@app.get("/api/items/high-risk")
+async def get_high_risk_items(
+    org: str = Query(...),
+    project: str = Query(...),
+    threshold: int = Query(default=61, ge=0, le=100),
+    limit: int = Query(default=50, ge=1, le=200)
+):
+    """Get high-risk items above threshold."""
+    from bimcalc.intelligence.risk_scoring import ComplianceRiskScorer
+    from bimcalc.db.models import DocumentLinkModel
+    from sqlalchemy import select
+    
+    async with get_session() as session:
+        # Get all items for project
+        items_query = select(ItemModel).where(
+            ItemModel.org_id == org,
+            ItemModel.project_id == project
+        ).limit(limit)
+        items_result = await session.execute(items_query)
+        items = list(items_result.scalars())
+        
+        scorer = ComplianceRiskScorer()
+        high_risk_items = []
+        
+        for item in items:
+            # Get documents for this item
+            doc_query = (
+                select(DocumentModel)
+                .join(DocumentLinkModel)
+                .where(DocumentLinkModel.item_id == item.id)
+            )
+            doc_result = await session.execute(doc_query)
+            documents = list(doc_result.scalars())
+            
+            # Get match
+            match_query = select(MatchResultModel).where(
+                MatchResultModel.item_id == item.id,
+                MatchResultModel.decision == "auto-accepted"
+            ).limit(1)
+            match_result = await session.execute(match_query)
+            match = match_result.scalar_one_or_none()
+            
+            # Calculate risk
+            risk = await scorer.calculate_risk(item, documents, match)
+            
+            if risk.score >= threshold:
+                high_risk_items.append({
+                    "item_id": str(item.id),
+                    "family": item.family,
+                    "type_name": item.type_name,
+                    "classification_code": item.classification_code,
+                    "risk_score": risk.score,
+                    "risk_level": risk.level,
+                    "recommendations": risk.recommendations
+                })
+        
+        # Sort by risk score (highest first)
+        high_risk_items.sort(key=lambda x: x["risk_score"], reverse=True)
+        
+        return {
+            "threshold": threshold,
+            "count": len(high_risk_items),
+            "items": high_risk_items
+        }
+
+
+# ============================================================================
+# QA Checklist Generation
+# ============================================================================
+
+@app.post("/api/items/{item_id}/generate-checklist")
+async def generate_qa_checklist(item_id: UUID):
+    """Generate QA checklist for item using AI."""
+    from bimcalc.intelligence.checklist_generator import QAChecklistGenerator, calculate_completion_percent
+    from bimcalc.intelligence.recommendations import get_document_recommendations
+    from bimcalc.db.models import QAChecklistModel
+    from sqlalchemy import select
+    
+    async with get_session() as session:
+        # Get item
+        item = await session.get(ItemModel, item_id)
+        if not item:
+            raise HTTPException(status_code=404, detail="Item not found")
+        
+        # Check if checklist already exists
+        existing_query = select(QAChecklistModel).where(QAChecklistModel.item_id == item_id)
+        existing_result = await session.execute(existing_query)
+        existing_checklist = existing_result.scalar_one_or_none()
+        
+        if existing_checklist:
+            return {
+                "message": "Checklist already exists. Use PATCH to update or DELETE first.",
+                "checklist_id": str(existing_checklist.id),
+                "regenerate_url": f"/api/items/{item_id}/checklist"
+            }
+        
+        # Get relevant quality documents (using recommendations engine!)
+        recommendations = await get_document_recommendations(
+            session, item, limit=5, min_score=0.3
+        )
+        
+        if not recommendations:
+            raise HTTPException(
+                status_code=400,
+                detail="No relevant quality documents found. Link documents first."
+            )
+        
+        # Get full document objects
+        doc_ids = [rec["id"] for rec in recommendations]
+        docs_query = select(DocumentModel).where(DocumentModel.id.in_(doc_ids))
+        docs_result = await session.execute(docs_query)
+        quality_docs = list(docs_result.scalars())
+        
+        # Generate checklist using LLM
+        generator = QAChecklistGenerator()
+        checklist_data = await generator.generate_checklist(item, quality_docs)
+        
+        if not checklist_data.get("items"):
+            raise HTTPException(
+                status_code=500,
+                detail="Failed to generate checklist. Please try again."
+            )
+        
+        # Save to database
+        checklist = QAChecklistModel(
+            item_id=item_id,
+            org_id=item.org_id,
+            project_id=item.project_id,
+            checklist_items={"items": checklist_data["items"]},
+            source_documents={"docs": checklist_data["source_docs"]},
+            auto_generated=True,
+            completion_percent=0.0,
+            created_by="system"
+        )
+        
+        session.add(checklist)
+        await session.commit()
+        await session.refresh(checklist)
+        
+        return {
+            "checklist_id": str(checklist.id),
+            "item_id": str(item_id),
+            "items": checklist_data["items"],
+            "source_docs": checklist_data["source_docs"],
+            "completion_percent": 0.0
+        }
+
+
+@app.get("/api/items/{item_id}/checklist")
+async def get_qa_checklist(item_id: UUID):
+    """Get existing QA checklist for item."""
+    from bimcalc.db.models import QAChecklistModel
+    from sqlalchemy import select
+    
+    async with get_session() as session:
+        query = select(QAChecklistModel).where(QAChecklistModel.item_id == item_id)
+        result = await session.execute(query)
+        checklist = result.scalar_one_or_none()
+        
+        if not checklist:
+            raise HTTPException(status_code=404, detail="No checklist found for this item")
+        
+        return {
+            "checklist_id": str(checklist.id),
+            "item_id": str(item_id),
+            "items": checklist.checklist_items.get("items", []),
+            "source_docs": checklist.source_documents.get("docs", []),
+            "completion_percent": checklist.completion_percent,
+            "generated_at": checklist.generated_at.isoformat(),
+            "completed_at": checklist.completed_at.isoformat() if checklist.completed_at else None
+        }
+
+
+@app.patch("/api/items/{item_id}/checklist")
+async def update_qa_checklist(item_id: UUID, updates: dict):
+    """Update checklist item completion status."""
+    from bimcalc.intelligence.checklist_generator import calculate_completion_percent
+    from bimcalc.db.models import QAChecklistModel
+    from sqlalchemy import select
+    from datetime import datetime
+    
+    async with get_session() as session:
+        query = select(QAChecklistModel).where(QAChecklistModel.item_id == item_id)
+        result = await session.execute(query)
+        checklist = result.scalar_one_or_none()
+        
+        if not checklist:
+            raise HTTPException(status_code=404, detail="No checklist found for this item")
+        
+        # Update checklist items
+        items = checklist.checklist_items.get("items", [])
+        
+        # Apply updates (expects {"item_id": <id>, "completed": true/false, "notes": "..."})
+        updated_items = []
+        for item in items:
+            if str(item.get("id")) == str(updates.get("item_id")):
+                item["completed"] = updates.get("completed", item.get("completed", False))
+                item["notes"] = updates.get("notes", item.get("notes", ""))
+            updated_items.append(item)
+        
+        # Recalculate completion percentage
+        completion_percent = calculate_completion_percent(updated_items)
+        
+        # Update database
+        checklist.checklist_items = {"items": updated_items}
+        checklist.completion_percent = completion_percent
+        
+        # Mark as completed if 100%
+        if completion_percent == 100.0 and not checklist.completed_at:
+            checklist.completed_at = datetime.utcnow()
+        elif completion_percent < 100.0:
+            checklist.completed_at = None
+        
+        await session.commit()
+        await session.refresh(checklist)
+        
+        return {
+            "checklist_id": str(checklist.id),
+            "items": updated_items,
+            "completion_percent": completion_percent,
+            "completed_at": checklist.completed_at.isoformat() if checklist.completed_at else None
+        }
+
+
+# ============================================================================
+# Export APIs
+# ============================================================================
+
+@app.get("/api/items/{item_id}/checklist/export/pdf")
+async def export_checklist_pdf(item_id: UUID):
+    """Export checklist as PDF."""
+    from bimcalc.intelligence.exports import ChecklistPDFExporter
+    from bimcalc.db.models import QAChecklistModel
+    from sqlalchemy import select
+    from fastapi.responses import Response
+    
+    async with get_session() as session:
+        # Get checklist
+        query = select(QAChecklistModel).where(QAChecklistModel.item_id == item_id)
+        result = await session.execute(query)
+        checklist = result.scalar_one_or_none()
+        
+        if not checklist:
+            raise HTTPException(status_code=404, detail="No checklist found")
+        
+        # Get item
+        item = await session.get(ItemModel, item_id)
+        if not item:
+            raise HTTPException(status_code=404, detail="Item not found")
+        
+        # Generate PDF
+        exporter = ChecklistPDFExporter()
+        pdf_bytes = exporter.export(checklist, item)
+        
+        # Return as downloadable file
+        filename = f"checklist_{item.family}_{item.type_name}.pdf".replace(" ", "_")
+        return Response(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={"Content-Disposition": f"attachment; filename={filename}"}
+        )
+
+
+@app.get("/api/analytics/export/excel")
+async def export_analytics_excel(org: str = Query(...), project: str = Query(...)):
+    """Export all analytics as Excel workbook."""
+    from bimcalc.intelligence.exports import AnalyticsExcelExporter
+    from bimcalc.reporting.analytics import (
+        get_classification_breakdown,
+        get_compliance_timeline,
+        get_cost_distribution,
+        get_document_coverage_matrix
+    )
+    from fastapi.responses import Response
+    
+    async with get_session() as session:
+        # Gather all analytics data
+        analytics_data = {
+            "classification_breakdown": await get_classification_breakdown(session, org, project),
+            "compliance_timeline": await get_compliance_timeline(session, org, project),
+            "cost_distribution": await get_cost_distribution(session, org, project),
+            "document_coverage": await get_document_coverage_matrix(session, org, project)
+        }
+        
+        # Generate Excel
+        exporter = AnalyticsExcelExporter()
+        excel_bytes = exporter.export(analytics_data)
+        
+        # Return as downloadable file
+        filename = f"analytics_{project}.xlsx"
+        return Response(
+            content=excel_bytes,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": f"attachment; filename={filename}"}
+        )
+
+
+@app.get("/api/items/risk/export/csv")
+async def export_risk_csv(
+    org: str = Query(...),
+    project: str = Query(...),
+    threshold: int = Query(0, ge=0, le=100)
+):
+    """Export risk assessment as CSV."""
+    from bimcalc.intelligence.exports import RiskCSVExporter
+    from bimcalc.intelligence.risk_scoring import get_risk_score_cached
+    from fastapi.responses import Response
+    from sqlalchemy import select
+    
+    async with get_session() as session:
+        # Get all items for project
+        query = select(ItemModel).where(
+            ItemModel.org_id == org,
+            ItemModel.project_id == project
+        )
+        result = await session.execute(query)
+        items = list(result.scalars())
+        
+        # Calculate risk for each item
+        risk_items = []
+        for item in items:
+            risk = await get_risk_score_cached(session, str(item.id))
+            
+            if risk.score >= threshold:
+                risk_items.append({
+                    "item_id": str(item.id),
+                    "family": item.family,
+                    "type_name": item.type_name,
+                    "classification_code": item.classification_code,
+                    "risk_score": risk.score,
+                    "risk_level": risk.level,
+                    "recommendations": risk.recommendations
+                })
+        
+        # Generate CSV
+        exporter = RiskCSVExporter()
+        csv_string = exporter.export(risk_items)
+        
+        # Return as downloadable file
+        filename = f"risk_report_{project}.csv"
+        return Response(
+            content=csv_string,
+            media_type="text/csv",
+            headers={"Content-Disposition": f"attachment; filename={filename}"}
+        )
+
+
+# ============================================================================
+# Bulk Operations APIs
+# ============================================================================
+
+@app.post("/api/checklists/generate-batch")
+async def generate_batch_checklists(request: Request, item_ids: list[str]):
+    """Queue batch checklist generation job.
+    
+    Args:
+        item_ids: List of item IDs to generate checklists for
+        
+    Returns:
+        Job ID for tracking progress
+    """
+    from arq import create_pool
+    from arq.connections import RedisSettings
+    import os
+    
+    # Get org/project from first item
+    async with get_session() as session:
+        first_item = await session.get(ItemModel, UUID(item_ids[0]))
+        if not first_item:
+            raise HTTPException(status_code=404, detail="First item not found")
+        
+        org_id = first_item.org_id
+        project_id = first_item.project_id
+    
+    # Queue ARQ job
+    redis_settings = RedisSettings.from_dsn(
+        os.environ.get("REDIS_URL", "redis://redis:6379")
+    )
+    redis = await create_pool(redis_settings)
+    
+    job = await redis.enqueue_job(
+        "batch_generate_checklists_job",
+        org_id,
+        project_id,
+        item_ids
+    )
+    
+    return {
+        "job_id": job.job_id,
+        "status": "queued",
+        "total_items": len(item_ids)
+    }
+
+
+@app.get("/api/jobs/{job_id}/status")
+async def get_job_status(job_id: str):
+    """Get status of background job.
+    
+    Args:
+        job_id: ARQ job ID
+        
+    Returns:
+        Job status and result if complete
+    """
+    from arq import create_pool
+    from arq.connections import RedisSettings
+    from arq.jobs import JobStatus
+    import os
+    
+    redis_settings = RedisSettings.from_dsn(
+        os.environ.get("REDIS_URL", "redis://redis:6379")
+    )
+    redis = await create_pool(redis_settings)
+    
+    job = await redis.get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    
+    status_map = {
+        JobStatus.queued: "queued",
+        JobStatus.in_progress: "running",
+        JobStatus.complete: "complete",
+        JobStatus.not_found: "not_found"
+    }
+    
+    return {
+        "job_id": job_id,
+        "status": status_map.get(job.status, "unknown"),
+        "result": job.result if job.status == JobStatus.complete else None
+    }
+
+
+@app.post("/api/items/risk/assess-all")
+async def assess_all_risks(org: str = Query(...), project: str = Query(...)):
+    """Bulk assess risk for all items in project.
+    
+    Args:
+        org: Organization ID
+        project: Project ID
+        
+    Returns:
+        Risk assessment results
+    """
+    from bimcalc.intelligence.bulk_operations import bulk_assess_risks
+    
+    async with get_session() as session:
+        results = await bulk_assess_risks(session, org, project)
+        return results
+
+
+@app.get("/api/checklists/export-all")
+async def export_all_checklists(org: str = Query(...), project: str = Query(...)):
+    """Export all checklists as ZIP file.
+    
+    Args:
+        org: Organization ID
+        project: Project ID
+        
+    Returns:
+        ZIP file download
+    """
+    from bimcalc.intelligence.bulk_operations import export_all_checklists_zip
+    from fastapi.responses import Response
+    
+    async with get_session() as session:
+        zip_bytes = await export_all_checklists_zip(session, org, project)
+        
+        filename = f"checklists_{project}.zip"
+        return Response(
+            content=zip_bytes,
+            media_type="application/zip",
+            headers={"Content-Disposition": f"attachment; filename={filename}"}
+        )
+
+
+# ============================================================================
+# Project Management APIs
+# ============================================================================
+
+@app.get("/api/projects")
+async def get_projects():
+    """Get list of all available org/project combinations (includes projects with 0 items)."""
+    from sqlalchemy import select, func, union_all
+    from bimcalc.db.models import ProjectModel
+    
+    async with get_session() as session:
+        # Get projects from items table
+        items_query = select(
+            ItemModel.org_id,
+            ItemModel.project_id,
+            func.count(ItemModel.id).label('item_count')
+        ).group_by(
+            ItemModel.org_id,
+            ItemModel.project_id
+        )
+        
+        items_result = await session.execute(items_query)
+        item_projects = {
+            (row.org_id, row.project_id): row.item_count
+            for row in items_result
+        }
+        
+        # Get all projects from projects table
+        projects_query = select(ProjectModel).order_by(
+            ProjectModel.org_id,
+            ProjectModel.project_id
+        )
+        projects_result = await session.execute(projects_query)
+        db_projects = list(projects_result.scalars())
+        
+        # Combine: all registered projects plus any projects that only exist in items
+        all_projects = {}
+        
+        # Add projects from projects table
+        for proj in db_projects:
+            key = (proj.org_id, proj.project_id)
+            all_projects[key] = {
+                "org_id": proj.org_id,
+                "project_id": proj.project_id,
+                "item_count": item_projects.get(key, 0),
+                "display_name": f"{proj.display_name} ({item_projects.get(key, 0)} items)"
+            }
+        
+        # Add any projects from items that aren't registered
+        for (org_id, project_id), count in item_projects.items():
+            key = (org_id, project_id)
+            if key not in all_projects:
+                all_projects[key] = {
+                    "org_id": org_id,
+                    "project_id": project_id,
+                    "item_count": count,
+                    "display_name": f"{project_id} ({count} items)"
+                }
+        
+        # Sort by org then project
+        sorted_projects = sorted(
+            all_projects.values(),
+            key=lambda x: (x['org_id'], x['project_id'])
+        )
+        
+        return {"projects": sorted_projects}
+
+
+@app.post("/api/projects")
+async def create_project(
+    org_id: str,
+    project_id: str,
+    display_name: str,
+    description: str = None,
+    start_date: str = None,
+    target_completion: str = None
+):
+    """Create a new project."""
+    from bimcalc.db.models import ProjectModel
+    from sqlalchemy import select
+    from datetime import datetime
+    
+    async with get_session() as session:
+        # Check if project already exists
+        query = select(ProjectModel).where(
+            ProjectModel.org_id == org_id,
+            ProjectModel.project_id == project_id
+        )
+        result = await session.execute(query)
+        existing = result.scalar_one_or_none()
+        
+        if existing:
+            raise HTTPException(status_code=400, detail="Project already exists")
+        
+        # Parse dates
+        start = datetime.fromisoformat(start_date) if start_date else None
+        target = datetime.fromisoformat(target_completion) if target_completion else None
+        
+        # Create project
+        project = ProjectModel(
+            org_id=org_id,
+            project_id=project_id,
+            display_name=display_name,
+            description=description,
+            start_date=start,
+            target_completion=target,
+            status="active"
+        )
+        
+        session.add(project)
+        await session.commit()
+        
+        return {
+            "success": True,
+            "project": {
+                "org_id": project.org_id,
+                "project_id": project.project_id,
+                "display_name": project.display_name
+            }
+        }
+
+
+@app.get("/api/projects/all")
+async def get_all_projects():
+    """Get all projects with metadata."""
+    from bimcalc.db.models import ProjectModel
+    from sqlalchemy import select, func
+    
+    async with get_session() as session:
+        query = select(ProjectModel).order_by(ProjectModel.org_id, ProjectModel.project_id)
+        result = await session.execute(query)
+        projects = list(result.scalars())
+        
+        # Get item counts
+        item_counts_query = select(
+            ItemModel.org_id,
+            ItemModel.project_id,
+            func.count(ItemModel.id).label('count')
+        ).group_by(ItemModel.org_id, ItemModel.project_id)
+        
+        item_counts_result = await session.execute(item_counts_query)
+        item_counts = {
+            (row.org_id, row.project_id): row.count
+            for row in item_counts_result
+        }
+        
+        return {
+            "projects": [
+                {
+                    "id": str(proj.id),
+                    "org_id": proj.org_id,
+                    "project_id": proj.project_id,
+                    "display_name": proj.display_name,
+                    "description": proj.description,
+                    "status": proj.status,
+                    "start_date": proj.start_date.isoformat() if proj.start_date else None,
+                    "target_completion": proj.target_completion.isoformat() if proj.target_completion else None,
+                    "item_count": item_counts.get((proj.org_id, proj.project_id), 0),
+                    "created_at": proj.created_at.isoformat()
+                }
+                for proj in projects
+            ]
+        }
+
+
+@app.delete("/api/projects/{project_uuid}")
+async def delete_project(project_uuid: UUID):
+    """Delete a project (metadata only, items remain)."""
+    from bimcalc.db.models import ProjectModel
+    
+    async with get_session() as session:
+        project = await session.get(ProjectModel, project_uuid)
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
+        
+        await session.delete(project)
+        await session.commit()
+        
+        return {"success": True, "message": "Project deleted"}
+
+
+# ============================================================================
+# Vendor & Price Intelligence
+# ============================================================================
+
+@app.get("/prices", response_class=HTMLResponse)
+async def prices_page(request: Request, org: str = "default", project: str = "default"):
+    """Vendor and price intelligence dashboard."""
+    return app.templates.TemplateResponse(
+        request, 
+        "prices.html", 
+        {"org_id": org, "project_id": project}
+    )
+
+@app.post("/api/vendors/extract")
+async def extract_vendors(org: str = Query(...), project: str = Query(...)):
+    """Extract vendor info and analyze prices using AI."""
+    from bimcalc.intelligence.vendors import extract_vendor_info, classify_vendor
+    from sqlalchemy import select
+    
+    async with get_session() as session:
+        # Get items for project
+        query = select(ItemModel).where(
+            ItemModel.org_id == org,
+            ItemModel.project_id == project
+        ).limit(50)  # Limit for demo performance
+        
+        result = await session.execute(query)
+        items = list(result.scalars())
+        
+        vendors = {}
+        insights = []
+        
+        # Process items
+        for item in items:
+            # 1. Extract vendor from description/name
+            description = f"{item.family} {item.type_name}"
+            info = await extract_vendor_info(description)
+            vendor_name = info.get("vendor_name") or "Unknown Vendor"
+            
+            if vendor_name not in vendors:
+                vendors[vendor_name] = {
+                    "items": [],
+                    "total_value": 0,
+                    "category": None
+                }
+            
+            # Mock price for demo (since we don't have real price data yet)
+            # In production this would come from the item.price field
+            import random
+            price = random.randint(100, 5000)
+            variance = random.randint(-15, 25)
+            
+            vendors[vendor_name]["items"].append({
+                "id": str(item.id),
+                "family": item.family,
+                "type_name": item.type_name,
+                "price": price,
+                "variance": variance
+            })
+            vendors[vendor_name]["total_value"] += price
+            
+        # 2. Classify vendors
+        for name, data in vendors.items():
+            if name != "Unknown Vendor":
+                item_names = [i["type_name"] for i in data["items"]]
+                classification = await classify_vendor(name, item_names)
+                data["category"] = classification.get("category")
+        
+        # 3. Generate Insights
+        high_variance_vendors = [
+            name for name, data in vendors.items() 
+            if any(i["variance"] > 20 for i in data["items"])
+        ]
+        
+        if high_variance_vendors:
+            insights.append({
+                "title": "High Price Variance Detected",
+                "description": f"Vendors {', '.join(high_variance_vendors[:3])} have items with >20% price variance above market average."
+            })
+            
+        insights.append({
+            "title": "Vendor Consolidation Opportunity",
+            "description": f"You have {len(vendors)} active vendors. Consider consolidating electrical supplies to negotiate better rates."
+        })
+            
+        return {
+            "vendors": vendors,
+            "insights": insights
+        }
+
+
+@app.post("/api/prices/fetch-live")
+async def fetch_live_prices(org: str = Query(...), project: str = Query(...)):
+    """Fetch live prices from external suppliers (Demo)."""
+    from bimcalc.intelligence.suppliers import fetch_live_price_for_item
+    from sqlalchemy import select
+    
+    async with get_session() as session:
+        # Get items for project
+        query = select(ItemModel).where(
+            ItemModel.org_id == org,
+            ItemModel.project_id == project
+        ).limit(20)  # Limit for demo
+        
+        result = await session.execute(query)
+        items = list(result.scalars())
+        
+        updated_items = []
+        
+        for item in items:
+            # Fetch live price
+            data = await fetch_live_price_for_item(item.family, item.type_name)
+            
+            # Update item (in a real app, we'd save this to the DB)
+            # For this demo, we just return the data to the frontend
+            updated_items.append({
+                "id": str(item.id),
+                "family": item.family,
+                "type_name": item.type_name,
+                "old_price": 0, # Placeholder
+                "new_price": data["price"],
+                "supplier": data["supplier"],
+                "fetched_at": data["fetched_at"]
+            })
+            
+        return {
+            "success": True,
+            "updated_count": len(updated_items),
+            "items": updated_items
+        }
+
+
+# ============================================================================
+# Classification Management
+# ============================================================================
+
+@app.get("/classifications", response_class=HTMLResponse)
+async def classifications_page(
+    request: Request,
+    org: str | None = None,
+    project: str | None = None,
+):
+    """Classification management page."""
+    org_id, project_id = _get_org_project(request, org, project)
+
+    return templates.TemplateResponse(
+        "classifications.html",
+        {
+            "request": request,
+            "org_id": org_id,
+            "project_id": project_id,
+        },
+    )
+
+
+@app.get("/api/classifications/mappings")
+async def get_classification_mappings(
+    org: str = Query(...),
+    project: str = Query(...),
+):
+    """Get all classification mappings for a project."""
+    from bimcalc.db.models import ProjectClassificationMappingModel
+    
+    async with get_session() as session:
+        stmt = (
+            select(ProjectClassificationMappingModel)
+            .where(
+                ProjectClassificationMappingModel.org_id == org,
+                ProjectClassificationMappingModel.project_id == project,
+            )
+            .order_by(ProjectClassificationMappingModel.local_code)
+        )
+        result = await session.execute(stmt)
+        mappings = result.scalars().all()
+
+    return [
+        {
+            "id": str(m.id),
+            "local_code": m.local_code,
+            "standard_code": m.standard_code,
+            "description": m.description,
+            "created_by": m.created_by,
+            "created_at": m.created_at.isoformat(),
+        }
+        for m in mappings
+    ]
+
+
+@app.post("/api/classifications/mappings")
+async def create_classification_mapping(
+    org: str = Form(...),
+    project: str = Form(...),
+    local_code: str = Form(...),
+    standard_code: str = Form(...),
+    description: str = Form(default=""),
+):
+    """Create a new classification mapping."""
+    from bimcalc.db.models import ProjectClassificationMappingModel
+    
+    async with get_session() as session:
+        # Check for duplicate
+        existing = await session.execute(
+            select(ProjectClassificationMappingModel).where(
+                ProjectClassificationMappingModel.org_id == org,
+                ProjectClassificationMappingModel.project_id == project,
+                ProjectClassificationMappingModel.local_code == local_code,
+            )
+        )
+        if existing.scalar_one_or_none():
+            raise HTTPException(
+                status_code=400,
+                detail=f"Mapping for local code '{local_code}' already exists"
+            )
+
+        mapping = ProjectClassificationMappingModel(
+            org_id=org,
+            project_id=project,
+            local_code=local_code,
+            standard_code=standard_code,
+            description=description,
+            created_by="web-ui",
+        )
+        session.add(mapping)
+        await session.commit()
+
+    return {"success": True, "message": "Mapping created successfully"}
+
+
+@app.delete("/api/classifications/mappings/{mapping_id}")
+async def delete_classification_mapping(mapping_id: UUID):
+    """Delete a classification mapping."""
+    from bimcalc.db.models import ProjectClassificationMappingModel
+    
+    async with get_session() as session:
+        stmt = select(ProjectClassificationMappingModel).where(
+            ProjectClassificationMappingModel.id == mapping_id
+        )
+        result = await session.execute(stmt)
+        mapping = result.scalar_one_or_none()
+
+        if not mapping:
+            raise HTTPException(status_code=404, detail="Mapping not found")
+
+        await session.delete(mapping)
+        await session.commit()
+
+    return {"success": True, "message": "Mapping deleted successfully"}

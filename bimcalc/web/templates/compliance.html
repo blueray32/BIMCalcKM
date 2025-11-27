@@ -1,0 +1,187 @@
+{% extends "base.html" %}
+
+{% block title %}Compliance - BIMCalc{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>✅ Compliance & QA Tracking</h1>
+    <p>Track quality assurance and testing coverage across project items.</p>
+</div>
+
+<!-- Loading State -->
+<div id="loadingState" class="text-center" style="padding: 3rem;">
+    <div class="loading-spinner"
+        style="width: 50px; height: 50px; border: 4px solid #f3f3f3; border-top: 4px solid #4299e1; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto;">
+    </div>
+    <p class="text-muted" style="margin-top: 1rem;">Loading compliance metrics...</p>
+</div>
+
+<!-- Metrics Dashboard (Hidden until loaded) -->
+<div id="metricsContainer" style="display: none;">
+    <!-- Overview Cards -->
+    <div class="stats-grid" style="margin-bottom: 2rem;">
+        <div class="stat-card primary">
+            <div class="label">Total Items</div>
+            <div class="value" id="totalItems">-</div>
+        </div>
+        <div class="stat-card success">
+            <div class="label">Items with QA Evidence</div>
+            <div class="value" id="itemsWithQA">-</div>
+        </div>
+        <div class="stat-card" style="border-left: 4px solid #805ad5;">
+            <div class="label">Completion Rate</div>
+            <div class="value" id="completionPercent">-</div>
+        </div>
+    </div>
+
+    <!-- Coverage by Classification -->
+    <div class="card" style="margin-bottom: 2rem;">
+        <div class="card-header">QA Coverage by Classification</div>
+        <div class="card-body">
+            <canvas id="coverageChart" width="400" height="200"></canvas>
+        </div>
+    </div>
+
+    <!-- Deficiencies Table -->
+    <div class="card">
+        <div class="card-header">Items Without QA Evidence (<span id="deficiencyCount">0</span>)</div>
+        <div class="card-body">
+            <table id="deficienciesTable">
+                <thead>
+                    <tr>
+                        <th>Classification</th>
+                        <th>Family</th>
+                        <th>Type Name</th>
+                    </tr>
+                </thead>
+                <tbody id="deficienciesBody">
+                    <!-- Populated by JS -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<style>
+    @keyframes spin {
+        0% {
+            transform: rotate(0deg);
+        }
+
+        100% {
+            transform: rotate(360deg);
+        }
+    }
+</style>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+    async function loadMetrics() {
+        const org = '{{ org_id }}';
+        const project = '{{ project_id }}';
+
+        try {
+            const response = await fetch(`/api/compliance/metrics?org=${org}&project=${project}`);
+            const data = await response.json();
+
+            // Hide loading, show metrics
+            document.getElementById('loadingState').style.display = 'none';
+            document.getElementById('metricsContainer').style.display = 'block';
+
+            // Update overview cards
+            document.getElementById('totalItems').textContent = data.total_items;
+            document.getElementById('itemsWithQA').textContent = data.items_with_qa;
+            document.getElementById('completionPercent').textContent = data.completion_percent.toFixed(1) + '%';
+
+            // Render coverage chart
+            renderCoverageChart(data.coverage_by_classification);
+
+            // Render deficiencies table
+            renderDeficiencies(data.items_without_qa);
+
+        } catch (error) {
+            console.error('Failed to load metrics:', error);
+            document.getElementById('loadingState').innerHTML = `
+            <div class="message message-error">
+                Failed to load compliance metrics. Please try again.
+            </div>
+        `;
+        }
+    }
+
+    function renderCoverageChart(coverage) {
+        const ctx = document.getElementById('coverageChart').getContext('2d');
+
+        const labels = coverage.map(c => `Class ${c.classification}`);
+        const withQA = coverage.map(c => c.with_qa);
+        const withoutQA = coverage.map(c => c.total - c.with_qa);
+
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: 'With QA',
+                        data: withQA,
+                        backgroundColor: '#48bb78',
+                    },
+                    {
+                        label: 'Without QA',
+                        data: withoutQA,
+                        backgroundColor: '#f56565',
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: { stacked: true },
+                    y: { stacked: true, beginAtZero: true }
+                },
+                plugins: {
+                    legend: { position: 'top' },
+                    title: {
+                        display: false
+                    }
+                }
+            }
+        });
+    }
+
+    function renderDeficiencies(items) {
+        const tbody = document.getElementById('deficienciesBody');
+        document.getElementById('deficiencyCount').textContent = items.length;
+
+        if (items.length === 0) {
+            tbody.innerHTML = `
+            <tr>
+                <td colspan="3" class="text-center text-muted" style="padding: 2rem;">
+                    🎉 All items have QA evidence!
+                </td>
+            </tr>
+        `;
+            return;
+        }
+
+        tbody.innerHTML = items.map(item => `
+        <tr>
+            <td>
+                <span class="badge" style="background: #edf2f7; color: #4a5568;">
+                    ${item.classification_code || 'N/A'}
+                </span>
+            </td>
+            <td>${item.family}</td>
+            <td>${item.type_name}</td>
+        </tr>
+    `).join('');
+    }
+
+    // Load on page load
+    document.addEventListener('DOMContentLoaded', loadMetrics);
+</script>
+{% endblock %}

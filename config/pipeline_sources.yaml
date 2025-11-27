@@ -70,6 +70,22 @@ sources:
       simulate_pagination: true  # Split data into pages
       page_size: 5  # Items per page
 
+  # CEF UK Price List (Sample)
+  - name: cef_uk_prices
+    type: csv
+    enabled: true
+    config:
+      file_path: data/prices/sample_cef_pricelist.csv
+      region: UK
+      vendor_id: cef_uk
+      column_mapping:
+        "Product Code": "item_code"
+        "Description": "description"
+        "Category": "classification_code"
+        "Unit Price": "unit_price"
+        "Unit": "unit"
+        "Manufacturer": "manufacturer"
+
   # Example: Local test data for development
   - name: test_prices_local
     type: csv

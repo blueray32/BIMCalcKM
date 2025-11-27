@@ -11,10 +11,34 @@ from bimcalc.db.models import ClassificationMappingModel
 class ClassificationMapper:
     """Translates classification codes between different taxonomies."""
 
-    def __init__(self, session: AsyncSession, org_id: str):
+    def __init__(self, session: AsyncSession, org_id: str, project_id: str | None = None):
         self.session = session
         self.org_id = org_id
+        self.project_id = project_id
         self._cache: dict[tuple[str, str, str], str | None] = {}
+
+    async def get_project_mapping(self, local_code: str) -> str | None:
+        """Look up standard code from project-specific mapping.
+        
+        Args:
+            local_code: Project-specific classification code (e.g., "61")
+            
+        Returns:
+            Standard BIMCalc classification code (e.g., "2601") or None if not found
+        """
+        if not self.project_id:
+            return None
+            
+        from bimcalc.db.models import ProjectClassificationMappingModel
+        
+        stmt = select(ProjectClassificationMappingModel.standard_code).where(
+            ProjectClassificationMappingModel.org_id == self.org_id,
+            ProjectClassificationMappingModel.project_id == self.project_id,
+            ProjectClassificationMappingModel.local_code == local_code,
+        )
+        result = await self.session.execute(stmt)
+        return result.scalar_one_or_none()
+
 
     async def translate(
         self,

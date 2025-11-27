@@ -19,6 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from bimcalc.db.models import PriceItemModel
 from bimcalc.pipeline.types import PriceRecord
+from bimcalc.config import get_config
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +40,7 @@ class SCD2PriceUpdater:
             "unchanged": 0,
             "failed": 0,
         }
+        self.org_id = get_config().org_id
 
     async def process_price(self, record: PriceRecord) -> bool:
         """Process a single price record with SCD Type-2 logic.
@@ -107,6 +109,7 @@ class SCD2PriceUpdater:
         """
         price_model = PriceItemModel(
             id=uuid4(),
+            org_id=self.org_id,
             item_code=record.item_code,
             region=record.region,
             classification_code=record.classification_code,

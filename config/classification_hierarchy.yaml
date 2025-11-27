@@ -100,6 +100,10 @@ trust_levels:
       - family_contains: ["fire alarm", "smoke detector", "heat detector"]
         classification_code: 2801
 
+      # Project Specific
+      - family_contains: ["distribution", "switchboard", "panel"]
+        classification_code: 61
+
       # HVAC keywords
       - family_contains: ["duct", "diffuser", "grille", "register", "vav"]
         classification_code: 2302
@@ -134,3 +138,4 @@ classification_codes:
   2701: "Communications & Data"
   2801: "Fire Detection & Alarm"
   9999: "Unknown (Requires Manual Classification)"
+  61: "Electrical Distribution (Project Specific)"

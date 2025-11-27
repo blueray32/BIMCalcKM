@@ -1,0 +1,289 @@
+<div class="qa-checklist-card" id="checklist-widget-{{ item_id }}">
+    <div class="checklist-header">
+        <h3>🧪 QA Checklist</h3>
+        <button id="generate-btn-{{ item_id }}" onclick="generateChecklist('{{ item_id }}')" class="btn btn-primary">
+            ⚡ Generate with AI
+        </button>
+    </div>
+
+    <div id="checklist-content-{{ item_id }}" class="checklist-content">
+        <div style="text-align: center; padding: 2rem; color: #cbd5e0;">
+            <p>No checklist generated yet.</p>
+            <p style="font-size: 0.875rem; margin-top: 0.5rem;">Click "Generate with AI" to create a comprehensive QA
+                checklist based on quality documents.</p>
+        </div>
+    </div>
+</div>
+
+<style>
+    .qa-checklist-card {
+        background: white;
+        border: 1px solid #e2e8f0;
+        border-radius: 0.5rem;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .checklist-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+    }
+
+    .checklist-header h3 {
+        margin: 0;
+        font-size: 1.25rem;
+        color: #2d3748;
+    }
+
+    .progress-bar-container {
+        height: 1.5rem;
+        background: #e2e8f0;
+        border-radius: 0.25rem;
+        overflow: hidden;
+        margin-bottom: 1rem;
+    }
+
+    .progress-bar {
+        height: 100%;
+        background: linear-gradient(90deg, #48bb78, #38a169);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+        font-size: 0.875rem;
+        transition: width 0.3s ease;
+    }
+
+    .checklist-content {
+        max-height: 500px;
+        overflow-y: auto;
+    }
+
+    .checklist-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.75rem;
+        padding: 0.75rem;
+        border-radius: 0.25rem;
+        cursor: pointer;
+        transition: background 0.2s;
+    }
+
+    .checklist-item:hover {
+        background: #f7fafc;
+    }
+
+    .checklist-item input[type="checkbox"] {
+        width: 1.25rem;
+        height: 1.25rem;
+        margin-top: 0.125rem;
+        cursor: pointer;
+    }
+
+    .checklist-item-content {
+        flex: 1;
+    }
+
+    .checklist-item-requirement {
+        font-weight: 500;
+        color: #2d3748;
+        margin-bottom: 0.25rem;
+    }
+
+    .checklist-item-meta {
+        display: flex;
+        gap: 1rem;
+        font-size: 0.75rem;
+        color: #718096;
+    }
+
+    .category-section {
+        margin-bottom: 1.5rem;
+    }
+
+    .category-section h4 {
+        color: #4a5568;
+        font-size: 1rem;
+        margin-bottom: 0.75rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid #e2e8f0;
+    }
+
+    .priority-high {
+        color: #f56565;
+        font-weight: 600;
+    }
+
+    .priority-medium {
+        color: #ed8936;
+    }
+
+    .priority-low {
+        color: #48bb78;
+    }
+
+    .source-docs {
+        margin-top: 1rem;
+        padding-top: 1rem;
+        border-top: 1px solid #e2e8f0;
+        font-size: 0.875rem;
+        color: #718096;
+    }
+
+    .source-docs-list {
+        margin-top: 0.5rem;
+        list-style: none;
+        padding: 0;
+    }
+
+    .source-docs-list li {
+        padding: 0.25rem 0;
+    }
+</style>
+
+<script>
+    async function generateChecklist(itemId) {
+        const btn = document.getElementById(`generate-btn-${itemId}`);
+        const content = document.getElementById(`checklist-content-${itemId}`);
+
+        btn.disabled = true;
+        btn.textContent = 'Generating...';
+        content.innerHTML = '<div style="text-align: center; padding: 2rem; color: #cbd5e0;">Generating checklist with AI...</div>';
+
+        try {
+            const response = await fetch(`/api/items/${itemId}/generate-checklist`, {
+                method: 'POST'
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.detail || 'Failed to generate checklist');
+            }
+
+            const data = await response.json();
+
+            // Render checklist
+            renderChecklist(itemId, data);
+
+            // Hide generate button
+            btn.style.display = 'none';
+
+        } catch (error) {
+            content.innerHTML = `<div class="message message-error">${error.message}</div>`;
+            btn.disabled = false;
+            btn.textContent = '⚡ Generate with AI';
+        }
+    }
+
+    async function loadExistingChecklist(itemId) {
+        const content = document.getElementById(`checklist-content-${itemId}`);
+        const btn = document.getElementById(`generate-btn-${itemId}`);
+
+        try {
+            const response = await fetch(`/api/items/${itemId}/checklist`);
+
+            if (response.ok) {
+                const data = await response.json();
+                renderChecklist(itemId, data);
+                btn.style.display = 'none';
+            }
+        } catch (error) {
+            // No checklist exists, show generate button
+            console.log('No existing checklist found');
+        }
+    }
+
+    function renderChecklist(itemId, data) {
+        const content = document.getElementById(`checklist-content-${itemId}`);
+        const items = data.items || [];
+        const sourceDocs = data.source_docs || [];
+        const completionPercent = data.completion_percent || 0;
+
+        // Group by category
+        const categories = {};
+        items.forEach(item => {
+            const cat = item.category || 'General';
+            if (!categories[cat]) categories[cat] = [];
+            categories[cat].push(item);
+        });
+
+        let html = '';
+
+        // Progress bar
+        html += `
+        <div class="progress-bar-container">
+            <div class="progress-bar" style="width: ${completionPercent}%">
+                ${Math.round(completionPercent)}%
+            </div>
+        </div>
+    `;
+
+        // Checklist items by category
+        Object.keys(categories).forEach(category => {
+            html += `<div class="category-section">`;
+            html += `<h4>✓ ${category}</h4>`;
+
+            categories[category].forEach(item => {
+                const priorityClass = `priority-${item.priority.toLowerCase()}`;
+                html += `
+                <div class="checklist-item">
+                    <input type="checkbox" 
+                           ${item.completed ? 'checked' : ''}
+                           onchange="updateChecklistItem('${itemId}', ${item.id}, this.checked)">
+                    <div class="checklist-item-content">
+                        <div class="checklist-item-requirement">${item.requirement}</div>
+                        <div class="checklist-item-meta">
+                            <span class="${priorityClass}">Priority: ${item.priority}</span>
+                            <span>⏱️ ${item.estimated_time_minutes || 10} min</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+            });
+
+            html += `</div>`;
+        });
+
+        // Source documents
+        if (sourceDocs.length > 0) {
+            html += `
+            <div class="source-docs">
+                📄 Generated from:
+                <ul class="source-docs-list">
+                    ${sourceDocs.map(doc => `<li>${doc.title} (${doc.type})</li>`).join('')}
+                </ul>
+            </div>
+        `;
+        }
+
+        content.innerHTML = html;
+    }
+
+    async function updateChecklistItem(itemId, checklistItemId, completed) {
+        try {
+            const response = await fetch(`/api/items/${itemId}/checklist`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    item_id: checklistItemId,
+                    completed: completed
+                })
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                // Update progress bar
+                const progressBar = document.querySelector(`#checklist-content-${itemId} .progress-bar`);
+                if (progressBar) {
+                    progressBar.style.width = data.completion_percent + '%';
+                    progressBar.textContent = Math.round(data.completion_percent) + '%';
+                }
+            }
+        } catch (error) {
+            console.error('Failed to update checklist item:', error);
+        }
+    }
+</script>

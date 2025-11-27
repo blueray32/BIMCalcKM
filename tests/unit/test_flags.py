@@ -5,7 +5,7 @@ Validates Critical-Veto vs Advisory flag detection with structured models.
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from bimcalc.flags.engine import ADVISORY, CRITICAL, compute_flags
 from bimcalc.models import FlagSeverity
@@ -49,7 +49,7 @@ class TestAdvisoryFlags:
     """Advisory flag scenarios."""
 
     def test_stale_price(self):
-        last_year = datetime.utcnow() - timedelta(days=400)
+        last_year = datetime.now(timezone.utc) - timedelta(days=400)
         flags = compute_flags({}, {"last_updated": last_year})
         assert _has_flag(flags, "StalePrice", FlagSeverity.ADVISORY)
 
@@ -101,7 +101,7 @@ class TestMultipleFlags:
             "classification_code": 2215,
             "vat_rate": 0.23,
             "currency": "EUR",
-            "last_updated": datetime.utcnow(),
+            "last_updated": datetime.now(timezone.utc),
         }
         flags = compute_flags(item, price)
         assert flags == []

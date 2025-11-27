@@ -8,8 +8,17 @@
         <div>
             <h1>Project Dashboard</h1>
             <p>Overview of {{ project_id }} in {{ org_id }}</p>
+            <p style="font-size: 0.875rem; color: #718096; margin-top: 0.5rem;">
+                <span id="last-updated">Last updated: just now</span>
+            </p>
         </div>
-        <div>
+        <div style="display: flex; gap: 0.5rem;">
+            <button onclick="location.reload()" 
+                    class="btn btn-primary"
+                    style="display: inline-flex; align-items: center; gap: 0.5rem;">
+                <span>🔄</span>
+                <span>Refresh</span>
+            </button>
             <a href="/?org={{ org_id }}&project={{ project_id }}&view=executive"
                class="btn btn-primary"
                style="text-decoration: none; display: inline-flex; align-items: center; gap: 0.5rem;">
@@ -19,6 +28,25 @@
         </div>
     </div>
 </div>
+
+<script>
+    // Update timestamp every 60 seconds
+    const startTime = new Date();
+    setInterval(() => {
+        const elapsed = Math.floor((new Date() - startTime) / 1000);
+        const minutes = Math.floor(elapsed / 60);
+        const seconds = elapsed % 60;
+        
+        let timeStr = 'just now';
+        if (minutes > 0) {
+            timeStr = `${minutes} minute${minutes > 1 ? 's' : ''} ago`;
+        } else if (seconds > 10) {
+            timeStr = `${seconds} seconds ago`;
+        }
+        
+        document.getElementById('last-updated').textContent = `Last updated: ${timeStr}`;
+    }, 1000);
+</script>
 
 <!-- Statistics Cards -->
 <div class="stats-grid">

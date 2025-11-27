@@ -59,9 +59,60 @@
 
         .nav-links a:hover,
         .nav-links a.active {
-            background: #2d3748;
+            background: rgba(255, 255, 255, 0.2);
             color: white;
-            border-bottom-color: #63b3ed;
+            font-weight: 600;
+        }
+
+        /* Dropdown Navigation Styles */
+        .nav-dropdown {
+            position: relative;
+        }
+
+        .dropdown-toggle {
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .dropdown-menu {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            background: white;
+            border-radius: 0.375rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            min-width: 200px;
+            margin-top: 0;
+            /* Remove gap */
+            padding: 0.5rem 0;
+            padding-top: 0.75rem;
+            /* Add padding inside to create visual space */
+            z-index: 1000;
+        }
+
+        .nav-dropdown:hover .dropdown-menu {
+            display: block;
+        }
+
+        .dropdown-menu li {
+            display: block;
+            margin: 0;
+        }
+
+        .dropdown-menu a {
+            display: block;
+            color: #2d3748 !important;
+            padding: 0.75rem 1rem;
+            text-decoration: none;
+            transition: all 0.2s;
+            border-radius: 0;
+            background: transparent !important;
+        }
+
+        .dropdown-menu a:hover {
+            background: #f7fafc !important;
+            color: #4299e1 !important;
         }
 
         /* Project Selector */
@@ -445,47 +496,117 @@
             <ul class="nav-links">
                 <li><a href="/?org={{ org_id }}&project={{ project_id }}" {% if request.url.path=='/' %}class="active"
                         {% endif %}>Dashboard</a></li>
-                <li><a href="/progress?org={{ org_id }}&project={{ project_id }}" {% if request.url.path=='/progress'
-                        %}class="active" {% endif %}>Progress</a></li>
                 <li><a href="/review?org={{ org_id }}&project={{ project_id }}" {% if request.url.path=='/review'
                         %}class="active" {% endif %}>Review</a></li>
+
+                <!-- Data Management Dropdown -->
+                <li class="nav-dropdown">
+                    <a href="#"
+                        class="dropdown-toggle {% if request.url.path in ['/ingest', '/pipeline', '/audit', '/crail4-config'] %}active{% endif %}">
+                        Data Management ▾
+                    </a>
+                    <ul class="dropdown-menu">
+                        <li><a href="/ingest?org={{ org_id }}&project={{ project_id }}">Ingest</a></li>
+                        <li><a href="/pipeline?org={{ org_id }}&project={{ project_id }}">Pipeline</a></li>
+                        <li><a href="/audit?org={{ org_id }}&project={{ project_id }}">Audit</a></li>
+                        <li><a href="/crail4-config?org={{ org_id }}">Crail4 Sync</a></li>
+                    </ul>
+                </li>
+
                 <li><a href="/items?org={{ org_id }}&project={{ project_id }}" {% if request.url.path=='/items'
                         %}class="active" {% endif %}>Items</a></li>
-                <li><a href="/mappings?org={{ org_id }}" {% if request.url.path=='/mappings' %}class="active" {% endif
-                        %}>Mappings</a></li>
-                <li><a href="/ingest?org={{ org_id }}&project={{ project_id }}" {% if request.url.path=='/ingest'
-                        %}class="active" {% endif %}>Ingest</a></li>
-                <li><a href="/match?org={{ org_id }}&project={{ project_id }}" {% if request.url.path=='/match'
-                        %}class="active" {% endif %}>Match</a></li>
-                <li><a href="/prices?org={{ org_id }}&project={{ project_id }}" {% if request.url.path=='/prices'
-                        %}class="active" {% endif %}>Prices</a></li>
-                <li><a href="/crail4-config?org={{ org_id }}" {% if request.url.path=='/crail4-config' %}class="active"
-                        {% endif %}>Crail4 Sync</a></li>
-                <li><a href="/pipeline?org={{ org_id }}&project={{ project_id }}" {% if request.url.path=='/pipeline'
-                        %}class="active" {% endif %}>Pipeline</a></li>
+
+                <!-- Intelligence Dropdown (includes Matching) -->
+                <li class="nav-dropdown">
+                    <a href="#"
+                        class="dropdown-toggle {% if request.url.path in ['/match', '/mappings', '/documents', '/compliance', '/classifications', '/analytics', '/risk-dashboard'] %}active{% endif %}">
+                        Intelligence ▾
+                    </a>
+                    <ul class="dropdown-menu">
+                        <li><a href="/match?org={{ org_id }}&project={{ project_id }}">Match Items</a></li>
+                        <li><a href="/mappings?org={{ org_id }}">Mappings</a></li>
+                        <li><a href="/documents?org={{ org_id }}&project={{ project_id }}">Documents</a></li>
+                        <li><a href="/compliance?org={{ org_id }}&project={{ project_id }}">Compliance</a></li>
+                        <li><a href="/classifications?org={{ org_id }}&project={{ project_id }}">Classifications</a>
+                        </li>
+                        <li><a href="/analytics?org={{ org_id }}&project={{ project_id }}">Analytics</a></li>
+                        <li><a href="/risk-dashboard?org={{ org_id }}&project={{ project_id }}">Risk Dashboard</a></li>
+                    </ul>
+                </li>
+
                 <li><a href="/reports?org={{ org_id }}&project={{ project_id }}" {% if request.url.path=='/reports'
                         %}class="active" {% endif %}>Reports</a></li>
-                <li><a href="/audit?org={{ org_id }}&project={{ project_id }}" {% if request.url.path=='/audit'
-                        %}class="active" {% endif %}>Audit</a></li>
+                <li><a href="/prices?org={{ org_id }}&project={{ project_id }}" {% if request.url.path=='/prices'
+                        %}class="active" {% endif %}>Prices</a></li>
+                <li><a href="/projects" {% if request.url.path=='/projects' %}class="active" {% endif %}>📁 Projects</a>
+                </li>
                 <li><a href="/logout" style="color: #fc8181;">Logout</a></li>
             </ul>
         </div>
     </nav>
 
-    <!-- Project Selector -->
+    <!-- Project Selector (Enhanced) -->
     <div class="project-selector">
         <div class="container">
-            <form method="get" action="{{ request.url.path }}" class="flex flex-center gap-2">
-                <label>Org:</label>
-                <input type="text" name="org" value="{{ org_id }}" style="width: 200px;" />
-
-                <label>Project:</label>
-                <input type="text" name="project" value="{{ project_id }}" style="width: 200px;" />
-
-                <button type="submit">Switch</button>
-            </form>
+            <div class="flex flex-center gap-2">
+                <label style="font-weight: 600;">📁 Project:</label>
+                <select id="project-dropdown" onchange="switchProject()"
+                    style="padding: 8px 12px; border-radius: 4px; border: 1px solid #e2e8f0; min-width: 300px;">
+                    <option value="">Loading projects...</option>
+                </select>
+                <span id="project-info" style="color: #718096; font-size: 14px;"></span>
+            </div>
         </div>
     </div>
+
+    <script>
+        // Load projects and populate dropdown
+        async function loadProjects() {
+            try {
+                const response = await fetch('/api/projects');
+                const data = await response.json();
+                const dropdown = document.getElementById('project-dropdown');
+                const currentOrg = '{{ org_id }}';
+                const currentProject = '{{ project_id }}';
+
+                dropdown.innerHTML = '';
+
+                data.projects.forEach(proj => {
+                    const option = document.createElement('option');
+                    option.value = `${proj.org_id}|${proj.project_id}`;
+                    option.textContent = proj.display_name;
+
+                    if (proj.org_id === currentOrg && proj.project_id === currentProject) {
+                        option.selected = true;
+                        document.getElementById('project-info').textContent =
+                            `(${proj.item_count} items)`;
+                    }
+
+                    dropdown.appendChild(option);
+                });
+            } catch (error) {
+                console.error('Failed to load projects:', error);
+                document.getElementById('project-dropdown').innerHTML =
+                    '<option value="">Error loading projects</option>';
+            }
+        }
+
+        function switchProject() {
+            const dropdown = document.getElementById('project-dropdown');
+            const selected = dropdown.value;
+
+            if (!selected) return;
+
+            const [org, project] = selected.split('|');
+            const currentPath = window.location.pathname;
+            const newUrl = `${currentPath}?org=${org}&project=${project}`;
+
+            window.location.href = newUrl;
+        }
+
+        // Load projects on page load
+        document.addEventListener('DOMContentLoaded', loadProjects);
+    </script>
 
     <!-- Main Content -->
     <main>

@@ -85,7 +85,7 @@ services:
     volumes:
       - ./:/app
     environment:
-      - DATABASE_URL=postgresql+asyncpg://bimcalc:bimcalc@db:5432/bimcalc
+      - DATABASE_URL=postgresql+asyncpg://bimcalc:changeme@db:5432/bimcalc
       - REDIS_URL=redis://redis:6379
       - BIMCALC_AUTH_DISABLED=true
       - API_BASE_URL=http://app:8001
@@ -107,6 +107,16 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
+    restart: unless-stopped
+    networks:
+      - bimcalc-network
+
+  browser:
+    image: ghcr.io/browserless/chromium:latest
+    ports:
+      - "3000:3000"
+    environment:
+      - TIMEOUT=60000
     restart: unless-stopped
     networks:
       - bimcalc-network

@@ -225,6 +225,11 @@ def match(
 
                 match_result, price_item = await orchestrator.match(item, created_by)
 
+                # Persist canonical metadata generated during matching so downstream
+                # reports and approval workflows have valid keys.
+                item_model.canonical_key = item.canonical_key
+                item_model.classification_code = item.classification_code
+
                 await record_match_result(session, item_model.id, match_result)
                 processed_item_ids.append(item_model.id)
 

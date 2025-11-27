@@ -5,6 +5,7 @@ Tests the out-of-class fallback mechanism per CLAUDE.md requirements.
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from decimal import Decimal
 
 import pytest
@@ -75,6 +76,7 @@ async def test_escape_hatch_engages_when_no_in_class_candidates(db_session: Asyn
         source_name="test_catalog",
         source_currency="EUR",
         width_mm=200.0,
+        last_updated=datetime.now(timezone.utc),
     )
 
     price2 = PriceItemModel(
@@ -91,6 +93,7 @@ async def test_escape_hatch_engages_when_no_in_class_candidates(db_session: Asyn
         source_name="test_catalog",
         source_currency="EUR",
         width_mm=250.0,
+        last_updated=datetime.now(timezone.utc),
     )
 
     db_session.add_all([price1, price2])
@@ -167,6 +170,7 @@ async def test_escape_hatch_not_used_when_in_class_candidates_exist(db_session: 
         source_name="test_catalog",
         source_currency="EUR",
         width_mm=200.0,
+        last_updated=datetime.now(timezone.utc),
     )
 
     db_session.add(price1)
@@ -318,6 +322,7 @@ async def test_escape_hatch_respects_numeric_filters(db_session: AsyncSession):
         source_name="test_catalog",
         source_currency="EUR",
         width_mm=200.0,  # Close match
+        last_updated=datetime.now(timezone.utc),
     )
 
     price_far = PriceItemModel(
@@ -334,6 +339,7 @@ async def test_escape_hatch_respects_numeric_filters(db_session: AsyncSession):
         source_name="test_catalog",
         source_currency="EUR",
         width_mm=500.0,  # Too different
+        last_updated=datetime.now(timezone.utc),
     )
 
     db_session.add_all([price_close, price_far])

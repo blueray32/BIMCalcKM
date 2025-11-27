@@ -1,0 +1,25 @@
+{
+    "baseSelector": "tr",
+    "fields": [
+        {
+            "name": "description",
+            "selector": "a.product__description-link",
+            "type": "text"
+        },
+        {
+            "name": "vendor_code",
+            "selector": "a.product__code-link",
+            "type": "text"
+        },
+        {
+            "name": "unit_price",
+            "selector": "td:nth-of-type(3)",
+            "type": "text"
+        },
+        {
+            "name": "unit",
+            "selector": "td:nth-of-type(3)",
+            "type": "text"
+        }
+    ]
+}

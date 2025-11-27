@@ -68,6 +68,14 @@ async def ingest_pricebook(
     if not file_path.exists():
         raise FileNotFoundError(f"Price book not found: {file_path}")
 
+    # Check file size limit (50MB max)
+    MAX_FILE_SIZE_MB = 50
+    file_size_mb = file_path.stat().st_size / (1024 * 1024)
+    if file_size_mb > MAX_FILE_SIZE_MB:
+        raise ValueError(
+            f"File too large ({file_size_mb:.1f}MB). Maximum allowed: {MAX_FILE_SIZE_MB}MB"
+        )
+
     # Read file
     if file_path.suffix.lower() == ".csv":
         df = pd.read_csv(file_path)
@@ -75,6 +83,13 @@ async def ingest_pricebook(
         df = pd.read_excel(file_path)
     else:
         raise ValueError(f"Unsupported file format: {file_path.suffix}")
+
+    # Check row count limit
+    MAX_ROWS = 50000
+    if len(df) > MAX_ROWS:
+        raise ValueError(
+            f"Too many rows ({len(df):,}). Maximum allowed: {MAX_ROWS:,}"
+        )
 
     # Initialize CMM translator if enabled
     translator = None
@@ -147,15 +162,15 @@ async def ingest_pricebook(
                 # Use canonical_code from CMM as classification_code
                 # Try to extract numeric code from canonical_code or use classification_code field
                 if "classification_code" in row_dict:
-                    classification_code = int(row_dict["classification_code"])
+                    classification_code = str(row_dict["classification_code"]).strip()
                 else:
                     # Try to parse from canonical_code or use a default
                     logger.warning(f"Row {idx}: CMM mapped but no classification_code in map_to, using fallback")
-                    classification_code = 9999  # Fallback/unknown code
+                    classification_code = "Unclassified"  # Fallback/unknown code
             else:
                 # Direct from column (old path)
                 if "Classification Code" in row_dict and pd.notna(row_dict["Classification Code"]):
-                    classification_code = int(row_dict["Classification Code"])
+                    classification_code = str(row_dict["Classification Code"]).strip()
                 else:
                     errors.append(f"Row {idx}: No classification code (CMM unmapped, no Classification Code column)")
                     continue

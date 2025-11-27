@@ -80,18 +80,18 @@ class TrustHierarchyClassifier:
                             if family and code:
                                 # Key: "family|type_name" (type is optional)
                                 key = f"{family}|{type_name}" if type_name else family
-                                self._curated_map[key] = int(code)
+                                self._curated_map[key] = str(code).strip()
                 except (OSError, ValueError, KeyError) as e:
                     raise ConfigurationError(f"Invalid curated CSV {csv_path}: {e}")
 
-    def classify(self, item: Item) -> int:
+    def classify(self, item: Item) -> str:
         """Classify item using trust hierarchy.
 
         Args:
             item: BIM item to classify
 
         Returns:
-            int: Classification code (9999 if Unknown)
+            str: Classification code ("Unclassified" if Unknown)
 
         Raises:
             ValueError: If item.family is None or empty
@@ -124,20 +124,20 @@ class TrustHierarchyClassifier:
                     return code
 
             elif name == "Unknown":
-                return level.get("classification_code", 9999)
+                return str(level.get("classification_code", "Unclassified"))
 
         # Fallback to Unknown if no level matched
-        return 9999
+        return "Unclassified"
 
-    def _check_explicit_override(self, item: Item, level: dict[str, Any]) -> int | None:
+    def _check_explicit_override(self, item: Item, level: dict[str, Any]) -> str | None:
         """Check explicit override fields (omniclass_code, uniformat_code)."""
         for field in level.get("fields", []):
             value = getattr(item, field, None)
             if value is not None:
-                return int(value)
+                return str(value).strip()
         return None
 
-    def _check_curated_list(self, item: Item, level: dict[str, Any]) -> int | None:
+    def _check_curated_list(self, item: Item, level: dict[str, Any]) -> str | None:
         """Check curated manual classification list (CSV lookup)."""
         if not self._curated_map:
             return None
@@ -153,7 +153,7 @@ class TrustHierarchyClassifier:
 
         return None
 
-    def _check_revit_category_system(self, item: Item, level: dict[str, Any]) -> int | None:
+    def _check_revit_category_system(self, item: Item, level: dict[str, Any]) -> str | None:
         """Check Revit Category + System Type heuristics."""
         rules = level.get("rules", [])
         for rule in rules:
@@ -165,14 +165,14 @@ class TrustHierarchyClassifier:
                 # If system_type is specified in rule, must also match
                 if system_type_match:
                     if item.system_type == system_type_match:
-                        return rule.get("classification_code")
+                        return str(rule.get("classification_code"))
                 else:
                     # Category match alone is sufficient
-                    return rule.get("classification_code")
+                    return str(rule.get("classification_code"))
 
         return None
 
-    def _check_fallback_heuristics(self, item: Item, level: dict[str, Any]) -> int | None:
+    def _check_fallback_heuristics(self, item: Item, level: dict[str, Any]) -> str | None:
         """Check keyword pattern matching in family/type names."""
         rules = level.get("rules", [])
 
@@ -182,7 +182,7 @@ class TrustHierarchyClassifier:
         for rule in rules:
             keywords = rule.get("family_contains", [])
             if any(keyword.lower() in search_text for keyword in keywords):
-                return rule.get("classification_code")
+                return str(rule.get("classification_code"))
 
         return None
 
@@ -206,14 +206,14 @@ def get_classifier() -> TrustHierarchyClassifier:
     return _classifier
 
 
-def classify_item(item: Item) -> int:
+def classify_item(item: Item) -> str:
     """Classify item using trust hierarchy (convenience function).
 
     Args:
         item: BIM item to classify
 
     Returns:
-        int: Classification code (9999 if Unknown)
+        str: Classification code ("Unclassified" if Unknown)
 
     Raises:
         ConfigurationError: If classification config is invalid

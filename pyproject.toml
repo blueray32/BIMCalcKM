@@ -23,14 +23,22 @@ dependencies = [
     "textual>=0.50",
     "fastapi>=0.110",
     "uvicorn>=0.27",
+    "gunicorn>=21.2",
     "Jinja2>=3.1",
     "python-multipart>=0.0.9",
     "openai>=1.12",
     "alembic>=1.13",
-    "arq>=0.25",
-    "redis>=5.0",
+    "arq>=0.25.0",
+    "redis>=5.0.0",
+    "playwright>=1.40.0",
     "structlog>=24.1",
     "prometheus-fastapi-instrumentator>=7.0",
+    "pgvector>=0.2.4",
+    "reportlab>=4.0",        # PDF generation
+    "openpyxl>=3.1",         # Excel export
+    "aiosmtplib>=3.0",       # Email sending
+    "email-validator>=2.1",  # Email validation
+    "aiohttp>=3.9",          # Slack integration
 ]
 
 [tool.setuptools.packages.find]

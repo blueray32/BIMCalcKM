@@ -10,9 +10,8 @@
             <p>Generate temporal cost reports for {{ project_id }} in {{ org_id }}</p>
         </div>
         <div>
-            <a href="/reports?org={{ org_id }}&project={{ project_id }}&view=executive"
-               class="btn btn-primary"
-               style="text-decoration: none; display: inline-flex; align-items: center; gap: 0.5rem;">
+            <a href="/reports?org={{ org_id }}&project={{ project_id }}&view=executive" class="btn btn-primary"
+                style="text-decoration: none; display: inline-flex; align-items: center; gap: 0.5rem;">
                 <span>💰</span>
                 <span>Executive View</span>
             </a>
@@ -26,13 +25,7 @@
     <form id="report-form" style="max-width: 600px;">
         <div class="form-group">
             <label>As-of Date & Time</label>
-            <input
-                type="datetime-local"
-                name="as_of"
-                id="as_of_input"
-                class="form-control"
-                step="1"
-            />
+            <input type="datetime-local" name="as_of" id="as_of_input" class="form-control" step="1" />
             <small class="text-muted">
                 Leave blank for current time. This determines which mapping version to use (SCD Type-2).
             </small>
@@ -41,8 +34,9 @@
         <div class="form-group">
             <label>Export Format</label>
             <select name="format" id="format_select">
-                <option value="csv">CSV (Excel compatible)</option>
-                <option value="xlsx">XLSX (Excel native)</option>
+                <option value="xlsx">Excel (XLSX)</option>
+                <option value="pdf">PDF Document</option>
+                <option value="csv">CSV (Raw Data)</option>
             </select>
         </div>
 
@@ -64,8 +58,10 @@
     <div class="card-header">ℹ️ About Temporal Reports</div>
     <div style="line-height: 1.8;">
         <p><strong>What is temporal reporting?</strong></p>
-        <p>BIMCalc uses <strong>SCD Type-2</strong> (Slowly Changing Dimensions) to maintain a complete history of all mapping decisions.
-        This means you can generate reports "as of" any point in time, seeing exactly which prices were active at that moment.</p>
+        <p>BIMCalc uses <strong>SCD Type-2</strong> (Slowly Changing Dimensions) to maintain a complete history of all
+            mapping decisions.
+            This means you can generate reports "as of" any point in time, seeing exactly which prices were active at
+            that moment.</p>
 
         <p style="margin-top: 1rem;"><strong>Use cases:</strong></p>
         <ul style="margin-left: 1.5rem; margin-top: 0.5rem;">
@@ -83,7 +79,8 @@
             <li><code>sku</code>, <code>description</code> - Matched price item</li>
             <li><code>quantity</code>, <code>unit</code> - From Revit schedule</li>
             <li><code>unit_net</code>, <code>total_net</code> - Prices excluding VAT</li>
-            <li><code>total_gross</code> - Final price including VAT ({{ "23%" if vat_rate == 0.23 else vat_rate }})</li>
+            <li><code>total_gross</code> - Final price including VAT ({{ "23%" if vat_rate == 0.23 else vat_rate }})
+            </li>
             <li><code>mapping_version</code>, <code>mapping_timestamp</code> - Audit trail</li>
         </ul>
     </div>

@@ -793,3 +793,150 @@ def export_to_csv(data: list[dict[str, Any]], title: str) -> str:
     writer.writerows(data)
 
     return output.getvalue()
+
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import A4, landscape
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+from reportlab.lib.units import inch
+
+class PDFExporter:
+    """PDF report exporter using ReportLab."""
+
+    def __init__(self, title: str, org_id: str, project_id: str):
+        self.buffer = io.BytesIO()
+        self.doc = SimpleDocTemplate(
+            self.buffer,
+            pagesize=landscape(A4),
+            rightMargin=30,
+            leftMargin=30,
+            topMargin=30,
+            bottomMargin=30
+        )
+        self.elements = []
+        self.styles = getSampleStyleSheet()
+        self.title = title
+        self.org_id = org_id
+        self.project_id = project_id
+        
+        # Custom styles
+        self.styles.add(ParagraphStyle(
+            name='ReportTitle',
+            parent=self.styles['Heading1'],
+            fontSize=24,
+            spaceAfter=20,
+            textColor=colors.HexColor('#2c5282')
+        ))
+        self.styles.add(ParagraphStyle(
+            name='SectionHeader',
+            parent=self.styles['Heading2'],
+            fontSize=16,
+            spaceBefore=15,
+            spaceAfter=10,
+            textColor=colors.HexColor('#4a5568')
+        ))
+
+        self._add_header()
+
+    def _add_header(self):
+        """Add report header."""
+        self.elements.append(Paragraph(self.title, self.styles['ReportTitle']))
+        
+        meta_style = self.styles['Normal']
+        self.elements.append(Paragraph(f"<b>Organization:</b> {self.org_id}", meta_style))
+        self.elements.append(Paragraph(f"<b>Project:</b> {self.project_id}", meta_style))
+        self.elements.append(Paragraph(f"<b>Generated:</b> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", meta_style))
+        self.elements.append(Spacer(1, 20))
+
+    def add_section(self, title: str, data: list[dict[str, Any]]):
+        """Add a data section to the report."""
+        if not data:
+            return
+
+        self.elements.append(Paragraph(title, self.styles['SectionHeader']))
+
+        # Prepare table data
+        headers = list(data[0].keys())
+        table_data = [headers]
+        
+        for row in data:
+            table_data.append([str(row.get(h, '')) for h in headers])
+
+        # Create table
+        # Calculate column widths based on content (simple heuristic)
+        col_widths = [None] * len(headers)
+        
+        t = Table(table_data, colWidths=col_widths)
+        t.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#ebf8ff')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.HexColor('#2c5282')),
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 10),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+            ('BACKGROUND', (0, 1), (-1, -1), colors.white),
+            ('TEXTCOLOR', (0, 1), (-1, -1), colors.black),
+            ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+            ('FONTSIZE', (0, 1), (-1, -1), 9),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ]))
+        
+        self.elements.append(t)
+        self.elements.append(Spacer(1, 20))
+
+    def save(self) -> bytes:
+        """Generate PDF and return bytes."""
+        self.doc.build(self.elements)
+        self.buffer.seek(0)
+        return self.buffer.getvalue()
+
+def export_reports_to_pdf(metrics, org_id: str, project_id: str) -> bytes:
+    """Export financial reports to PDF."""
+    exporter = PDFExporter("Financial Report", org_id, project_id)
+    
+    # Financial Summary
+    vat_amount = metrics.total_cost_gross - metrics.total_cost_net
+    cost_at_risk_pct = (metrics.high_risk_total_cost / metrics.total_cost_net * 100) if metrics.total_cost_net > 0 else 0
+
+    summary_data = [
+        {"Metric": "Total Cost (Net)", "Value": format_currency(metrics.total_cost_net, metrics.currency)},
+        {"Metric": "Total Cost (Gross)", "Value": format_currency(metrics.total_cost_gross, metrics.currency)},
+        {"Metric": "VAT Amount", "Value": format_currency(vat_amount, metrics.currency)},
+        {"Metric": "High Risk Total Cost", "Value": format_currency(metrics.high_risk_total_cost, metrics.currency)},
+        {"Metric": "Cost at Risk %", "Value": format_percentage(cost_at_risk_pct)},
+        {"Metric": "Total Items", "Value": format_count(metrics.total_items)},
+        {"Metric": "Matched Items", "Value": format_count(metrics.matched_items)},
+        {"Metric": "Match Coverage", "Value": format_percentage(metrics.match_percentage)},
+    ]
+    exporter.add_section("Financial Summary", summary_data)
+
+    # Classification Cost Breakdown
+    if hasattr(metrics, 'classification_cost_breakdown') and metrics.classification_cost_breakdown:
+        class_cost_data = [
+            {
+                "Classification": cls.get('code', 'N/A'),
+                "Name": cls.get('name', 'N/A'),
+                "Items": format_count(cls.get('count', 0)),
+                "Net Cost": format_currency(cls.get('net_cost', 0), metrics.currency),
+                "Gross Cost": format_currency(cls.get('gross_cost', 0), metrics.currency),
+            }
+            for cls in metrics.classification_cost_breakdown
+        ]
+        exporter.add_section("Cost by Classification", class_cost_data)
+
+    # Top Expensive Items
+    if metrics.top_10_expensive:
+        top_items_data = [
+            {
+                "Family": item.get('family', 'N/A')[:30],
+                "Type": item.get('type', 'N/A')[:30] if item.get('type') else "N/A",
+                "Unit Cost": format_currency(item.get('unit_price', 0), metrics.currency),
+                "Total Cost": format_currency(item.get('cost', 0), metrics.currency),
+                "Conf": format_percentage(item.get('confidence', 0))
+            }
+            for item in metrics.top_10_expensive
+        ]
+        exporter.add_section("Top 10 Expensive Items", top_items_data)
+
+    return exporter.save()
