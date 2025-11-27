@@ -50,6 +50,9 @@ class ItemModel(Base):
     # Classification
     classification_code: Mapped[str | None] = mapped_column(Text, index=True)
     canonical_key: Mapped[str | None] = mapped_column(Text, index=True)
+    
+    # Link to Price Item (Foreign Key)
+    price_item_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), index=True)
 
     # Revit metadata
     category: Mapped[str | None] = mapped_column(Text)
@@ -119,6 +122,10 @@ class PriceItemModel(Base):
     unit_price: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     currency: Mapped[str] = mapped_column(String(3), nullable=False, default="EUR")
     vat_rate: Mapped[Decimal | None] = mapped_column(Numeric(5, 2))
+
+    # Labor Estimation
+    labor_hours: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))
+    labor_code: Mapped[str | None] = mapped_column(Text, index=True)
 
     # Physical attributes
     width_mm: Mapped[float | None] = mapped_column()
@@ -568,6 +575,7 @@ class ProjectModel(Base):
     # Metadata
     display_name: Mapped[str] = mapped_column(Text, nullable=False)
     description: Mapped[str | None] = mapped_column(Text)
+    settings: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
     
     # Status
     status: Mapped[str] = mapped_column(Text, default="active", nullable=False)  # active, archived, completed
@@ -589,6 +597,38 @@ class ProjectModel(Base):
         UniqueConstraint("org_id", "project_id", name="uq_projects_org_project"),
         Index("idx_projects_org", "org_id"),
         Index("idx_projects_status", "status"),
+    )
+
+
+class LaborRateOverride(Base):
+    """Category-specific labor rate overrides for a project.
+    
+    Allows different labor rates per category (e.g., Electrical, Mechanical).
+    When calculating labor costs, category-specific rates take precedence
+    over the project's base blended_labor_rate.
+    """
+    __tablename__ = "labor_rate_overrides"
+    
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    project_id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey('projects.id', ondelete='CASCADE'),
+        nullable=False,
+        index=True
+    )
+    category: Mapped[str] = mapped_column(Text, nullable=False)
+    rate: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
+    
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), onupdate=func.now()
+    )
+    
+    __table_args__ = (
+        UniqueConstraint('project_id', 'category', name='uq_project_category_rate'),
+        Index('idx_labor_rate_project', 'project_id'),
     )
 
 

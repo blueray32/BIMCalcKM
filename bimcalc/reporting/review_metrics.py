@@ -91,8 +91,7 @@ async def compute_review_metrics(
             rr.decision,
             rr.confidence_score,
             rr.timestamp,
-            rr.classification_code,
-            (EXTRACT(EPOCH FROM (NOW() - rr.timestamp)) / 86400) as age_days
+            rr.classification_code
         FROM ranked_results rr
         WHERE rr.rn = 1
           AND rr.decision IN ('manual-review', 'pending-review')
@@ -255,19 +254,19 @@ async def compute_review_metrics(
             SELECT
                 pi.classification_code,
                 COUNT(*) as total,
-                COUNT(*) FILTER (
-                    WHERE EXISTS (
+                SUM(
+                    CASE WHEN EXISTS (
                         SELECT 1 FROM match_flags mf
                         WHERE mf.match_result_id = pi.match_result_id
                           AND mf.severity = 'Critical-Veto'
-                    )
+                    ) THEN 1 ELSE 0 END
                 ) as critical_count,
-                COUNT(*) FILTER (
-                    WHERE EXISTS (
+                SUM(
+                    CASE WHEN EXISTS (
                         SELECT 1 FROM match_flags mf
                         WHERE mf.match_result_id = pi.match_result_id
                           AND mf.severity = 'Advisory'
-                    )
+                    ) THEN 1 ELSE 0 END
                 ) as advisory_count,
                 AVG(pi.confidence_score) as avg_confidence
             FROM pending_items pi

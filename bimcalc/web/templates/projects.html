@@ -156,6 +156,175 @@
     }
 </style>
 
+<!-- Settings Modal -->
+<div id="settings-modal"
+    style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000;">
+    <div style="background: white; width: 90%; max-width: 600px; margin: 50px auto; padding: 25px; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.2); max-height: 90vh; overflow-y: auto;"
+        \u003e <h2 id="settings-title" style="margin-top: 0; margin-bottom: 20px;">Project Settings</h2>
+
+        <form id="settings-form" onsubmit="saveSettings(event)">
+            <input type="hidden" id="settings-project-id">
+
+            <!-- Labor Costs Section -->
+            <div style="margin-bottom: 25px; padding-bottom: 20px; border-bottom: 1px solid #e2e8f0;">
+                <h3 style="font-size: 16px; color: #1a202c; margin-bottom: 15px;">💰 Labor Costs</h3>
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #2d3748;">Blended Labor
+                        Rate
+                        (€/hr)</label>
+                    <div style="display: flex; align-items: center;">
+                        <span
+                            style="padding: 10px; background: #edf2f7; border: 1px solid #e2e8f0; border-right: none; border-radius: 4px 0 0 4px; color: #718096;">€</span>
+                        <input type="number" id="labor-rate" name="blended_labor_rate" step="0.01" min="0" required
+                            style="width: 100%; padding: 10px; border: 1px solid #e2e8f0; border-radius: 0 4px 4px 0; font-size: 16px;">
+                    </div>
+                    <p style="margin-top: 5px; font-size: 12px; color: #718096;">
+                        Default rate for categories without specific overrides.
+                    </p>
+                </div>
+
+                <!-- Category Overrides -->
+                <div style="margin-top: 20px;">
+                    <div
+                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <label style="font-weight: 600; color: #2d3748;">Category-Specific Rates</label>
+                        <button type="button" onclick="showAddCategoryDialog()"
+                            style="padding: 5px 12px; background: #10b981; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 13px;">
+                            + Add Category
+                        </button>
+                    </div>
+
+                    <!-- Category rates table -->
+                    <div id="category-rates-container"
+                        style="max-height: 200px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 4px;">
+                        <table id="category-rates-table" style="width: 100%; border-collapse: collapse;">
+                            <thead style="background: #f7fafc; position: sticky; top: 0;">
+                                <tr>
+                                    <th
+                                        style="padding: 8px; text-align: left; font-size: 13px; border-bottom: 1px solid #e2e8f0;">
+                                        Category</th>
+                                    <th
+                                        style="padding: 8px; text-align: left; font-size: 13px; border-bottom: 1px solid #e2e8f0;">
+                                        Rate (€/hr)</th>
+                                    <th
+                                        style="padding: 8px; text-align: center; font-size: 13px; border-bottom: 1px solid #e2e8f0; width: 60px;">
+                                        Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="category-rates-body">
+                                <!-- Dynamic rows added here -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <p style="margin-top: 5px; font-size: 12px; color: #718096;">
+                        Set different rates for Electrical, Mechanical, Civil, etc.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Pricing & Markup Section -->
+            <div style="margin-bottom: 25px; padding-bottom: 20px; border-bottom: 1px solid #e2e8f0;">
+                <h3 style="font-size: 16px; color: #1a202c; margin-bottom: 15px;">📊 Pricing & Markup</h3>
+
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #2d3748;">Default Markup
+                        (%)</label>
+                    <input type="number" id="markup-percentage" name="default_markup_percentage" step="0.1" min="0"
+                        max="100" value="15"
+                        style="width: 100%; padding: 10px; border: 1px solid #e2e8f0; border-radius: 4px; font-size: 16px;">
+                    <p style="margin-top: 5px; font-size: 12px; color: #718096;">Applied to material costs before adding
+                        labor.</p>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                    <div>
+                        <label
+                            style="display: block; margin-bottom: 8px; font-weight: 600; color: #2d3748;">Currency</label>
+                        <select id="currency" name="currency"
+                            style="width: 100%; padding: 10px; border: 1px solid #e2e8f0; border-radius: 4px; font-size: 16px;">
+                            <option value="EUR">EUR (€)</option>
+                            <option value="USD">USD ($)</option>
+                            <option value="GBP">GBP (£)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #2d3748;">VAT Rate
+                            (%)</label>
+                        <input type="number" id="vat-rate" name="vat_rate" step="0.1" min="0" max="100" value="23"
+                            style="width: 100%; padding: 10px; border: 1px solid #e2e8f0; border-radius: 4px; font-size: 16px;">
+                    </div>
+                </div>
+
+                <div>
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                        <input type="checkbox" id="vat-included" name="vat_included" checked
+                            style="width: 18px; height: 18px;">
+                        <span style="font-weight: 500; color: #2d3748;">Prices include VAT</span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Matching & Approval Section -->
+            <div style="margin-bottom: 25px; padding-bottom: 20px; border-bottom: 1px solid #e2e8f0;">
+                <h3 style="font-size: 16px; color: #1a202c; margin-bottom: 15px;">🎯 Matching & Approval</h3>
+                <div>
+                    <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #2d3748;">Auto-Approval
+                        Threshold</label>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <input type="range" id="approval-threshold" name="auto_approval_threshold" min="0" max="100"
+                            value="85" oninput="updateRangeOutput('approval-threshold', this.value)"
+                            style="flex: 1; height: 6px;">
+                        <output id="approval-threshold-value"
+                            style="min-width: 45px; text-align: right; font-weight: 600; color: #2563eb;">85%</output>
+                    </div>
+                    <p style="margin-top: 5px; font-size: 12px; color: #718096;">Matches above this confidence level are
+                        automatically approved.</p>
+                </div>
+            </div>
+
+            <!-- Risk Scoring Section -->
+            <div style="margin-bottom: 25px;">
+                <h3 style="font-size: 16px; color: #1a202c; margin-bottom: 15px;">⚠️ Risk Scoring</h3>
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #2d3748;">High Risk
+                        Threshold</label>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <input type="range" id="risk-high" name="risk_threshold_high" min="0" max="100" value="80"
+                            oninput="updateRangeOutput('risk-high', this.value)" style="flex: 1; height: 6px;">
+                        <output id="risk-high-value"
+                            style="min-width: 45px; text-align: right; font-weight: 600; color: #dc2626;">80%</output>
+                    </div>
+                </div>
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #2d3748;">Medium Risk
+                        Threshold</label>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <input type="range" id="risk-medium" name="risk_threshold_medium" min="0" max="100" value="50"
+                            oninput="updateRangeOutput('risk-medium', this.value)" style="flex: 1; height: 6px;">
+                        <output id="risk-medium-value"
+                            style="min-width: 45px; text-align: right; font-weight: 600; color: #f59e0b;">50%</output>
+                    </div>
+                </div>
+                <p style="font-size: 12px; color: #718096;">Items above high threshold = high risk, above medium =
+                    medium
+                    risk, below = low risk.</p>
+            </div>
+
+            <!-- Actions -->
+            <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 30px;">
+                <button type="button" onclick="closeSettings()"
+                    style="padding: 10px 20px; background: #edf2f7; color: #4a5568; border: none; border-radius: 4px; cursor: pointer; font-weight: 500;">
+                    Cancel
+                </button>
+                <button type="submit"
+                    style="padding: 10px 20px; background: #2563eb; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 500;">
+                    Save Changes
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <script>
     let projects = [];
 
@@ -199,6 +368,10 @@
                         <div style="display: flex; gap: 10px; align-items: center;">
                             <span class="status-badge status-${proj.status}">${proj.status}</span>
                             <span class="item-count">${proj.item_count} items</span>
+                            <button onclick="openSettings('${proj.id}', '${proj.display_name}', ${JSON.stringify(proj.settings || {}).replace(/"/g, '&quot;')})" 
+                                style="padding: 6px 12px; background: #e0e7ff; color: #3730a3; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; margin-right: 5px;">
+                                ⚙️ Settings
+                            </button>
                             <button onclick="deleteProject('${proj.id}')" style="padding: 6px 12px; background: #fee2e2; color: #991b1b; border: none; border-radius: 4px; cursor: pointer; font-size: 14px;">
                                 Delete
                             </button>
@@ -242,6 +415,201 @@
 
     function hideCreateForm() {
         document.getElementById('create-form').style.display = 'none';
+    }
+
+    // Settings Modal Functions
+    function openSettings(projectId, projectName, settings) {
+        document.getElementById('settings-modal').style.display = 'block';
+        document.getElementById('settings-title').textContent = `Settings: ${projectName}`;
+        document.getElementById('settings-project-id').value = projectId;
+
+        // Set values with defaults
+        document.getElementById('labor-rate').value = settings.blended_labor_rate ?? 50.00;
+        document.getElementById('markup-percentage').value = settings.default_markup_percentage ?? 15.0;
+        document.getElementById('approval-threshold').value = settings.auto_approval_threshold ?? 85;
+        document.getElementById('currency').value = settings.currency ?? 'EUR';
+        document.getElementById('vat-rate').value = (settings.vat_rate ?? 0.23) * 100;
+        document.getElementById('vat-included').checked = settings.vat_included ?? true;
+
+        const riskThresholds = settings.risk_thresholds ?? { high: 80, medium: 50 };
+        document.getElementById('risk-high').value = riskThresholds.high ?? 80;
+        document.getElementById('risk-medium').value = riskThresholds.medium ?? 50;
+
+        // Update range slider outputs
+        updateRangeOutput('approval-threshold', document.getElementById('approval-threshold').value);
+        updateRangeOutput('risk-high', document.getElementById('risk-high').value);
+        updateRangeOutput('risk-medium', document.getElementById('risk-medium').value);
+
+        // Load category-specific rates
+        loadCategoryRates(projectId);
+    }
+
+    let categoryRatesData = {}; // Store category rates {category: {id, rate}}
+    let currentProjectId = null;
+
+    async function loadCategoryRates(projectId) {
+        currentProjectId = projectId;
+        try {
+            const response = await fetch(`/api/projects/${projectId}/labor-rates`);
+            const data = await response.json();
+
+            categoryRatesData = {};
+            const tbody = document.getElementById('category-rates-body');
+            tbody.innerHTML = '';
+
+            if (data.overrides.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="3" style="padding: 12px; text-align: center; color: #9ca3af; font-size: 13px;">No category-specific rates defined</td></tr>';
+            } else {
+                data.overrides.forEach(override => {
+                    categoryRatesData[override.category] = {
+                        id: override.id,
+                        rate: override.rate
+                    };
+                    addCategoryRateRow(override.category, override.rate, override.id);
+                });
+            }
+        } catch (error) {
+            console.error('Failed to load category rates:', error);
+        }
+    }
+
+    function showAddCategoryDialog() {
+        const category = prompt('Enter category name (e.g., Electrical Equipment):');
+        if (!category || !category.trim()) return;
+
+        const rate = prompt('Enter labor rate (€/hr):', '50.00');
+        if (!rate || isNaN(parseFloat(rate))) return;
+
+        // Save immediately
+        saveCategoryRate(category.trim(), parseFloat(rate));
+    }
+
+    async function saveCategoryRate(category, rate) {
+        if (!currentProjectId) return;
+
+        try {
+            const response = await fetch(`/api/projects/${currentProjectId}/labor-rates`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ category, rate })
+            });
+
+            if (response.ok) {
+                // Reload rates to refresh table
+                await loadCategoryRates(currentProjectId);
+            } else {
+                const error = await response.json();
+                alert(`Failed to save rate: ${error.detail}`);
+            }
+        } catch (error) {
+            console.error('Error saving category rate:', error);
+            alert('Failed to save category rate');
+        }
+    }
+
+    function addCategoryRateRow(category, rate, id) {
+        const tbody = document.getElementById('category-rates-body');
+
+        // Remove "no rates" message if present
+        if (tbody.querySelector('td[colspan="3"]')) {
+            tbody.innerHTML = '';
+        }
+
+        const row = tbody.insertRow();
+        row.dataset.category = category;
+        row.dataset.id = id;
+
+        row.innerHTML = `
+            <td style="padding: 8px; border-bottom: 1px solid #e2e8f0;">${category}</td>
+            <td style="padding: 8px; border-bottom: 1px solid #e2e8f0;">
+                <input type="number" value="${rate}" step="0.01" min="0" 
+                    onchange="updateCategoryRateValue('${category}', this.value)" 
+                    style="width: 80px; padding: 4px; border: 1px solid #e2e8f0; border-radius: 3px;">
+            </td>
+            <td style="padding: 8px; border-bottom: 1px solid #e2e8f0; text-align: center;">
+                <button onclick="deleteCategoryRate('${id}')" 
+                    style="padding: 3px 8px; background: #ef4444; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 12px;">
+                    Delete
+                </button>
+            </td>
+        `;
+    }
+
+    async function updateCategoryRateValue(category, newRate) {
+        await saveCategoryRate(category, parseFloat(newRate));
+    }
+
+    async function deleteCategoryRate(overrideId) {
+        if (!currentProjectId) return;
+        if (!confirm('Delete this category rate override?')) return;
+
+        try {
+            const response = await fetch(`/api/projects/${currentProjectId}/labor-rates/${overrideId}`, {
+                method: 'DELETE'
+            });
+
+            if (response.ok) {
+                // Reload rates to refresh table
+                await loadCategoryRates(currentProjectId);
+            } else {
+                alert('Failed to delete rate');
+            }
+        } catch (error) {
+            console.error('Error deleting category rate:', error);
+            alert('Failed to delete category rate');
+        }
+    }
+
+    function updateRangeOutput(id, value) {
+        const output = document.getElementById(id + '-value');
+        if (output) {
+            output.textContent = value + '%';
+        }
+    }
+
+    function closeSettings() {
+        document.getElementById('settings-modal').style.display = 'none';
+    }
+
+    async function saveSettings(event) {
+        event.preventDefault();
+
+        const projectId = document.getElementById('settings-project-id').value;
+
+        const settingsData = {
+            blended_labor_rate: parseFloat(document.getElementById('labor-rate').value),
+            default_markup_percentage: parseFloat(document.getElementById('markup-percentage').value),
+            auto_approval_threshold: parseInt(document.getElementById('approval-threshold').value),
+            risk_thresholds: {
+                high: parseInt(document.getElementById('risk-high').value),
+                medium: parseInt(document.getElementById('risk-medium').value)
+            },
+            currency: document.getElementById('currency').value,
+            vat_rate: parseFloat(document.getElementById('vat-rate').value) / 100,
+            vat_included: document.getElementById('vat-included').checked
+        };
+
+        try {
+            const response = await fetch(`/api/projects/${projectId}/settings`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(settingsData)
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.detail || 'Failed to update settings');
+            }
+
+            alert('Settings saved successfully!');
+            closeSettings();
+            loadProjects(); // Reload to update local state
+        } catch (error) {
+            console.error('Error saving settings:', error);
+            alert(`Failed to save settings: ${error.message}`);
+        }
     }
 
     async function createProject(event) {
@@ -293,7 +661,7 @@
                 throw new Error('Delete failed');
             }
 
-            alert('ProjectModel deleted successfully');
+            alert('Project deleted successfully');
             loadProjects(); // Reload list
         } catch (error) {
             console.error('Failed to delete project:', error);

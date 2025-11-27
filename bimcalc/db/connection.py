@@ -50,6 +50,18 @@ def get_engine() -> AsyncEngine:
         # Create async engine
         _engine = create_async_engine(db_config.url, **engine_kwargs)
 
+        # Register SQLite functions
+        if "sqlite" in db_config.url.lower():
+            from sqlalchemy import event
+            from datetime import datetime
+            
+            @event.listens_for(_engine.sync_engine, "connect")
+            def connect(dbapi_connection, connection_record):
+                try:
+                    dbapi_connection.create_function("now", 0, lambda: datetime.utcnow().isoformat(" "))
+                except Exception:
+                    pass
+
     return _engine
 
 

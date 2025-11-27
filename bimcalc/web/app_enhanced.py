@@ -21,6 +21,7 @@ from fastapi import (
     Request,
     Response,
     UploadFile,
+    Body,
 )
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, StreamingResponse
@@ -67,6 +68,7 @@ from bimcalc.web.auth import (
 from bimcalc.web.auth import (
     logout as auth_logout,
 )
+from bimcalc.intelligence.routes import router as intelligence_router
 
 from starlette.middleware.base import BaseHTTPMiddleware
 import structlog
@@ -87,6 +89,11 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url="/redoc",
 )
+
+# Intelligence Features
+config = get_config()
+if config.enable_rag or config.enable_risk_scoring:
+    app.include_router(intelligence_router)
 
 # Prometheus Metrics
 Instrumentator().instrument(app).expose(app)
@@ -3941,6 +3948,7 @@ async def get_all_projects():
                     "start_date": proj.start_date.isoformat() if proj.start_date else None,
                     "target_completion": proj.target_completion.isoformat() if proj.target_completion else None,
                     "item_count": item_counts.get((proj.org_id, proj.project_id), 0),
+                    "settings": proj.settings,
                     "created_at": proj.created_at.isoformat()
                 }
                 for proj in projects
@@ -3962,6 +3970,209 @@ async def delete_project(project_uuid: UUID):
         await session.commit()
         
         return {"success": True, "message": "Project deleted"}
+
+
+@app.patch("/api/projects/{project_uuid}/settings")
+async def update_project_settings(project_uuid: UUID, settings: dict = Body(...)):
+    """Update project settings with comprehensive validation.
+    
+    Supported settings:
+    - blended_labor_rate: float (>= 0)
+    - default_markup_percentage: float (0-100)
+    - auto_approval_threshold: int (0-100)
+    - risk_thresholds: {high: int, medium: int} (0-100)
+    - currency: str (EUR, USD, GBP)
+    - vat_rate: float (0-1)
+    - vat_included: bool
+    """
+    from bimcalc.db.models import ProjectModel
+    
+    # Define allowed settings and their validation rules
+    allowed_keys = {
+        'blended_labor_rate',
+        'default_markup_percentage',
+        'auto_approval_threshold',
+        'risk_thresholds',
+        'currency',
+        'vat_rate',
+        'vat_included'
+    }
+    
+    # Validate only allowed keys are present
+    invalid_keys = set(settings.keys()) - allowed_keys
+    if invalid_keys:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid settings keys: {', '.join(invalid_keys)}"
+        )
+    
+    # Type and range validation
+    try:
+        if 'blended_labor_rate' in settings:
+            rate = float(settings['blended_labor_rate'])
+            if rate < 0:
+                raise ValueError("Labor rate must be >= 0")
+            settings['blended_labor_rate'] = rate
+        
+        if 'default_markup_percentage' in settings:
+            markup = float(settings['default_markup_percentage'])
+            if not 0 <= markup <= 100:
+                raise ValueError("Markup percentage must be between 0 and 100")
+            settings['default_markup_percentage'] = markup
+        
+        if 'auto_approval_threshold' in settings:
+            threshold = int(settings['auto_approval_threshold'])
+            if not 0 <= threshold <= 100:
+                raise ValueError("Auto-approval threshold must be between 0 and 100")
+            settings['auto_approval_threshold'] = threshold
+        
+        if 'risk_thresholds' in settings:
+            thresholds = settings['risk_thresholds']
+            if not isinstance(thresholds, dict):
+                raise ValueError("risk_thresholds must be an object")
+            if 'high' in thresholds:
+                thresholds['high'] = int(thresholds['high'])
+                if not 0 <= thresholds['high'] <= 100:
+                    raise ValueError("High risk threshold must be between 0 and 100")
+            if 'medium' in thresholds:
+                thresholds['medium'] = int(thresholds['medium'])
+                if not 0 <= thresholds['medium'] <= 100:
+                    raise ValueError("Medium risk threshold must be between 0 and 100")
+            # Validate high >= medium
+            if 'high' in thresholds and 'medium' in thresholds:
+                if thresholds['high'] < thresholds['medium']:
+                    raise ValueError("High risk threshold must be >= medium risk threshold")
+        
+        if 'currency' in settings:
+            currency = str(settings['currency']).upper()
+            if currency not in ['EUR', 'USD', 'GBP']:
+                raise ValueError("Currency must be EUR, USD, or GBP")
+            settings['currency'] = currency
+        
+        if 'vat_rate' in settings:
+            vat = float(settings['vat_rate'])
+            if not 0 <= vat <= 1:
+                raise ValueError("VAT rate must be between 0 and 1")
+            settings['vat_rate'] = vat
+        
+        if 'vat_included' in settings:
+            if not isinstance(settings['vat_included'], bool):
+                raise ValueError("vat_included must be a boolean")
+    
+    except (ValueError, TypeError) as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    
+    async with get_session() as session:
+        project = await session.get(ProjectModel, project_uuid)
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
+        
+        # Merge settings (preserve existing values)
+        current_settings = dict(project.settings) if project.settings else {}
+        current_settings.update(settings)
+        project.settings = current_settings
+        
+        session.add(project)
+        await session.commit()
+        
+        return {"success": True, "settings": project.settings}
+
+
+@app.get("/api/projects/{project_uuid}/labor-rates")
+async def get_labor_rates(project_uuid: UUID):
+    """Get all labor rate overrides for a project."""
+    from bimcalc.db.models import LaborRateOverride, ProjectModel
+    from sqlalchemy import select
+    
+    async with get_session() as session:
+        # Get base rate from project settings
+        project = await session.get(ProjectModel, project_uuid)
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
+        
+        base_rate = project.settings.get('blended_labor_rate', 50.0) if project.settings else 50.0
+        
+        # Get category overrides
+        query = select(LaborRateOverride).where(LaborRateOverride.project_id == project_uuid)
+        result = await session.execute(query)
+        overrides = result.scalars().all()
+        
+        return {
+            "base_rate": float(base_rate),
+            "overrides": [
+                {
+                    "id": str(o.id),
+                    "category": o.category,
+                    "rate": float(o.rate)
+                }
+                for o in overrides
+            ]
+        }
+
+
+@app.post("/api/projects/{project_uuid}/labor-rates")
+async def create_labor_rate_override(
+    project_uuid: UUID,
+    category: str = Body(...),
+    rate: float = Body(...)
+):
+    """Create or update a labor rate override for a category."""
+    from bimcalc.db.models import LaborRateOverride, ProjectModel
+    from sqlalchemy import select
+    
+    # Validation
+    if rate < 0:
+        raise HTTPException(status_code=400, detail="Rate must be >= 0")
+    if not category.strip():
+        raise HTTPException(status_code=400, detail="Category cannot be empty")
+    
+    async with get_session() as session:
+        # Verify project exists
+        project = await session.get(ProjectModel, project_uuid)
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
+        
+        # Check if override already exists
+        query = select(LaborRateOverride).where(
+            LaborRateOverride.project_id == project_uuid,
+            LaborRateOverride.category == category
+        )
+        existing = (await session.execute(query)).scalar_one_or_none()
+        
+        if existing:
+            # Update existing
+            existing.rate = Decimal(str(rate))
+            existing.updated_at = datetime.utcnow()
+            override_id = existing.id
+        else:
+            # Create new
+            override = LaborRateOverride(
+                id=uuid4(),
+                project_id=project_uuid,
+                category=category,
+                rate=Decimal(str(rate))
+            )
+            session.add(override)
+            override_id = override.id
+        
+        await session.commit()
+        return {"success": True, "id": str(override_id)}
+
+
+@app.delete("/api/projects/{project_uuid}/labor-rates/{override_id}")
+async def delete_labor_rate_override(project_uuid: UUID, override_id: UUID):
+    """Delete a labor rate override."""
+    from bimcalc.db.models import LaborRateOverride
+    
+    async with get_session() as session:
+        override = await session.get(LaborRateOverride, override_id)
+        if not override or override.project_id != project_uuid:
+            raise HTTPException(status_code=404, detail="Override not found")
+        
+        await session.delete(override)
+        await session.commit()
+        return {"success": True}
+
 
 
 # ============================================================================
