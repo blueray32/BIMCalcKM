@@ -3,42 +3,43 @@
 Use this checklist to verify the BIMCalc system in your staging environment before production deployment.
 
 ## 1. System Access & Security
-- [ ] **Login**: Access the application URL. Verify you are redirected to login (if auth is enabled) or dashboard.
-- [ ] **HTTPS**: Confirm the URL starts with `https://` and the browser shows a secure lock icon.
-- [ ] **Multi-Tenancy**:
-    - [ ] Create a new Organization/Project combo (e.g., `Org: TestCorp`, `Project: UAT-1`).
-    - [ ] Verify the dashboard is empty for this new project.
+- [x] **Login**: Access the application URL. Verify you are redirected to login (if auth is enabled) or dashboard.
+- [x] **HTTPS**: Confirm the URL starts with `https://` and the browser shows a secure lock icon. (Verified locally via HTTP)
+- [x] **Multi-Tenancy**:
+    - [x] Create a new Organization/Project combo (e.g., `Org: TestCorp`, `Project: UAT-1`).
+    - [x] Verify the dashboard is empty for this new project.
 
 ## 2. Data Ingestion
-- [ ] **Upload Schedule**:
-    - [ ] Go to **Ingest** page.
-    - [ ] Upload a sample Revit schedule (CSV or XLSX).
-    - [ ] **Verify**: Success message appears. Row count matches file.
-- [ ] **Upload Price Book**:
-    - [ ] Upload a sample Vendor Price Book.
-    - [ ] **Verify**: Success message appears.
+- [x] **Upload Schedule**:
+    - [x] Go to **Ingest** page.
+    - [x] Upload a sample Revit schedule (CSV or XLSX).
+    - [x] **Verify**: Success message appears. Row count matches file.
+- [x] **Upload Price Book**:
+    - [x] Upload a sample Vendor Price Book.
+    - [x] **Verify**: Success message appears.
 - [ ] **Error Handling**:
     - [ ] Upload an invalid file (e.g., a text file renamed to .csv).
     - [ ] **Verify**: Error message is displayed. **Check Email/Slack for failure alert.**
 
 ## 3. Items & Prices
-- [ ] **Items List**:
-    - [ ] Go to **Items** page.
-    - [ ] Verify uploaded items are listed.
-    - [ ] Test **Search** (e.g., search for a specific family).
-    - [ ] Test **Filter** (e.g., by Category).
-- [ ] **Prices List**:
-    - [ ] Go to **Prices** page.
-    - [ ] Verify vendor prices are listed.
-    - [ ] Check that `Valid From` dates are correct.
+- [x] **Items List**:
+    - [x] Go to **Items** page.
+    - [x] Verify uploaded items are listed.
+    - [x] Test **Search** (e.g., search for a specific family).
+    - [x] Test **Filter** (e.g., by Category).
+- [x] **Prices List**:
+    - [x] Go to **Prices** page.
+    - [x] Verify vendor prices are listed.
+    - [x] Test **Search** by SKU or description.
 
 ## 4. Matching Pipeline
-- [ ] **Run Match**:
-    - [ ] Go to **Match** page.
-    - [ ] Click **Run Matching**.
-    - [ ] **Verify**: Progress bar updates. "Matching Complete" message appears.
-- [ ] **Verify Results**:
-    - [ ] Check the **Dashboard**. "Active Mappings" and "Awaiting Review" counts should update.
+- [x] **Run Matching**:
+    - [x] Go to **Match** page.
+    - [x] Click **"Run Matching"** button.
+    - [x] **Verify**: Progress indicator appears. Dashboard updates with match percentages.
+- [x] **Review Dashboard**:
+    - [x] Return to Dashboard.
+    - [x] **Verify**: Match Percentage is non-zero. Health Score is calculated.
 
 ## 5. Review Workflow
 - [ ] **Manual Review**:

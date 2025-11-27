@@ -194,6 +194,10 @@ async def ingest_pricebook(
                 cmm_note = f"CMM: {translation_result.canonical_code or 'mapped'}"
                 vendor_note = f"{cmm_note}; {vendor_note}" if vendor_note else cmm_note
 
+            # Labor Estimation
+            labor_hours = _get_float_from_dict(row_dict, ["Labor Hours", "Install Time", "Mhrs", "Hours"])
+            labor_code = _get_str_from_dict(row_dict, ["Labor Code", "Install Code", "NECA Code"])
+
             # Create PriceItem model with required SCD2 and multi-tenant fields
             price_model = PriceItemModel(
                 org_id=org_id,  # CRITICAL: Multi-tenant isolation
@@ -207,6 +211,8 @@ async def ingest_pricebook(
                 unit_price=unit_price,
                 currency=currency,
                 vat_rate=vat_rate,
+                labor_hours=Decimal(str(labor_hours)) if labor_hours is not None else None,
+                labor_code=labor_code,
                 width_mm=width_mm,
                 height_mm=height_mm,
                 dn_mm=dn_mm,

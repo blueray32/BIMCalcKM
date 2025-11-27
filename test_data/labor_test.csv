@@ -1,0 +1,5 @@
+SKU,Description,Unit,Unit Price,Labor Hours,Labor Code,Classification Code
+LAB-001,4-Inch Steel Elbow,ea,45.00,0.8,NECA-101,2215
+LAB-002,100m Cable Tray,m,25.00,0.5,NECA-202,2605
+LAB-003,Standard Bracket,ea,12.50,0.25,NECA-303,2605
+MAT-ONLY,Simple Washer,ea,0.50,,,2605

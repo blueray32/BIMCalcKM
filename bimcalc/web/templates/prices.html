@@ -159,7 +159,12 @@
             <a href="/prices/export?org={{ org_id }}&project={{ project_id }}{% if search %}&search={{ search }}{% endif %}{% if vendor %}&vendor={{ vendor }}{% endif %}{% if classification %}&classification={{ classification }}{% endif %}{% if region %}&region={{ region }}{% endif %}&current_only={{ current_only }}"
                 style="background: #3182ce; color: white; padding: 0.5rem 1rem; border-radius: 6px; text-decoration: none; font-weight: 600; display: inline-flex; align-items: center; gap: 0.5rem;">
                 <span>📥</span>
-                <span>Export to Excel</span>
+                <span>Export Excel</span>
+            </a>
+            <a href="/api/projects/{{ project_id }}/export/csv/prices"
+                style="background: #48bb78; color: white; padding: 0.5rem 1rem; border-radius: 6px; text-decoration: none; font-weight: 600; display: inline-flex; align-items: center; gap: 0.5rem; margin-left: 0.5rem;">
+                <span>📄</span>
+                <span>Export CSV</span>
             </a>
         </div>
 

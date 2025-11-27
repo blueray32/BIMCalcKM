@@ -1,0 +1,171 @@
+=========================================
+BIMCalc Health Check
+=========================================
+Thu Nov 27 04:00:00 GMT 2025
+
+🐳 Docker Containers
+-------------------
+./scripts/health_check.sh: line 30: docker: command not found
+./scripts/health_check.sh: line 37: docker: command not found
+
+💾 Database Health
+------------------
+
+🔄 Pipeline Status
+------------------
+   Last run: Never
+
+💾 Backup Status
+----------------
+   Total backups: 2
+   Latest backup: bimcalc_postgres_backup_20251114_221439.sql.gz
+   Age: 293 hours
+   Size: 20K
+
+💿 Disk Space
+-------------
+   Used: 96%
+   Available: 18Gi
+
+📄 Log Files
+------------
+   Total size: 16K
+   alerts.log: 4.0K
+   backup.log: 4.0K
+   health.log: 4.0K
+   pipeline.log: 4.0K
+
+📊 Recent Pipeline Activity
+---------------------------
+
+=========================================
+Health Check Summary
+=========================================
+
+❌ Critical Issues:
+   ❌ Application container (bimcalckm-app-1) is not running
+   ❌ PostgreSQL container (bimcalc-postgres) is not running
+   ❌ Database connection failed
+   ❌ Pipeline hasn't run in 26 hours (expected: 24)
+   ❌ Latest backup is 293 hours old (expected: <25)
+   ❌ Disk usage critical: 96%
+
+Status: CRITICAL
+
+Run 'docker logs bimcalckm-app-1' for application logs
+Run 'tail -f logs/pipeline.log' for pipeline details
+
+=========================================
+BIMCalc Health Check
+=========================================
+Thu Nov 27 08:00:00 GMT 2025
+
+🐳 Docker Containers
+-------------------
+./scripts/health_check.sh: line 30: docker: command not found
+./scripts/health_check.sh: line 37: docker: command not found
+
+💾 Database Health
+------------------
+
+🔄 Pipeline Status
+------------------
+   Last run: Never
+
+💾 Backup Status
+----------------
+   Total backups: 2
+   Latest backup: bimcalc_postgres_backup_20251114_221439.sql.gz
+   Age: 297 hours
+   Size: 20K
+
+💿 Disk Space
+-------------
+   Used: 96%
+   Available: 19Gi
+
+📄 Log Files
+------------
+   Total size: 16K
+   alerts.log: 4.0K
+   backup.log: 4.0K
+   health.log: 4.0K
+   pipeline.log: 4.0K
+
+📊 Recent Pipeline Activity
+---------------------------
+
+=========================================
+Health Check Summary
+=========================================
+
+❌ Critical Issues:
+   ❌ Application container (bimcalckm-app-1) is not running
+   ❌ PostgreSQL container (bimcalc-postgres) is not running
+   ❌ Database connection failed
+   ❌ Pipeline hasn't run in 30 hours (expected: 24)
+   ❌ Latest backup is 297 hours old (expected: <25)
+   ❌ Disk usage critical: 96%
+
+Status: CRITICAL
+
+Run 'docker logs bimcalckm-app-1' for application logs
+Run 'tail -f logs/pipeline.log' for pipeline details
+
+=========================================
+BIMCalc Health Check
+=========================================
+Thu Nov 27 12:00:00 GMT 2025
+
+🐳 Docker Containers
+-------------------
+./scripts/health_check.sh: line 30: docker: command not found
+./scripts/health_check.sh: line 37: docker: command not found
+
+💾 Database Health
+------------------
+
+🔄 Pipeline Status
+------------------
+   Last run: Never
+
+💾 Backup Status
+----------------
+   Total backups: 2
+   Latest backup: bimcalc_postgres_backup_20251114_221439.sql.gz
+   Age: 301 hours
+   Size: 20K
+
+💿 Disk Space
+-------------
+   Used: 96%
+   Available: 19Gi
+
+📄 Log Files
+------------
+   Total size: 16K
+   alerts.log: 4.0K
+   backup.log: 4.0K
+   health.log: 4.0K
+   pipeline.log: 4.0K
+
+📊 Recent Pipeline Activity
+---------------------------
+
+=========================================
+Health Check Summary
+=========================================
+
+❌ Critical Issues:
+   ❌ Application container (bimcalckm-app-1) is not running
+   ❌ PostgreSQL container (bimcalc-postgres) is not running
+   ❌ Database connection failed
+   ❌ Pipeline hasn't run in 34 hours (expected: 24)
+   ❌ Latest backup is 301 hours old (expected: <25)
+   ❌ Disk usage critical: 96%
+
+Status: CRITICAL
+
+Run 'docker logs bimcalckm-app-1' for application logs
+Run 'tail -f logs/pipeline.log' for pipeline details
+

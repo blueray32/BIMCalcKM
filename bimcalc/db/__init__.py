@@ -11,6 +11,11 @@ from bimcalc.db.models import (
     MatchResultModel,
     PriceItemModel,
 )
+from bimcalc.db.models_intelligence import (
+    ComplianceResultModel,
+    ComplianceRuleModel,
+    RiskScoreModel,
+)
 
 __all__ = [
     "Base",
@@ -21,6 +26,9 @@ __all__ = [
     "MatchResultModel",
     "DocumentModel",
     "DataSyncLogModel",
+    "RiskScoreModel",
+    "ComplianceRuleModel",
+    "ComplianceResultModel",
     "get_session",
     "init_db",
 ]

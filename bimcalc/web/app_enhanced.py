@@ -8,6 +8,7 @@ from datetime import datetime
 from decimal import Decimal
 from pathlib import Path
 from uuid import UUID, uuid4
+from typing import Dict, Optional, List, Any
 
 import pandas as pd
 from fastapi import (
@@ -4172,6 +4173,477 @@ async def delete_labor_rate_override(project_uuid: UUID, override_id: UUID):
         await session.delete(override)
         await session.commit()
         return {"success": True}
+
+
+@app.get("/api/projects/{project_uuid}/export/excel")
+async def export_project_excel(project_uuid: UUID):
+    """Export project cost breakdown to Excel format.
+    
+    Returns Excel workbook with:
+    - Cost Summary sheet
+    - Category Labor Rates sheet
+    - Items List sheet
+    """
+    from bimcalc.reporting.excel_export import generate_cost_breakdown_excel
+    from bimcalc.db.models import ProjectModel
+    from fastapi.responses import StreamingResponse
+    from datetime import datetime
+    
+    async with get_session() as session:
+        # Get project for filename
+        project = await session.get(ProjectModel, project_uuid)
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
+        
+        # Generate Excel file
+        excel_bytes = await generate_cost_breakdown_excel(
+            session,
+            project.org_id,
+            project.project_id
+        )
+        
+        # Generate filename
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"{project.project_id}_costs_{timestamp}.xlsx"
+        
+        #Return as streaming response
+        return StreamingResponse(
+            excel_bytes,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={
+                "Content-Disposition": f'attachment; filename="{filename}"'
+            }
+        )
+
+
+@app.get("/api/projects/{project_uuid}/export/csv/items")
+async def export_items_csv_endpoint(
+    project_uuid: UUID,
+    category: Optional[str] = Query(None, description="Filter by category")
+):
+    """Export project items to CSV."""
+    from bimcalc.reporting.csv_export import export_items_csv
+    from bimcalc.db.models import ProjectModel
+    from fastapi.responses import StreamingResponse
+    from datetime import datetime
+    
+    async with get_session() as session:
+        project = await session.get(ProjectModel, project_uuid)
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
+            
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"{project.project_id}_items_{timestamp}.csv"
+        
+        return StreamingResponse(
+            export_items_csv(session, project.org_id, project.project_id, category=category),
+            media_type="text/csv",
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'}
+        )
+
+
+@app.get("/api/projects/{project_uuid}/export/csv/prices")
+async def export_prices_csv_endpoint(
+    project_uuid: UUID,
+    category: Optional[str] = Query(None, description="Filter by category"),
+    vendor: Optional[str] = Query(None, description="Filter by vendor")
+):
+    """Export price book to CSV."""
+    from bimcalc.reporting.csv_export import export_prices_csv
+    from bimcalc.db.models import ProjectModel
+    from fastapi.responses import StreamingResponse
+    from datetime import datetime
+    
+    async with get_session() as session:
+        project = await session.get(ProjectModel, project_uuid)
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
+            
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"{project.org_id}_prices_{timestamp}.csv"
+        
+        return StreamingResponse(
+            export_prices_csv(session, project.org_id, category=category, vendor=vendor),
+            media_type="text/csv",
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'}
+        )
+
+
+@app.get("/api/projects/{project_uuid}/export/csv/matches")
+async def export_matches_csv_endpoint(
+    project_uuid: UUID,
+    min_confidence: Optional[float] = Query(None, description="Filter by minimum confidence score"),
+    decision: Optional[str] = Query(None, description="Filter by decision status")
+):
+    """Export match results to CSV."""
+    from bimcalc.reporting.csv_export import export_matches_csv
+    from bimcalc.db.models import ProjectModel
+    from fastapi.responses import StreamingResponse
+    from datetime import datetime
+    
+    async with get_session() as session:
+        project = await session.get(ProjectModel, project_uuid)
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
+            
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"{project.project_id}_matches_{timestamp}.csv"
+        
+        return StreamingResponse(
+            export_matches_csv(
+                session, 
+                project.org_id, 
+                project.project_id,
+                min_confidence=min_confidence,
+                decision=decision
+            ),
+            media_type="text/csv",
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'}
+        )
+
+
+@app.get("/api/projects/{project_uuid}/export/pdf")
+async def export_project_pdf(project_uuid: UUID):
+    """Export project report to PDF."""
+    from bimcalc.reporting.pdf_export import generate_project_pdf_report
+    from bimcalc.db.models import ProjectModel
+    from fastapi.responses import StreamingResponse
+    from datetime import datetime
+    
+    async with get_session() as session:
+        project = await session.get(ProjectModel, project_uuid)
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
+            
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"{project.project_id}_report_{timestamp}.pdf"
+        
+        pdf_buffer = await generate_project_pdf_report(session, project.org_id, project.project_id)
+        
+        return StreamingResponse(
+            pdf_buffer,
+            media_type="application/pdf",
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'}
+        )
+
+
+@app.get("/api/projects/{project_uuid}/intelligence/risk")
+async def get_project_risk_analysis(project_uuid: UUID):
+    """Get risk analysis for a project."""
+    from bimcalc.intelligence.risk_engine import RiskEngine
+    from bimcalc.db.models import ItemModel, MatchResultModel, PriceItemModel
+    
+    async with get_session() as session:
+        # Fetch all items with their matches and price items
+        # Note: This is a simplified fetch for the MVP. In production, use joined loads.
+        items_query = select(ItemModel).where(
+            ItemModel.project_id == str(project_uuid)  # Assuming project_id is stored as string in items
+        )
+        items = (await session.execute(items_query)).scalars().all()
+        
+        if not items:
+            return {"summary": {"high": 0, "medium": 0, "low": 0}, "high_risk_items": []}
+            
+        engine = RiskEngine()
+        risk_scores = []
+        
+        for item in items:
+            # Fetch match result
+            match_query = select(MatchResultModel).where(MatchResultModel.item_id == item.id)
+            match_result = (await session.execute(match_query)).scalar_one_or_none()
+            
+            # Fetch price item if match exists
+            price_item = None
+            if match_result and match_result.price_item_id:
+                price_item = await session.get(PriceItemModel, match_result.price_item_id)
+                
+            # Calculate risk
+            score = engine.calculate_item_risk(item, match_result, price_item)
+            risk_scores.append({
+                "item_id": str(item.id),
+                "family": item.family,
+                "type": item.type_name,
+                "score": score.total_risk_score,
+                "factors": score.risk_factors
+            })
+            
+        # Aggregate results
+        high_risk = [s for s in risk_scores if s["score"] >= 80]
+        medium_risk = [s for s in risk_scores if 50 <= s["score"] < 80]
+        low_risk = [s for s in risk_scores if s["score"] < 50]
+        
+        return {
+            "summary": {
+                "high": len(high_risk),
+                "medium": len(medium_risk),
+                "low": len(low_risk),
+                "avg_score": sum(s["score"] for s in risk_scores) / len(risk_scores) if risk_scores else 0
+            },
+            "high_risk_items": sorted(high_risk, key=lambda x: x["score"], reverse=True)[:10]  # Top 10
+        }
+
+
+@app.get("/api/projects/{project_uuid}/intelligence/recommendations")
+async def get_project_recommendations(project_uuid: UUID):
+    """Get actionable recommendations for a project."""
+    from bimcalc.intelligence.recommendation_engine import RecommendationEngine
+    from bimcalc.db.models import ItemModel, MatchResultModel, PriceItemModel
+    
+    async with get_session() as session:
+        # Fetch items
+        items_query = select(ItemModel).where(
+            ItemModel.project_id == str(project_uuid)
+        )
+        items = (await session.execute(items_query)).scalars().all()
+        
+        if not items:
+            return {"recommendations": []}
+            
+        # Fetch matches
+        item_ids = [item.id for item in items]
+        match_query = select(MatchResultModel).where(MatchResultModel.item_id.in_(item_ids))
+        matches_list = (await session.execute(match_query)).scalars().all()
+        matches_map = {m.item_id: m for m in matches_list}
+        
+        # Fetch price items
+        price_item_ids = [m.price_item_id for m in matches_list if m.price_item_id]
+        price_items_map = {}
+        if price_item_ids:
+            price_query = select(PriceItemModel).where(PriceItemModel.id.in_(price_item_ids))
+            price_items_list = (await session.execute(price_query)).scalars().all()
+            price_items_map = {p.id: p for p in price_items_list}
+            
+        # Generate recommendations
+        engine = RecommendationEngine()
+        recommendations = engine.generate_recommendations(items, matches_map, price_items_map)
+        
+        return {
+            "recommendations": [
+                {
+                    "type": r.type,
+                    "severity": r.severity,
+                    "message": r.message,
+                    "action_label": r.action_label,
+                    "action_url": r.action_url,
+                    "item_id": str(r.item_id),
+                    "potential_saving": r.potential_saving
+                }
+                for r in recommendations
+            ]
+        }
+
+
+@app.get("/api/projects/{project_uuid}/intelligence/compliance")
+async def get_project_compliance(project_uuid: UUID):
+    """Get compliance status for a project."""
+    from bimcalc.intelligence.compliance_engine import ComplianceEngine
+    from bimcalc.db.models import ItemModel, MatchResultModel, PriceItemModel, ProjectModel
+    from bimcalc.db.models_intelligence import ComplianceRuleModel
+    
+    async with get_session() as session:
+        # 1. Fetch Project to get Org ID
+        project = await session.get(ProjectModel, project_uuid)
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
+            
+        org_id = project.org_id
+        
+        # 2. Fetch Rules (Seed if empty)
+        rules_query = select(ComplianceRuleModel).where(
+            ComplianceRuleModel.org_id == org_id,
+            ComplianceRuleModel.is_active == True
+        )
+        rules = (await session.execute(rules_query)).scalars().all()
+        
+        if not rules:
+            # Seed default rules
+            default_rules = [
+                ComplianceRuleModel(
+                    id=uuid4(), org_id=org_id, name="Classification Required", 
+                    description="All items must have a classification code",
+                    rule_type="classification_required", severity="high", is_active=True
+                ),
+                ComplianceRuleModel(
+                    id=uuid4(), org_id=org_id, name="Approved Vendors Only", 
+                    description="Items must be sourced from approved vendors",
+                    rule_type="vendor_whitelist", severity="critical", is_active=True,
+                    configuration={"vendors": ["Vendor A", "Vendor B", "Global Supplies Ltd"]}
+                )
+            ]
+            session.add_all(default_rules)
+            await session.commit()
+            rules = default_rules
+            
+        # 3. Fetch Data
+        items_query = select(ItemModel).where(ItemModel.project_id == str(project_uuid))
+        items = (await session.execute(items_query)).scalars().all()
+        
+        if not items:
+            return {"summary": {"passed": 0, "failed": 0, "score": 100}, "failures": []}
+            
+        item_ids = [item.id for item in items]
+        match_query = select(MatchResultModel).where(MatchResultModel.item_id.in_(item_ids))
+        matches_list = (await session.execute(match_query)).scalars().all()
+        matches_map = {m.item_id: m for m in matches_list}
+        
+        price_item_ids = [m.price_item_id for m in matches_list if m.price_item_id]
+        price_items_map = {}
+        if price_item_ids:
+            price_query = select(PriceItemModel).where(PriceItemModel.id.in_(price_item_ids))
+            price_items_list = (await session.execute(price_query)).scalars().all()
+            price_items_map = {p.id: p for p in price_items_list}
+            
+        # 4. Evaluate
+        engine = ComplianceEngine()
+        all_results = []
+        
+        for item in items:
+            match = matches_map.get(item.id)
+            price_item = None
+            if match and match.price_item_id:
+                price_item = price_items_map.get(match.price_item_id)
+                
+            results = engine.evaluate_item(item, price_item, rules)
+            all_results.extend(results)
+            
+        # 5. Aggregate
+        failures = [r for r in all_results if not r.passed]
+        total_checks = len(all_results)
+        passed_checks = total_checks - len(failures)
+        score = (passed_checks / total_checks * 100) if total_checks > 0 else 100
+        
+        # Group failures by item for UI
+        failures_by_item = {}
+        for f in failures:
+            if f.item_id not in failures_by_item:
+                # Find item details (inefficient but fine for MVP)
+                item = next(i for i in items if i.id == f.item_id)
+                failures_by_item[f.item_id] = {
+                    "item_id": str(item.id),
+                    "family": item.family,
+                    "type": item.type_name,
+                    "issues": []
+                }
+            failures_by_item[f.item_id]["issues"].append(f.message)
+            
+        return {
+            "summary": {
+                "passed": passed_checks,
+                "failed": len(failures),
+                "total": total_checks,
+                "score": score
+            },
+            "failures": list(failures_by_item.values())[:20] # Limit to 20 items
+        }
+
+
+# --- Rule Management Endpoints ---
+
+class RuleUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    is_active: Optional[bool] = None
+    configuration: Optional[Dict] = None
+    severity: Optional[str] = None
+
+class RuleCreate(BaseModel):
+    name: str
+    description: str
+    rule_type: str
+    severity: str
+    is_active: bool = True
+    configuration: Dict = {}
+
+@app.get("/api/projects/{project_uuid}/intelligence/rules")
+async def get_project_rules(project_uuid: UUID):
+    """Get all compliance rules for a project's organization."""
+    from bimcalc.db.models import ProjectModel
+    from bimcalc.db.models_intelligence import ComplianceRuleModel
+    
+    async with get_session() as session:
+        project = await session.get(ProjectModel, project_uuid)
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
+            
+        rules_query = select(ComplianceRuleModel).where(
+            ComplianceRuleModel.org_id == project.org_id
+        )
+        rules = (await session.execute(rules_query)).scalars().all()
+        
+        return {
+            "rules": [
+                {
+                    "id": str(r.id),
+                    "name": r.name,
+                    "description": r.description,
+                    "rule_type": r.rule_type,
+                    "severity": r.severity,
+                    "is_active": r.is_active,
+                    "configuration": r.configuration
+                }
+                for r in rules
+            ]
+        }
+
+@app.post("/api/projects/{project_uuid}/intelligence/rules")
+async def create_project_rule(project_uuid: UUID, rule: RuleCreate):
+    """Create a new compliance rule."""
+    from bimcalc.db.models import ProjectModel
+    from bimcalc.db.models_intelligence import ComplianceRuleModel
+    
+    async with get_session() as session:
+        project = await session.get(ProjectModel, project_uuid)
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
+            
+        new_rule = ComplianceRuleModel(
+            id=uuid4(),
+            org_id=project.org_id,
+            name=rule.name,
+            description=rule.description,
+            rule_type=rule.rule_type,
+            severity=rule.severity,
+            is_active=rule.is_active,
+            configuration=rule.configuration
+        )
+        session.add(new_rule)
+        await session.commit()
+        
+        return {"id": str(new_rule.id), "status": "created"}
+
+@app.put("/api/projects/{project_uuid}/intelligence/rules/{rule_id}")
+async def update_project_rule(project_uuid: UUID, rule_id: UUID, update: RuleUpdate):
+    """Update an existing compliance rule."""
+    from bimcalc.db.models_intelligence import ComplianceRuleModel
+    
+    async with get_session() as session:
+        rule = await session.get(ComplianceRuleModel, rule_id)
+        if not rule:
+            raise HTTPException(status_code=404, detail="Rule not found")
+            
+        if update.name is not None: rule.name = update.name
+        if update.description is not None: rule.description = update.description
+        if update.is_active is not None: rule.is_active = update.is_active
+        if update.configuration is not None: rule.configuration = update.configuration
+        if update.severity is not None: rule.severity = update.severity
+        
+        await session.commit()
+        return {"status": "updated"}
+
+@app.delete("/api/projects/{project_uuid}/intelligence/rules/{rule_id}")
+async def delete_project_rule(project_uuid: UUID, rule_id: UUID):
+    """Delete a compliance rule."""
+    from bimcalc.db.models_intelligence import ComplianceRuleModel
+    
+    async with get_session() as session:
+        rule = await session.get(ComplianceRuleModel, rule_id)
+        if not rule:
+            raise HTTPException(status_code=404, detail="Rule not found")
+            
+        await session.delete(rule)
+        await session.commit()
+        return {"status": "deleted"}
+
 
 
 

@@ -2,7 +2,7 @@ import asyncio
 from playwright.async_api import async_playwright
 import os
 
-BASE_URL = "https://157.230.149.106.nip.io"
+BASE_URL = "http://localhost:8003"
 SCHEDULE_FILE = os.path.abspath("tests/fixtures/sample_schedule.csv")
 PRICES_FILE = os.path.abspath("tests/fixtures/sample_prices.csv")
 
@@ -103,6 +103,90 @@ async def run_uat():
             print("   ✅ Item 'Cable Tray' found in table row")
         except Exception as e:
             print(f"   ❌ Item verification failed: {e}")
+
+        except Exception as e:
+            print(f"   ❌ Item verification failed: {e}")
+
+        # 4. Ingestion - Price Book
+        print("\n4️⃣  Testing Price Book Ingestion...")
+        await page.goto(f"{BASE_URL}/ingest")
+        
+        # Select "Flexible Import" mode (default, but good to be explicit if needed)
+        # The form id is "flexible-prices-form"
+        
+        # Fill form (Vendor Name)
+        await page.fill('#flexible-prices-form input[name="vendor_name"]', "UAT-Vendor")
+        
+        # Upload Price Book
+        print("   Uploading price book...")
+        try:
+            # Target the file input inside the flexible prices form
+            await page.set_input_files('#flexible-prices-form input[type="file"]', PRICES_FILE)
+
+            # Click submit for prices
+            # Find the submit button inside the flexible prices form
+            await page.click('#flexible-prices-form button[type="submit"]')
+            
+            # Wait for success message
+            # The JS updates #flexible-prices-result
+            await page.wait_for_selector('#flexible-prices-result .message-success', timeout=10000)
+            print("   ✅ Price book upload successful")
+            
+        except Exception as e:
+            print(f"   ❌ Price book upload failed: {e}")
+
+        # 5. Matching Pipeline
+        print("\n5️⃣  Testing Matching Pipeline...")
+        await page.goto(f"{BASE_URL}/match?org=UAT-Org&project=UAT-Project-Auto")
+        
+        try:
+            # Click "Run Matching"
+            # Look for a button with text "Run Matching" or similar
+            await page.click('button:has-text("Run Matching")')
+            print("   Matching started...")
+            
+            # Wait for completion message or progress bar
+            # This might take a moment
+            await page.wait_for_timeout(5000)
+            
+            # Verify results on Dashboard
+            print("   Verifying results on Dashboard...")
+            await page.goto(f"{BASE_URL}/?org=UAT-Org&project=UAT-Project-Auto")
+            await page.wait_for_load_state("networkidle")
+            
+            # Check for "Active Mappings" or "Awaiting Review"
+            # We expect some items to be matched
+            content = await page.content()
+            if "Awaiting Review" in content:
+                print("   ✅ Matching produced results (Awaiting Review found)")
+            else:
+                print("   ⚠️ 'Awaiting Review' not found, matching might have yielded no results or auto-approved all")
+                
+        except Exception as e:
+            print(f"   ❌ Matching pipeline test failed: {e}")
+
+        # 6. Review Workflow
+        print("\n6️⃣  Testing Review Workflow...")
+        await page.goto(f"{BASE_URL}/review?org=UAT-Org&project=UAT-Project-Auto")
+        
+        try:
+            # Check if there are items to review
+            await page.wait_for_selector('.review-card', timeout=5000)
+            print("   Review items found.")
+            
+            # Approve the first item
+            # Look for an "Approve" button
+            approve_btn = page.locator('button:has-text("Approve")').first
+            if await approve_btn.is_visible():
+                await approve_btn.click()
+                print("   Clicked Approve.")
+                await page.wait_for_timeout(1000)
+                print("   ✅ Item approved")
+            else:
+                print("   ⚠️ No Approve button found")
+                
+        except Exception as e:
+            print(f"   ⚠️ Review workflow test skipped or failed (might be no items to review): {e}")
 
         await browser.close()
 

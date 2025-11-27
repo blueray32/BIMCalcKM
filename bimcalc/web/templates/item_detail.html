@@ -168,6 +168,192 @@
 </div>
 {% endif %}
 
+<!-- Intelligence Insights -->
+<div class="card" id="intelligence-section" style="border-left: 4px solid #805ad5;">
+    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+        <span>🧠 Intelligence Insights</span>
+        <span class="badge" style="background: #e9d8fd; color: #553c9a;">AI Powered</span>
+    </div>
+    <div style="padding: 1.5rem;">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 1.5rem;">
+
+            <!-- Risk Analysis Widget -->
+            <div id="risk-widget">
+                <h3 style="margin: 0 0 1rem 0; font-size: 1.1rem; color: #2d3748;">🛡️ Compliance Risk Analysis</h3>
+                <div id="risk-loading" style="color: #718096; font-style: italic;">
+                    Analyzing item compliance...
+                </div>
+                <div id="risk-content" style="display: none;">
+                    <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
+                        <div id="risk-score-circle"
+                            style="width: 60px; height: 60px; border-radius: 50%; background: #edf2f7; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1.25rem; color: #2d3748; border: 4px solid #cbd5e0;">
+                            --
+                        </div>
+                        <div>
+                            <div id="risk-level" style="font-weight: 700; font-size: 1.1rem;">--</div>
+                            <div style="font-size: 0.875rem; color: #718096;">Risk Score</div>
+                        </div>
+                    </div>
+
+                    <div style="margin-bottom: 1rem;">
+                        <h4 style="margin: 0 0 0.5rem 0; font-size: 0.9rem; color: #4a5568;">Contributing Factors:</h4>
+                        <ul id="risk-factors"
+                            style="margin: 0; padding-left: 1.25rem; font-size: 0.9rem; color: #4a5568;">
+                            <!-- Populated by JS -->
+                        </ul>
+                    </div>
+
+                    <div>
+                        <h4 style="margin: 0 0 0.5rem 0; font-size: 0.9rem; color: #4a5568;">Recommendations:</h4>
+                        <ul id="risk-recommendations"
+                            style="margin: 0; padding-left: 1.25rem; font-size: 0.9rem; color: #4a5568;">
+                            <!-- Populated by JS -->
+                        </ul>
+                    </div>
+                </div>
+                <div id="risk-error" style="display: none; color: #e53e3e; font-size: 0.9rem;">
+                    Failed to load risk analysis.
+                </div>
+            </div>
+
+            <!-- Document Recommendations Widget -->
+            <div id="rag-widget">
+                <h3 style="margin: 0 0 1rem 0; font-size: 1.1rem; color: #2d3748;">📄 Suggested Documents</h3>
+                <div id="rag-loading" style="color: #718096; font-style: italic;">
+                    Searching knowledge base...
+                </div>
+                <div id="rag-content" style="display: none;">
+                    <div id="rag-list" style="display: flex; flex-direction: column; gap: 0.75rem;">
+                        <!-- Populated by JS -->
+                    </div>
+                    <div id="rag-empty" style="display: none; color: #718096; font-size: 0.9rem; font-style: italic;">
+                        No relevant documents found.
+                    </div>
+                </div>
+                <div id="rag-error" style="display: none; color: #e53e3e; font-size: 0.9rem;">
+                    Failed to load recommendations.
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const itemId = "{{ item.id }}";
+
+        // 1. Fetch Risk Analysis
+        fetch(`/api/intelligence/risk/${itemId}`)
+            .then(response => {
+                if (!response.ok) throw new Error('Network response was not ok');
+                return response.json();
+            })
+            .then(data => {
+                document.getElementById('risk-loading').style.display = 'none';
+                document.getElementById('risk-content').style.display = 'block';
+
+                // Update Score & Level
+                const scoreCircle = document.getElementById('risk-score-circle');
+                scoreCircle.textContent = Math.round(data.score);
+
+                const riskLevel = document.getElementById('risk-level');
+                riskLevel.textContent = data.level + " Risk";
+
+                // Color coding
+                let color = '#48bb78'; // Green (Low)
+                if (data.level === 'High') color = '#f56565';
+                else if (data.level === 'Medium') color = '#ed8936';
+
+                scoreCircle.style.borderColor = color;
+                scoreCircle.style.color = color;
+                riskLevel.style.color = color;
+
+                // Factors
+                const factorsList = document.getElementById('risk-factors');
+                factorsList.innerHTML = '';
+                for (const [key, factor] of Object.entries(data.factors)) {
+                    if (factor.score > 0) {
+                        const li = document.createElement('li');
+                        li.textContent = `${factor.status} (+${factor.score})`;
+                        factorsList.appendChild(li);
+                    }
+                }
+                if (factorsList.children.length === 0) {
+                    const li = document.createElement('li');
+                    li.textContent = "No significant risk factors detected.";
+                    li.style.color = "#718096";
+                    li.style.fontStyle = "italic";
+                    factorsList.appendChild(li);
+                }
+
+                // Recommendations
+                const recsList = document.getElementById('risk-recommendations');
+                recsList.innerHTML = '';
+                data.recommendations.forEach(rec => {
+                    const li = document.createElement('li');
+                    li.textContent = rec;
+                    recsList.appendChild(li);
+                });
+                if (data.recommendations.length === 0) {
+                    const li = document.createElement('li');
+                    li.textContent = "No actions required.";
+                    li.style.color = "#718096";
+                    li.style.fontStyle = "italic";
+                    recsList.appendChild(li);
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching risk:', error);
+                document.getElementById('risk-loading').style.display = 'none';
+                document.getElementById('risk-error').style.display = 'block';
+            });
+
+        // 2. Fetch Document Recommendations
+        fetch(`/api/intelligence/recommendations/${itemId}`)
+            .then(response => {
+                if (!response.ok) throw new Error('Network response was not ok');
+                return response.json();
+            })
+            .then(data => {
+                document.getElementById('rag-loading').style.display = 'none';
+                document.getElementById('rag-content').style.display = 'block';
+
+                const list = document.getElementById('rag-list');
+                list.innerHTML = '';
+
+                if (data.length === 0) {
+                    document.getElementById('rag-empty').style.display = 'block';
+                    return;
+                }
+
+                data.forEach(doc => {
+                    const item = document.createElement('div');
+                    item.style.padding = '0.75rem';
+                    item.style.background = '#f7fafc';
+                    item.style.borderRadius = '0.5rem';
+                    item.style.borderLeft = '3px solid #4299e1';
+
+                    item.innerHTML = `
+                        <div style="font-weight: 600; color: #2d3748; margin-bottom: 0.25rem;">
+                            <a href="#" style="text-decoration: none; color: inherit;">${doc.title}</a>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: #718096;">
+                            <span>${doc.document_type}</span>
+                            <span>${doc.relevance}% Match</span>
+                        </div>
+                    `;
+                    list.appendChild(item);
+                });
+            })
+            .catch(error => {
+                console.error('Error fetching recommendations:', error);
+                document.getElementById('rag-loading').style.display = 'none';
+                document.getElementById('rag-error').style.display = 'block';
+            });
+    });
+</script>
+
 <!-- Actions -->
 <div class="card">
     <div class="card-header">⚡ Actions</div>

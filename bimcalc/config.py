@@ -101,6 +101,10 @@ class AppConfig:
     db: DBConfig  # Required, moved before defaults
     log_level: str = "INFO"
     log_format: str = "json"  # json or text
+    
+    # Feature Flags
+    enable_rag: bool = False
+    enable_risk_scoring: bool = False
 
     # Sub-configurations with defaults
     matching: MatchingConfig = field(default_factory=MatchingConfig)
@@ -136,6 +140,8 @@ class AppConfig:
             org_id=os.getenv("DEFAULT_ORG_ID", "default"),
             log_level=os.getenv("LOG_LEVEL", "INFO"),
             log_format=os.getenv("LOG_FORMAT", "json"),
+            enable_rag=os.getenv("ENABLE_RAG", "false").lower() == "true",
+            enable_risk_scoring=os.getenv("ENABLE_RISK_SCORING", "false").lower() == "true",
             db=DBConfig(
                 url=database_url,
                 pool_size=int(os.getenv("DB_POOL_SIZE", "10")),
