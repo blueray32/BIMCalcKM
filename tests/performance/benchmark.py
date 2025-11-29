@@ -36,6 +36,13 @@ class PerformanceBenchmark:
     async def setup(self):
         """Initialize database connection."""
         self.engine = create_async_engine(self.database_url, echo=False)
+        
+        # Create tables
+        from bimcalc.db.models import Base
+        async with self.engine.begin() as conn:
+            await conn.run_sync(Base.metadata.drop_all)
+            await conn.run_sync(Base.metadata.create_all)
+            
         self.session_factory = sessionmaker(self.engine, class_=AsyncSession, expire_on_commit=False)
 
     async def teardown(self):

@@ -25,6 +25,8 @@ def get_redis_client() -> redis.Redis:
 SESSION_EXPIRY_HOURS = 24
 SESSION_EXPIRY_SECONDS = SESSION_EXPIRY_HOURS * 3600
 
+# In-memory fallback for development when Redis is missing
+_memory_sessions = {}
 
 def get_credentials() -> tuple[str, str]:
     """Get username and password from environment variables.
@@ -59,7 +61,6 @@ def create_session(username: str) -> str:
         str: Session token
     """
     session_token = secrets.token_urlsafe(32)
-    redis_client = get_redis_client()
     
     session_data = {
         "username": username,
@@ -67,12 +68,17 @@ def create_session(username: str) -> str:
         "expires_at": (datetime.utcnow() + timedelta(hours=SESSION_EXPIRY_HOURS)).isoformat(),
     }
     
-    # Store in Redis with TTL
-    redis_client.setex(
-        f"session:{session_token}",
-        SESSION_EXPIRY_SECONDS,
-        json.dumps(session_data)
-    )
+    try:
+        redis_client = get_redis_client()
+        # Store in Redis with TTL
+        redis_client.setex(
+            f"session:{session_token}",
+            SESSION_EXPIRY_SECONDS,
+            json.dumps(session_data)
+        )
+    except (redis.exceptions.ConnectionError, redis.exceptions.TimeoutError):
+        print("⚠️  Redis unavailable, using in-memory session storage")
+        _memory_sessions[session_token] = session_data
     
     return session_token
 
@@ -89,8 +95,22 @@ def validate_session(session_token: str | None) -> str | None:
     if not session_token:
         return None
 
-    redis_client = get_redis_client()
-    session_data_str = redis_client.get(f"session:{session_token}")
+    session_data_str = None
+    
+    try:
+        redis_client = get_redis_client()
+        session_data_str = redis_client.get(f"session:{session_token}")
+    except (redis.exceptions.ConnectionError, redis.exceptions.TimeoutError):
+        # Fallback to memory
+        session_data = _memory_sessions.get(session_token)
+        if session_data:
+            # Check expiry for memory sessions
+            expires_at = datetime.fromisoformat(session_data["expires_at"])
+            if datetime.utcnow() > expires_at:
+                del _memory_sessions[session_token]
+                return None
+            return session_data["username"]
+        return None
     
     if not session_data_str:
         return None
@@ -164,8 +184,12 @@ def logout(session_token: str | None) -> None:
         session_token: Session token to invalidate
     """
     if session_token:
-        redis_client = get_redis_client()
-        redis_client.delete(f"session:{session_token}")
+        try:
+            redis_client = get_redis_client()
+            redis_client.delete(f"session:{session_token}")
+        except (redis.exceptions.ConnectionError, redis.exceptions.TimeoutError):
+            if session_token in _memory_sessions:
+                del _memory_sessions[session_token]
 
 
 def cleanup_expired_sessions() -> None:

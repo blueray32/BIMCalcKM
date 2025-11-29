@@ -63,6 +63,10 @@
         background: linear-gradient(135deg, #0d9488 0%, #14b8a6 100%);
     }
 
+    .executive-nav-item.active.documents {
+        background: linear-gradient(135deg, #805ad5 0%, #9f7aea 100%);
+    }
+
     .nav-icon {
         font-size: 1.5rem;
     }
@@ -108,22 +112,22 @@
 
 <nav class="executive-nav" role="navigation" aria-label="Executive Dashboard Navigation">
     <a href="/?org={{ org_id }}&project={{ project_id }}&view=executive"
-       class="executive-nav-item dashboard {% if current_page == 'dashboard' %}active{% endif %}"
-       {% if current_page == 'dashboard' %}aria-current="page"{% endif %}>
+        class="executive-nav-item dashboard {% if current_page == 'dashboard' %}active{% endif %}" {% if
+        current_page=='dashboard' %}aria-current="page" {% endif %}>
         <div class="nav-icon">📊</div>
         <div class="nav-label">Dashboard</div>
     </a>
 
     <a href="/progress?org={{ org_id }}&project={{ project_id }}&view=executive"
-       class="executive-nav-item progress {% if current_page == 'progress' %}active{% endif %}"
-       {% if current_page == 'progress' %}aria-current="page"{% endif %}>
+        class="executive-nav-item progress {% if current_page == 'progress' %}active{% endif %}" {% if
+        current_page=='progress' %}aria-current="page" {% endif %}>
         <div class="nav-icon">🎯</div>
         <div class="nav-label">Match Progress</div>
     </a>
 
     <a href="/review?org={{ org_id }}&project={{ project_id }}&view=executive"
-       class="executive-nav-item review {% if current_page == 'review' %}active{% endif %}"
-       {% if current_page == 'review' %}aria-current="page"{% endif %}>
+        class="executive-nav-item review {% if current_page == 'review' %}active{% endif %}" {% if
+        current_page=='review' %}aria-current="page" {% endif %}>
         <div class="nav-icon">🔍</div>
         <div class="nav-label">Review Queue</div>
         {% if pending_count and pending_count > 0 %}
@@ -132,23 +136,30 @@
     </a>
 
     <a href="/reports?org={{ org_id }}&project={{ project_id }}&view=executive"
-       class="executive-nav-item reports {% if current_page == 'reports' %}active{% endif %}"
-       {% if current_page == 'reports' %}aria-current="page"{% endif %}>
+        class="executive-nav-item reports {% if current_page == 'reports' %}active{% endif %}" {% if
+        current_page=='reports' %}aria-current="page" {% endif %}>
         <div class="nav-icon">💰</div>
         <div class="nav-label">Financial</div>
     </a>
 
     <a href="/audit?org={{ org_id }}&project={{ project_id }}&view=executive"
-       class="executive-nav-item audit {% if current_page == 'audit' %}active{% endif %}"
-       {% if current_page == 'audit' %}aria-current="page"{% endif %}>
+        class="executive-nav-item audit {% if current_page == 'audit' %}active{% endif %}" {% if current_page=='audit'
+        %}aria-current="page" {% endif %}>
         <div class="nav-icon">📜</div>
         <div class="nav-label">Audit Trail</div>
     </a>
 
     <a href="/prices?org={{ org_id }}&project={{ project_id }}&view=executive"
-       class="executive-nav-item prices {% if current_page == 'prices' %}active{% endif %}"
-       {% if current_page == 'prices' %}aria-current="page"{% endif %}>
+        class="executive-nav-item prices {% if current_page == 'prices' %}active{% endif %}" {% if
+        current_page=='prices' %}aria-current="page" {% endif %}>
         <div class="nav-icon">💎</div>
         <div class="nav-label">Price Data</div>
+    </a>
+
+    <a href="/?org={{ org_id }}&project={{ project_id }}&view=executive#documentsContainer"
+        class="executive-nav-item documents"
+        onclick="document.getElementById('documentsContainer').scrollIntoView({behavior: 'smooth'}); return false;">
+        <div class="nav-icon">📄</div>
+        <div class="nav-label">Documents</div>
     </a>
 </nav>

@@ -169,3 +169,573 @@ Status: CRITICAL
 Run 'docker logs bimcalckm-app-1' for application logs
 Run 'tail -f logs/pipeline.log' for pipeline details
 
+=========================================
+BIMCalc Health Check
+=========================================
+Thu Nov 27 20:00:01 GMT 2025
+
+🐳 Docker Containers
+-------------------
+./scripts/health_check.sh: line 30: docker: command not found
+./scripts/health_check.sh: line 37: docker: command not found
+
+💾 Database Health
+------------------
+
+🔄 Pipeline Status
+------------------
+   Last run: Never
+
+💾 Backup Status
+----------------
+   Total backups: 2
+   Latest backup: bimcalc_postgres_backup_20251114_221439.sql.gz
+   Age: 309 hours
+   Size: 20K
+
+💿 Disk Space
+-------------
+   Used: 92%
+   Available: 37Gi
+
+📄 Log Files
+------------
+   Total size: 20K
+   alerts.log: 4.0K
+   backup.log: 4.0K
+   health.log: 8.0K
+   pipeline.log: 4.0K
+
+📊 Recent Pipeline Activity
+---------------------------
+
+=========================================
+Health Check Summary
+=========================================
+
+❌ Critical Issues:
+   ❌ Application container (bimcalckm-app-1) is not running
+   ❌ PostgreSQL container (bimcalc-postgres) is not running
+   ❌ Database connection failed
+   ❌ Pipeline hasn't run in 42 hours (expected: 24)
+   ❌ Latest backup is 309 hours old (expected: <25)
+   ❌ Disk usage critical: 92%
+
+Status: CRITICAL
+
+Run 'docker logs bimcalckm-app-1' for application logs
+Run 'tail -f logs/pipeline.log' for pipeline details
+
+=========================================
+BIMCalc Health Check
+=========================================
+Fri Nov 28 00:00:00 GMT 2025
+
+🐳 Docker Containers
+-------------------
+./scripts/health_check.sh: line 30: docker: command not found
+./scripts/health_check.sh: line 37: docker: command not found
+
+💾 Database Health
+------------------
+
+🔄 Pipeline Status
+------------------
+   Last run: Never
+
+💾 Backup Status
+----------------
+   Total backups: 2
+   Latest backup: bimcalc_postgres_backup_20251114_221439.sql.gz
+   Age: 313 hours
+   Size: 20K
+
+💿 Disk Space
+-------------
+   Used: 92%
+   Available: 36Gi
+
+📄 Log Files
+------------
+   Total size: 20K
+   alerts.log: 4.0K
+   backup.log: 4.0K
+   health.log: 8.0K
+   pipeline.log: 4.0K
+
+📊 Recent Pipeline Activity
+---------------------------
+
+=========================================
+Health Check Summary
+=========================================
+
+❌ Critical Issues:
+   ❌ Application container (bimcalckm-app-1) is not running
+   ❌ PostgreSQL container (bimcalc-postgres) is not running
+   ❌ Database connection failed
+   ❌ Pipeline hasn't run in 46 hours (expected: 24)
+   ❌ Latest backup is 313 hours old (expected: <25)
+   ❌ Disk usage critical: 92%
+
+Status: CRITICAL
+
+Run 'docker logs bimcalckm-app-1' for application logs
+Run 'tail -f logs/pipeline.log' for pipeline details
+
+=========================================
+BIMCalc Health Check
+=========================================
+Fri Nov 28 04:00:00 GMT 2025
+
+🐳 Docker Containers
+-------------------
+./scripts/health_check.sh: line 30: docker: command not found
+./scripts/health_check.sh: line 37: docker: command not found
+
+💾 Database Health
+------------------
+
+🔄 Pipeline Status
+------------------
+   Last run: Never
+✅ Pipeline last ran 2 hours ago
+
+💾 Backup Status
+----------------
+   Total backups: 2
+   Latest backup: bimcalc_postgres_backup_20251114_221439.sql.gz
+   Age: 317 hours
+   Size: 20K
+
+💿 Disk Space
+-------------
+   Used: 92%
+   Available: 35Gi
+
+📄 Log Files
+------------
+   Total size: 20K
+   alerts.log: 4.0K
+   backup.log: 4.0K
+   health.log: 8.0K
+   pipeline.log: 4.0K
+
+📊 Recent Pipeline Activity
+---------------------------
+
+=========================================
+Health Check Summary
+=========================================
+
+❌ Critical Issues:
+   ❌ Application container (bimcalckm-app-1) is not running
+   ❌ PostgreSQL container (bimcalc-postgres) is not running
+   ❌ Database connection failed
+   ❌ Latest backup is 317 hours old (expected: <25)
+   ❌ Disk usage critical: 92%
+
+Status: CRITICAL
+
+Run 'docker logs bimcalckm-app-1' for application logs
+Run 'tail -f logs/pipeline.log' for pipeline details
+
+=========================================
+BIMCalc Health Check
+=========================================
+Fri Nov 28 08:00:00 GMT 2025
+
+🐳 Docker Containers
+-------------------
+./scripts/health_check.sh: line 30: docker: command not found
+./scripts/health_check.sh: line 37: docker: command not found
+
+💾 Database Health
+------------------
+
+🔄 Pipeline Status
+------------------
+   Last run: Never
+✅ Pipeline last ran 6 hours ago
+
+💾 Backup Status
+----------------
+   Total backups: 2
+   Latest backup: bimcalc_postgres_backup_20251114_221439.sql.gz
+   Age: 321 hours
+   Size: 20K
+
+💿 Disk Space
+-------------
+   Used: 92%
+   Available: 35Gi
+
+📄 Log Files
+------------
+   Total size: 24K
+   alerts.log: 4.0K
+   backup.log: 4.0K
+   health.log: 12K
+   pipeline.log: 4.0K
+
+📊 Recent Pipeline Activity
+---------------------------
+
+=========================================
+Health Check Summary
+=========================================
+
+❌ Critical Issues:
+   ❌ Application container (bimcalckm-app-1) is not running
+   ❌ PostgreSQL container (bimcalc-postgres) is not running
+   ❌ Database connection failed
+   ❌ Latest backup is 321 hours old (expected: <25)
+   ❌ Disk usage critical: 92%
+
+Status: CRITICAL
+
+Run 'docker logs bimcalckm-app-1' for application logs
+Run 'tail -f logs/pipeline.log' for pipeline details
+
+=========================================
+BIMCalc Health Check
+=========================================
+Fri Nov 28 12:00:00 GMT 2025
+
+🐳 Docker Containers
+-------------------
+./scripts/health_check.sh: line 30: docker: command not found
+./scripts/health_check.sh: line 37: docker: command not found
+
+💾 Database Health
+------------------
+
+🔄 Pipeline Status
+------------------
+   Last run: Never
+✅ Pipeline last ran 10 hours ago
+
+💾 Backup Status
+----------------
+   Total backups: 2
+   Latest backup: bimcalc_postgres_backup_20251114_221439.sql.gz
+   Age: 325 hours
+   Size: 20K
+
+💿 Disk Space
+-------------
+   Used: 93%
+   Available: 34Gi
+
+📄 Log Files
+------------
+   Total size: 24K
+   alerts.log: 4.0K
+   backup.log: 4.0K
+   health.log: 12K
+   pipeline.log: 4.0K
+
+📊 Recent Pipeline Activity
+---------------------------
+
+=========================================
+Health Check Summary
+=========================================
+
+❌ Critical Issues:
+   ❌ Application container (bimcalckm-app-1) is not running
+   ❌ PostgreSQL container (bimcalc-postgres) is not running
+   ❌ Database connection failed
+   ❌ Latest backup is 325 hours old (expected: <25)
+   ❌ Disk usage critical: 93%
+
+Status: CRITICAL
+
+Run 'docker logs bimcalckm-app-1' for application logs
+Run 'tail -f logs/pipeline.log' for pipeline details
+
+=========================================
+BIMCalc Health Check
+=========================================
+Fri Nov 28 16:00:00 GMT 2025
+
+🐳 Docker Containers
+-------------------
+./scripts/health_check.sh: line 30: docker: command not found
+./scripts/health_check.sh: line 37: docker: command not found
+
+💾 Database Health
+------------------
+
+🔄 Pipeline Status
+------------------
+   Last run: Never
+✅ Pipeline last ran 14 hours ago
+
+💾 Backup Status
+----------------
+   Total backups: 2
+   Latest backup: bimcalc_postgres_backup_20251114_221439.sql.gz
+   Age: 329 hours
+   Size: 20K
+
+💿 Disk Space
+-------------
+   Used: 93%
+   Available: 34Gi
+
+📄 Log Files
+------------
+   Total size: 24K
+   alerts.log: 4.0K
+   backup.log: 4.0K
+   health.log: 12K
+   pipeline.log: 4.0K
+
+📊 Recent Pipeline Activity
+---------------------------
+
+=========================================
+Health Check Summary
+=========================================
+
+❌ Critical Issues:
+   ❌ Application container (bimcalckm-app-1) is not running
+   ❌ PostgreSQL container (bimcalc-postgres) is not running
+   ❌ Database connection failed
+   ❌ Latest backup is 329 hours old (expected: <25)
+   ❌ Disk usage critical: 93%
+
+Status: CRITICAL
+
+Run 'docker logs bimcalckm-app-1' for application logs
+Run 'tail -f logs/pipeline.log' for pipeline details
+
+=========================================
+BIMCalc Health Check
+=========================================
+Sat Nov 29 00:00:00 GMT 2025
+
+🐳 Docker Containers
+-------------------
+./scripts/health_check.sh: line 30: docker: command not found
+./scripts/health_check.sh: line 37: docker: command not found
+
+💾 Database Health
+------------------
+
+🔄 Pipeline Status
+------------------
+   Last run: Never
+✅ Pipeline last ran 22 hours ago
+
+💾 Backup Status
+----------------
+   Total backups: 2
+   Latest backup: bimcalc_postgres_backup_20251114_221439.sql.gz
+   Age: 337 hours
+   Size: 20K
+
+💿 Disk Space
+-------------
+   Used: 93%
+   Available: 34Gi
+
+📄 Log Files
+------------
+   Total size: 28K
+   alerts.log: 4.0K
+   backup.log: 4.0K
+   health.log: 16K
+   pipeline.log: 4.0K
+
+📊 Recent Pipeline Activity
+---------------------------
+
+=========================================
+Health Check Summary
+=========================================
+
+❌ Critical Issues:
+   ❌ Application container (bimcalckm-app-1) is not running
+   ❌ PostgreSQL container (bimcalc-postgres) is not running
+   ❌ Database connection failed
+   ❌ Latest backup is 337 hours old (expected: <25)
+   ❌ Disk usage critical: 93%
+
+Status: CRITICAL
+
+Run 'docker logs bimcalckm-app-1' for application logs
+Run 'tail -f logs/pipeline.log' for pipeline details
+
+=========================================
+BIMCalc Health Check
+=========================================
+Sat Nov 29 08:00:00 GMT 2025
+
+🐳 Docker Containers
+-------------------
+./scripts/health_check.sh: line 30: docker: command not found
+./scripts/health_check.sh: line 37: docker: command not found
+
+💾 Database Health
+------------------
+
+🔄 Pipeline Status
+------------------
+   Last run: Never
+✅ Pipeline last ran 6 hours ago
+
+💾 Backup Status
+----------------
+   Total backups: 2
+   Latest backup: bimcalc_postgres_backup_20251114_221439.sql.gz
+   Age: 345 hours
+   Size: 20K
+
+💿 Disk Space
+-------------
+   Used: 91%
+   Available: 40Gi
+
+📄 Log Files
+------------
+   Total size: 32K
+   alerts.log: 4.0K
+   backup.log: 8.0K
+   health.log: 16K
+   pipeline.log: 4.0K
+
+📊 Recent Pipeline Activity
+---------------------------
+
+=========================================
+Health Check Summary
+=========================================
+
+❌ Critical Issues:
+   ❌ Application container (bimcalckm-app-1) is not running
+   ❌ PostgreSQL container (bimcalc-postgres) is not running
+   ❌ Database connection failed
+   ❌ Latest backup is 345 hours old (expected: <25)
+   ❌ Disk usage critical: 91%
+
+Status: CRITICAL
+
+Run 'docker logs bimcalckm-app-1' for application logs
+Run 'tail -f logs/pipeline.log' for pipeline details
+
+=========================================
+BIMCalc Health Check
+=========================================
+Sat Nov 29 12:00:00 GMT 2025
+
+🐳 Docker Containers
+-------------------
+./scripts/health_check.sh: line 30: docker: command not found
+./scripts/health_check.sh: line 37: docker: command not found
+
+💾 Database Health
+------------------
+
+🔄 Pipeline Status
+------------------
+   Last run: Never
+✅ Pipeline last ran 10 hours ago
+
+💾 Backup Status
+----------------
+   Total backups: 2
+   Latest backup: bimcalc_postgres_backup_20251114_221439.sql.gz
+   Age: 349 hours
+   Size: 20K
+
+💿 Disk Space
+-------------
+   Used: 91%
+   Available: 40Gi
+
+📄 Log Files
+------------
+   Total size: 32K
+   alerts.log: 4.0K
+   backup.log: 8.0K
+   health.log: 16K
+   pipeline.log: 4.0K
+
+📊 Recent Pipeline Activity
+---------------------------
+
+=========================================
+Health Check Summary
+=========================================
+
+❌ Critical Issues:
+   ❌ Application container (bimcalckm-app-1) is not running
+   ❌ PostgreSQL container (bimcalc-postgres) is not running
+   ❌ Database connection failed
+   ❌ Latest backup is 349 hours old (expected: <25)
+   ❌ Disk usage critical: 91%
+
+Status: CRITICAL
+
+Run 'docker logs bimcalckm-app-1' for application logs
+Run 'tail -f logs/pipeline.log' for pipeline details
+
+=========================================
+BIMCalc Health Check
+=========================================
+Sat Nov 29 16:00:00 GMT 2025
+
+🐳 Docker Containers
+-------------------
+./scripts/health_check.sh: line 30: docker: command not found
+./scripts/health_check.sh: line 37: docker: command not found
+
+💾 Database Health
+------------------
+
+🔄 Pipeline Status
+------------------
+   Last run: Never
+✅ Pipeline last ran 14 hours ago
+
+💾 Backup Status
+----------------
+   Total backups: 2
+   Latest backup: bimcalc_postgres_backup_20251114_221439.sql.gz
+   Age: 353 hours
+   Size: 20K
+
+💿 Disk Space
+-------------
+   Used: 91%
+   Available: 40Gi
+
+📄 Log Files
+------------
+   Total size: 36K
+   alerts.log: 4.0K
+   backup.log: 8.0K
+   health.log: 20K
+   pipeline.log: 4.0K
+
+📊 Recent Pipeline Activity
+---------------------------
+
+=========================================
+Health Check Summary
+=========================================
+
+❌ Critical Issues:
+   ❌ Application container (bimcalckm-app-1) is not running
+   ❌ PostgreSQL container (bimcalc-postgres) is not running
+   ❌ Database connection failed
+   ❌ Latest backup is 353 hours old (expected: <25)
+   ❌ Disk usage critical: 91%
+
+Status: CRITICAL
+
+Run 'docker logs bimcalckm-app-1' for application logs
+Run 'tail -f logs/pipeline.log' for pipeline details
+

@@ -1,0 +1,7 @@
+Family,Type,Description,Quantity,Unit,Category
+Walls,Concrete Block,200mm Concrete Block Wall,150,m2,Masonry
+Columns,Steel,UC 305x305x137,24,ea,Structural Steel
+Beams,Steel,UB 533x210x82,48,m,Structural Steel
+Slabs,Concrete,200mm Reinforced Concrete Slab,850,m2,Concrete
+Doors,Fire Door,FD30 Single Leaf,18,ea,Doors
+Windows,Aluminum,Double Glazed 1.5x1.2m,42,ea,Windows

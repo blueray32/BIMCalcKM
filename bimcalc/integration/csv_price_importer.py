@@ -195,7 +195,8 @@ class CSVPriceImporter:
             # Default to 66 (cable tray/management) if no classification found
             classification_code_str = "66"
 
-        classification_code = int(classification_code_str)
+        # Keep as string - database expects Text/String type
+        classification_code = classification_code_str
 
         # Create PriceItem
         item = PriceItemModel(

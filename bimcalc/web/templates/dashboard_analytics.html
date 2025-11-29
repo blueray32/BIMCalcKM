@@ -1,0 +1,274 @@
+{% extends "base.html" %}
+
+{% block title %}Analytics Dashboard - BIMCalc{% endblock %}
+
+{% block extra_styles %}
+<style>
+    .analytics-header {
+        background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%);
+        color: white;
+        padding: 2rem;
+        border-radius: 0.75rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 10px 30px rgba(79, 70, 229, 0.3);
+    }
+
+    .chart-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .chart-card {
+        background: white;
+        border-radius: 0.75rem;
+        padding: 1.5rem;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
+        height: 400px;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .chart-title {
+        font-size: 1.125rem;
+        font-weight: 600;
+        color: #1F2937;
+        margin-bottom: 1rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .chart-container {
+        flex: 1;
+        position: relative;
+        min-height: 0;
+        /* Critical for Chart.js resizing */
+    }
+
+    .loading-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(255, 255, 255, 0.8);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 10;
+        border-radius: 0.75rem;
+    }
+
+    .spinner {
+        border: 4px solid #f3f3f3;
+        border-top: 4px solid #4F46E5;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+        0% {
+            transform: rotate(0deg);
+        }
+
+        100% {
+            transform: rotate(360deg);
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="analytics-header">
+    <div class="flex justify-between items-center">
+        <div>
+            <h1 class="text-3xl font-bold mb-2">Project Analytics</h1>
+            <p class="opacity-90">Deep dive into project costs, resources, and trends.</p>
+        </div>
+        <div>
+            <select id="projectSelect" class="bg-white/20 border border-white/30 text-white rounded px-4 py-2"
+                onchange="loadAnalytics()">
+                <!-- Populated by JS -->
+            </select>
+        </div>
+    </div>
+</div>
+
+<div class="chart-grid">
+    <!-- Cost Trends -->
+    <div class="chart-card">
+        <div class="chart-title">
+            Cost Trends
+            <span class="text-sm text-gray-500 font-normal">Cumulative</span>
+        </div>
+        <div class="chart-container">
+            <div id="loading-trends" class="loading-overlay">
+                <div class="spinner"></div>
+            </div>
+            <canvas id="costTrendsChart"></canvas>
+        </div>
+    </div>
+
+    <!-- Category Distribution -->
+    <div class="chart-card">
+        <div class="chart-title">
+            Cost by Category
+            <span class="text-sm text-gray-500 font-normal">Distribution</span>
+        </div>
+        <div class="chart-container">
+            <div id="loading-categories" class="loading-overlay">
+                <div class="spinner"></div>
+            </div>
+            <canvas id="categoryChart"></canvas>
+        </div>
+    </div>
+
+    <!-- Resource Utilization -->
+    <div class="chart-card">
+        <div class="chart-title">
+            Resource Utilization
+            <span class="text-sm text-gray-500 font-normal">Item Count by Family</span>
+        </div>
+        <div class="chart-container">
+            <div id="loading-resources" class="loading-overlay">
+                <div class="spinner"></div>
+            </div>
+            <canvas id="resourceChart"></canvas>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    let charts = {};
+    const projectId = "{{ project_id }}"; // Injected by backend
+
+    document.addEventListener('DOMContentLoaded', () => {
+        loadAnalytics();
+    });
+
+    async function loadAnalytics() {
+        // Fetch data in parallel
+        Promise.all([
+            fetchCostTrends(),
+            fetchCategoryDistribution(),
+            fetchResourceUtilization()
+        ]);
+    }
+
+    async function fetchCostTrends() {
+        const loading = document.getElementById('loading-trends');
+        loading.style.display = 'flex';
+
+        try {
+            const res = await fetch(`/api/projects/${projectId}/analytics/cost-trends`);
+            const data = await res.json();
+
+            renderChart('costTrendsChart', 'line', data, {
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function (value) {
+                                return '€' + value.toLocaleString();
+                            }
+                        }
+                    }
+                },
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: function (context) {
+                                return '€' + context.parsed.y.toLocaleString();
+                            }
+                        }
+                    }
+                }
+            });
+        } catch (e) {
+            console.error("Failed to load cost trends", e);
+        } finally {
+            loading.style.display = 'none';
+        }
+    }
+
+    async function fetchCategoryDistribution() {
+        const loading = document.getElementById('loading-categories');
+        loading.style.display = 'flex';
+
+        try {
+            const res = await fetch(`/api/projects/${projectId}/analytics/category-distribution`);
+            const data = await res.json();
+
+            renderChart('categoryChart', 'doughnut', data, {
+                plugins: {
+                    legend: {
+                        position: 'right'
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function (context) {
+                                const value = context.parsed;
+                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const percentage = ((value / total) * 100).toFixed(1) + '%';
+                                return `€${value.toLocaleString()} (${percentage})`;
+                            }
+                        }
+                    }
+                }
+            });
+        } catch (e) {
+            console.error("Failed to load categories", e);
+        } finally {
+            loading.style.display = 'none';
+        }
+    }
+
+    async function fetchResourceUtilization() {
+        const loading = document.getElementById('loading-resources');
+        loading.style.display = 'flex';
+
+        try {
+            const res = await fetch(`/api/projects/${projectId}/analytics/resource-utilization`);
+            const data = await res.json();
+
+            renderChart('resourceChart', 'bar', data, {
+                indexAxis: 'y',
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                }
+            });
+        } catch (e) {
+            console.error("Failed to load resources", e);
+        } finally {
+            loading.style.display = 'none';
+        }
+    }
+
+    function renderChart(canvasId, type, data, options = {}) {
+        const ctx = document.getElementById(canvasId).getContext('2d');
+
+        if (charts[canvasId]) {
+            charts[canvasId].destroy();
+        }
+
+        charts[canvasId] = new Chart(ctx, {
+            type: type,
+            data: data,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                ...options
+            }
+        });
+    }
+</script>
+{% endblock %}

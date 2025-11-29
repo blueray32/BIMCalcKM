@@ -13,3 +13,5 @@ build/
 *.pyc
 *.pyo
 *.sqlite
+
+examples/agentic-coding-course-main/

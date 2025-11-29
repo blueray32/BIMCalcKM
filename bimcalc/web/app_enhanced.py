@@ -8,7 +8,7 @@ from datetime import datetime
 from decimal import Decimal
 from pathlib import Path
 from uuid import UUID, uuid4
-from typing import Dict, Optional, List, Any
+from typing import Dict, Optional, List, Any, Literal
 
 import pandas as pd
 from fastapi import (
@@ -32,7 +32,7 @@ from pydantic import BaseModel
 from sqlalchemy import func, select, text
 
 from bimcalc.config import get_config
-from bimcalc.db.connection import get_session
+from bimcalc.db.connection import get_session, get_db
 from bimcalc.db.match_results import record_match_result
 from bimcalc.db.models import (
     ClassificationMappingModel,
@@ -54,7 +54,7 @@ from bimcalc.matching.orchestrator import MatchOrchestrator
 from bimcalc.models import FlagSeverity, Item
 from bimcalc.pipeline.config_loader import load_pipeline_config
 from bimcalc.pipeline.orchestrator import PipelineOrchestrator
-from bimcalc.reporting.builder import generate_report
+# Removed: from bimcalc.reporting.builder import generate_report (function doesn't exist)
 from bimcalc.review import (
     approve_review_record,
     fetch_available_classifications,
@@ -143,6 +143,10 @@ AUTH_ENABLED = os.environ.get("BIMCALC_AUTH_DISABLED", "false").lower() != "true
 static_dir = Path(__file__).parent / "static"
 if static_dir.exists():
     app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
+
+@app.get("/favicon.ico", include_in_schema=False)
+async def favicon():
+    return Response(status_code=204)
 
 
 # ============================================================================
@@ -240,6 +244,28 @@ async def dashboard(
     - (default): Standard dashboard with quick actions
     """
     org_id, project_id = _get_org_project(request, org, project)
+
+    # Analytics view
+    if view == "analytics":
+        return templates.TemplateResponse(
+            "dashboard_analytics.html",
+            {
+                "request": request,
+                "org_id": org_id,
+                "project_id": project_id,
+            },
+        )
+
+    # Report Builder view
+    if view == "reports":
+        return templates.TemplateResponse(
+            "report_builder.html",
+            {
+                "request": request,
+                "org_id": org_id,
+                "project_id": project_id,
+            },
+        )
 
     # Executive view: Show unified command center
     if view == "executive":
@@ -4625,10 +4651,206 @@ async def update_project_rule(project_uuid: UUID, rule_id: UUID, update: RuleUpd
         if update.description is not None: rule.description = update.description
         if update.is_active is not None: rule.is_active = update.is_active
         if update.configuration is not None: rule.configuration = update.configuration
+
         if update.severity is not None: rule.severity = update.severity
         
         await session.commit()
         return {"status": "updated"}
+
+# ------------------------------------------------------------------------------
+# Document Analysis Endpoints
+# ------------------------------------------------------------------------------
+
+from bimcalc.intelligence.document_processor import DocumentProcessor
+from bimcalc.reporting.analytics import AnalyticsEngine
+from bimcalc.db.models_documents import ProjectDocumentModel, ExtractedItemModel
+from fastapi import UploadFile, BackgroundTasks, Depends
+from sqlalchemy.ext.asyncio import AsyncSession
+from bimcalc.db.models import ProjectModel
+# get_session is already imported from bimcalc.db.connection
+
+@app.on_event("startup")
+async def startup():
+    try:
+        from arq import create_pool
+        from bimcalc.worker import WorkerSettings
+        app.state.arq_pool = await create_pool(WorkerSettings.redis_settings)
+    except ImportError:
+        logger.warning("arq not installed, background tasks disabled")
+    except Exception as e:
+        logger.warning(f"Failed to initialize arq pool: {e}")
+
+@app.on_event("shutdown")
+async def shutdown():
+    if hasattr(app.state, "arq_pool"):
+        await app.state.arq_pool.close()
+
+@app.post("/api/projects/{project_uuid}/documents/upload")
+async def upload_document(
+    project_uuid: UUID,
+    file: UploadFile,
+    db: AsyncSession = Depends(get_db),
+    request: Request = None # Added request to access app state
+):
+    """Upload a document for analysis."""
+    # Verify project exists
+    result = await db.execute(select(ProjectModel).where(ProjectModel.id == project_uuid))
+    project = result.scalars().first()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    processor = DocumentProcessor(db)
+    document = await processor.ingest_document(file, project.org_id, str(project_uuid))
+    
+    # Enqueue processing job
+    if hasattr(request.app.state, "arq_pool"):
+        await request.app.state.arq_pool.enqueue_job("process_document_job", str(document.id))
+        document.status = "pending" # Ensure status is pending
+    else:
+        # Fallback for testing or if pool not init
+        logger.warning("ARQ pool not initialized, falling back to sync processing")
+        await processor.process_document(document.id) 
+    
+    return {"id": str(document.id), "filename": document.filename, "status": document.status}
+
+@app.post("/api/projects/{project_uuid}/documents/{document_id}/process")
+async def process_document_endpoint(
+    project_uuid: UUID,
+    document_id: UUID,
+    background_tasks: BackgroundTasks,
+    db: AsyncSession = Depends(get_db)
+):
+    """Trigger processing for a document."""
+    processor = DocumentProcessor(db)
+    # Note: passing db session to background task is risky if session closes. 
+    # Better to create new session in task. For now, we'll run it awaitable to ensure it finishes.
+    # Or just run it synchronously for MVP.
+    await processor.process_document(document_id)
+    return {"status": "processing_started"}
+
+@app.get("/api/projects/{project_uuid}/documents")
+async def get_project_documents(
+    project_uuid: UUID,
+    db: AsyncSession = Depends(get_db)
+):
+    """List all documents for a project."""
+    result = await db.execute(
+        select(ProjectDocumentModel)
+        .where(ProjectDocumentModel.project_id == str(project_uuid))
+        .order_by(ProjectDocumentModel.uploaded_at.desc())
+    )
+    docs = result.scalars().all()
+    return [
+        {
+            "id": str(d.id),
+            "filename": d.filename,
+            "status": d.status,
+            "uploaded_at": d.uploaded_at,
+            "file_size": d.file_size_bytes
+        }
+        for d in docs
+    ]
+
+class ConvertItemsRequest(BaseModel):
+    item_ids: List[UUID] | Literal["all"]
+
+@app.post("/api/projects/{project_uuid}/documents/{document_id}/convert")
+async def convert_document_items(
+    project_uuid: UUID,
+    document_id: UUID,
+    request: ConvertItemsRequest,
+    db: AsyncSession = Depends(get_db)
+):
+    """Convert extracted items to project estimate items."""
+    # Verify document exists and belongs to project
+    result = await db.execute(
+        select(ProjectDocumentModel)
+        .where(
+            ProjectDocumentModel.id == document_id,
+            ProjectDocumentModel.project_id == str(project_uuid)
+        )
+    )
+    document = result.scalars().first()
+    if not document:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    # Fetch items to convert
+    query = select(ExtractedItemModel).where(
+        ExtractedItemModel.document_id == document_id,
+        ExtractedItemModel.is_converted == False
+    )
+    
+    if request.item_ids != "all":
+        query = query.where(ExtractedItemModel.id.in_(request.item_ids))
+        
+    result = await db.execute(query)
+    items_to_convert = result.scalars().all()
+    
+    if not items_to_convert:
+        return {"converted_count": 0, "message": "No eligible items found to convert"}
+
+    converted_count = 0
+    for extracted in items_to_convert:
+        # Create new ItemModel
+        new_item = ItemModel(
+            id=uuid4(),
+            org_id=document.org_id,
+            project_id=document.project_id,
+            family="Document Import",
+            type_name=extracted.description or "Unknown Item",
+            category="Uncategorized",
+            system_type="Document Import",
+            quantity=extracted.quantity,
+            unit=extracted.unit,
+            attributes={
+                "source_document_id": str(document_id),
+                "source_extracted_item_id": str(extracted.id),
+                "estimated_unit_price": float(extracted.unit_price) if extracted.unit_price else None,
+                "original_text": extracted.raw_text
+            }
+        )
+        db.add(new_item)
+        
+        # Update extracted item status
+        extracted.is_converted = True
+        extracted.converted_item_id = new_item.id
+        
+        converted_count += 1
+    
+    await db.commit()
+    
+    return {
+        "converted_count": converted_count,
+        "message": f"Successfully converted {converted_count} items to project estimate"
+    }
+
+@app.get("/api/projects/{project_uuid}/documents/{document_id}/results")
+async def get_document_results(
+    project_uuid: UUID,
+    document_id: UUID,
+    db: AsyncSession = Depends(get_db)
+):
+    """Get extracted items for a document."""
+    result = await db.execute(
+        select(ExtractedItemModel)
+        .where(ExtractedItemModel.document_id == document_id)
+        .order_by(ExtractedItemModel.page_number)
+    )
+    items = result.scalars().all()
+    return [
+        {
+            "id": str(i.id),
+            "description": i.description,
+            "quantity": i.quantity,
+            "unit": i.unit,
+            "unit_price": i.unit_price,
+            "total_price": i.total_price,
+            "confidence": i.confidence_score,
+            "page": i.page_number,
+            "raw_text": i.raw_text
+        }
+        for i in items
+    ]
 
 @app.delete("/api/projects/{project_uuid}/intelligence/rules/{rule_id}")
 async def delete_project_rule(project_uuid: UUID, rule_id: UUID):
@@ -4645,6 +4867,114 @@ async def delete_project_rule(project_uuid: UUID, rule_id: UUID):
         return {"status": "deleted"}
 
 
+
+
+# ============================================================================
+# Analytics & Reporting
+# ============================================================================
+
+@app.get("/api/projects/{project_uuid}/analytics/cost-trends")
+async def get_cost_trends(
+    project_uuid: UUID,
+    db: AsyncSession = Depends(get_db)
+):
+    """Get historical cost trends."""
+    try:
+        engine = AnalyticsEngine(db)
+        return await engine.get_cost_trends(project_uuid)
+    except Exception as e:
+        # Return empty data if analytics fails (e.g., project doesn't exist)
+        return {"labels": [], "datasets": [{"label": "Cumulative Cost", "data": [], "borderColor": "#4F46E5", "backgroundColor": "rgba(79, 70, 229, 0.1)", "fill": True}]}
+
+@app.get("/api/projects/{project_uuid}/analytics/category-distribution")
+async def get_category_distribution(
+    project_uuid: UUID,
+    db: AsyncSession = Depends(get_db)
+):
+    """Get cost distribution by category."""
+    try:
+        engine = AnalyticsEngine(db)
+        return await engine.get_category_distribution(project_uuid)
+    except Exception as e:
+        return {"labels": [], "datasets": [{"data": [], "backgroundColor": []}]}
+
+@app.get("/api/projects/{project_uuid}/analytics/resource-utilization")
+async def get_resource_utilization(
+    project_uuid: UUID,
+    db: AsyncSession = Depends(get_db)
+):
+    """Get resource utilization metrics."""
+    try:
+        engine = AnalyticsEngine(db)
+        return await engine.get_resource_utilization(project_uuid)
+    except Exception as e:
+        return {"labels": [], "datasets": [{"label": "Item Count", "data": [], "backgroundColor": "#10B981"}]}
+
+
+# ============================================================================
+# Report Builder
+# ============================================================================
+
+class ReportTemplateCreate(BaseModel):
+    name: str
+    org_id: str
+    project_id: str | None = None
+    configuration: dict
+
+@app.post("/api/reports/templates")
+async def create_report_template(
+    template: ReportTemplateCreate,
+    db: AsyncSession = Depends(get_db)
+):
+    """Create a new report template."""
+    from bimcalc.reporting.builder import ReportBuilder
+    builder = ReportBuilder(db)
+    return await builder.create_template(
+        org_id=template.org_id,
+        name=template.name,
+        config=template.configuration,
+        project_id=template.project_id
+    )
+
+@app.get("/api/reports/templates")
+async def get_report_templates(
+    org_id: str,
+    project_id: str | None = None,
+    db: AsyncSession = Depends(get_db)
+):
+    """Get available report templates."""
+    from bimcalc.reporting.builder import ReportBuilder
+    builder = ReportBuilder(db)
+    return await builder.get_templates(org_id, project_id)
+
+
+# ============================================================================
+# Email Notifications
+# ============================================================================
+
+class SendEmailRequest(BaseModel):
+    recipient_emails: list[str]
+    report_type: str = "weekly"
+
+@app.post("/api/projects/{project_uuid}/email/send-report")
+async def send_project_report(
+    project_uuid: UUID,
+    request: SendEmailRequest,
+    background_tasks: BackgroundTasks,
+    db_request: Request = None
+):
+    """Send a project report via email using background task."""
+    # Enqueue email job
+    if hasattr(db_request.app.state, "arq_pool"):
+        await db_request.app.state.arq_pool.enqueue_job(
+            "send_scheduled_report_job",
+            str(project_uuid),
+            request.recipient_emails,
+            request.report_type
+        )
+        return {"status": "queued", "job": "send_scheduled_report_job"}
+    else:
+        return {"status": "error", "message": "ARQ not available"}
 
 
 # ============================================================================

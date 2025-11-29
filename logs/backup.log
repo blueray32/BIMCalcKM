@@ -61,3 +61,52 @@ BIMCalc PostgreSQL Backup (Docker)
 /Users/ciarancox/BIMCalcKM/scripts/backup_postgres.sh: line 23: docker: command not found
 ❌ ERROR: PostgreSQL container 'bimcalc-postgres' is not running
    Start it with: docker start bimcalc-postgres
+=========================================
+BIMCalc Database Backup
+=========================================
+
+📊 Database size: 592K
+🔄 Creating backup...
+✅ Backup created: ./backups/bimcalc_backup_20251128_010004.db (572K)
+
+🧹 Cleaning old backups (older than 30 days)...
+   No old backups to delete
+
+📁 Current backups:
+   ./backups/bimcalc_backup_20251128_010004.db (572K)
+
+=========================================
+Backup Complete
+=========================================
+=========================================
+BIMCalc PostgreSQL Backup (Docker)
+=========================================
+
+/Users/ciarancox/BIMCalcKM/scripts/backup_postgres.sh: line 23: docker: command not found
+❌ ERROR: PostgreSQL container 'bimcalc-postgres' is not running
+   Start it with: docker start bimcalc-postgres
+=========================================
+BIMCalc Database Backup
+=========================================
+
+📊 Database size: 592K
+🔄 Creating backup...
+✅ Backup created: ./backups/bimcalc_backup_20251129_010000.db (572K)
+
+🧹 Cleaning old backups (older than 30 days)...
+   No old backups to delete
+
+📁 Current backups:
+   ./backups/bimcalc_backup_20251128_010004.db (572K)
+   ./backups/bimcalc_backup_20251129_010000.db (572K)
+
+=========================================
+Backup Complete
+=========================================
+=========================================
+BIMCalc PostgreSQL Backup (Docker)
+=========================================
+
+/Users/ciarancox/BIMCalcKM/scripts/backup_postgres.sh: line 23: docker: command not found
+❌ ERROR: PostgreSQL container 'bimcalc-postgres' is not running
+   Start it with: docker start bimcalc-postgres

@@ -1,0 +1,19 @@
+Starting enhanced web UI on http://0.0.0.0:8001
+INFO:     Started server process [35322]
+INFO:     Waiting for application startup.
+[2m2025-11-29T16:17:05.624611Z[0m [[33m[1mwarning  [0m] [1marq not installed, background tasks disabled[0m [[0m[1m[34mbimcalc.web.app_enhanced[0m][0m
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8001 (Press CTRL+C to quit)
+[2m2025-11-29T16:17:09.795173Z[0m [[32m[1minfo     [0m] [1mrequest_started               [0m [[0m[1m[34mbimcalc.web.app_enhanced[0m][0m [36mclient_ip[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mHEAD[0m [36mpath[0m=[35m/[0m [36mrequest_id[0m=[35m89b06aef-81c1-4267-835f-4b618f9ed485[0m
+[2m2025-11-29T16:17:09.796679Z[0m [[32m[1minfo     [0m] [1mrequest_completed             [0m [[0m[1m[34mbimcalc.web.app_enhanced[0m][0m [36mrequest_id[0m=[35m89b06aef-81c1-4267-835f-4b618f9ed485[0m [36mstatus_code[0m=[35m405[0m
+INFO:     127.0.0.1:56365 - "HEAD / HTTP/1.1" 405 Method Not Allowed
+[2m2025-11-29T16:17:09.804810Z[0m [[32m[1minfo     [0m] [1mrequest_started               [0m [[0m[1m[34mbimcalc.web.app_enhanced[0m][0m [36mclient_ip[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mHEAD[0m [36mpath[0m=[35m/review[0m [36mrequest_id[0m=[35m3be67eae-dee4-47fe-ab7b-abe1751f129a[0m
+[2m2025-11-29T16:17:09.805500Z[0m [[32m[1minfo     [0m] [1mrequest_completed             [0m [[0m[1m[34mbimcalc.web.app_enhanced[0m][0m [36mrequest_id[0m=[35m3be67eae-dee4-47fe-ab7b-abe1751f129a[0m [36mstatus_code[0m=[35m405[0m
+INFO:     127.0.0.1:56367 - "HEAD /review HTTP/1.1" 405 Method Not Allowed
+[2m2025-11-29T16:17:18.972333Z[0m [[32m[1minfo     [0m] [1mrequest_started               [0m [[0m[1m[34mbimcalc.web.app_enhanced[0m][0m [36mclient_ip[0m=[35m127.0.0.1[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/[0m [36mrequest_id[0m=[35m157cfacc-229c-45f0-87f3-18c70a01a482[0m
+[2m2025-11-29T16:17:18.973062Z[0m [[32m[1minfo     [0m] [1mrequest_completed             [0m [[0m[1m[34mbimcalc.web.app_enhanced[0m][0m [36mrequest_id[0m=[35m157cfacc-229c-45f0-87f3-18c70a01a482[0m [36mstatus_code[0m=[35m307[0m
+INFO:     127.0.0.1:56377 - "GET / HTTP/1.1" 307 Temporary Redirect
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [35322]

@@ -1,0 +1,7 @@
+SKU,Description,Unit,Unit Price,Category,Supplier,Classification Code
+CB200,Concrete Block 200mm,m2,45.50,Masonry,BuildMart,420
+UC305,Steel Column UC305,ea,285.00,Structural Steel,SteelCo,510
+UB533,Steel Beam UB533,m,95.75,Structural Steel,SteelCo,510
+CS200,Concrete Slab 200mm,m2,125.00,Concrete,ConcreteWorks,330
+FD30,Fire Door FD30,ea,450.00,Doors,DoorTech,810
+AW15,Aluminum Window,ea,525.00,Windows,WindowsPlus,850

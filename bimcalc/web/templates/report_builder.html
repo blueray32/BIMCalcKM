@@ -1,0 +1,229 @@
+{% extends "base.html" %}
+
+{% block title %}Report Builder - BIMCalc{% endblock %}
+
+{% block extra_styles %}
+<style>
+    .builder-container {
+        display: grid;
+        grid-template-columns: 300px 1fr;
+        gap: 2rem;
+        height: calc(100vh - 100px);
+    }
+
+    .sidebar {
+        background: white;
+        border-radius: 0.75rem;
+        padding: 1.5rem;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+    }
+
+    .main-content {
+        background: white;
+        border-radius: 0.75rem;
+        padding: 2rem;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        overflow-y: auto;
+    }
+
+    .section-card {
+        border: 1px solid #e5e7eb;
+        border-radius: 0.5rem;
+        padding: 1rem;
+        margin-bottom: 1rem;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .section-card:hover {
+        border-color: #4F46E5;
+        background: #F9FAFB;
+    }
+
+    .section-card.selected {
+        border-color: #4F46E5;
+        background: #EEF2FF;
+    }
+
+    .section-icon {
+        font-size: 1.5rem;
+    }
+
+    .preview-area {
+        border: 2px dashed #e5e7eb;
+        border-radius: 0.5rem;
+        padding: 2rem;
+        text-align: center;
+        color: #6B7280;
+        min-height: 400px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="mb-6 flex justify-between items-center">
+    <div>
+        <h1 class="text-2xl font-bold text-gray-900">Custom Report Builder</h1>
+        <p class="text-gray-600">Design and generate custom project reports.</p>
+    </div>
+    <div class="flex gap-3">
+        <button onclick="saveTemplate()"
+            class="px-4 py-2 bg-white border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">
+            Save Template
+        </button>
+        <button onclick="generateReport()" class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700">
+            Generate Report
+        </button>
+    </div>
+</div>
+
+<div class="builder-container">
+    <!-- Sidebar: Available Sections -->
+    <div class="sidebar">
+        <h3 class="font-semibold text-gray-700">Available Sections</h3>
+        <div id="availableSections">
+            <div class="section-card" onclick="toggleSection('executive_summary')">
+                <input type="checkbox" id="chk_executive_summary" class="h-4 w-4 text-indigo-600">
+                <span class="section-icon">📄</span>
+                <div>
+                    <div class="font-medium">Executive Summary</div>
+                    <div class="text-xs text-gray-500">High-level project overview</div>
+                </div>
+            </div>
+
+            <div class="section-card" onclick="toggleSection('cost_trends')">
+                <input type="checkbox" id="chk_cost_trends" class="h-4 w-4 text-indigo-600">
+                <span class="section-icon">📈</span>
+                <div>
+                    <div class="font-medium">Cost Trends</div>
+                    <div class="text-xs text-gray-500">Historical cost analysis chart</div>
+                </div>
+            </div>
+
+            <div class="section-card" onclick="toggleSection('category_distribution')">
+                <input type="checkbox" id="chk_category_distribution" class="h-4 w-4 text-indigo-600">
+                <span class="section-icon">📊</span>
+                <div>
+                    <div class="font-medium">Category Breakdown</div>
+                    <div class="text-xs text-gray-500">Cost distribution by category</div>
+                </div>
+            </div>
+
+            <div class="section-card" onclick="toggleSection('resource_utilization')">
+                <input type="checkbox" id="chk_resource_utilization" class="h-4 w-4 text-indigo-600">
+                <span class="section-icon">🏗️</span>
+                <div>
+                    <div class="font-medium">Resource Usage</div>
+                    <div class="text-xs text-gray-500">Item counts and utilization</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content: Preview -->
+    <div class="main-content">
+        <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Report Name</label>
+            <input type="text" id="reportName" class="w-full border-gray-300 rounded-md shadow-sm"
+                placeholder="e.g., Weekly Status Report">
+        </div>
+
+        <h3 class="font-semibold text-gray-700 mb-4">Report Preview</h3>
+        <div id="reportPreview" class="preview-area">
+            <p>Select sections from the sidebar to build your report.</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const projectId = "{{ project_id }}";
+    const orgId = "{{ org_id }}";
+    let selectedSections = [];
+
+    function toggleSection(sectionId) {
+        const checkbox = document.getElementById(`chk_${sectionId}`);
+        checkbox.checked = !checkbox.checked;
+
+        if (checkbox.checked) {
+            selectedSections.push(sectionId);
+            document.querySelector(`[onclick="toggleSection('${sectionId}')"]`).classList.add('selected');
+        } else {
+            selectedSections = selectedSections.filter(id => id !== sectionId);
+            document.querySelector(`[onclick="toggleSection('${sectionId}')"]`).classList.remove('selected');
+        }
+
+        updatePreview();
+    }
+
+    function updatePreview() {
+        const preview = document.getElementById('reportPreview');
+        if (selectedSections.length === 0) {
+            preview.innerHTML = '<p>Select sections from the sidebar to build your report.</p>';
+            return;
+        }
+
+        preview.innerHTML = selectedSections.map(section => `
+            <div class="w-full p-4 mb-4 border border-gray-200 rounded bg-gray-50">
+                <h4 class="font-bold text-gray-700 capitalize">${section.replace('_', ' ')}</h4>
+                <div class="h-32 bg-gray-200 rounded mt-2 flex items-center justify-center text-gray-400">
+                    [${section} content placeholder]
+                </div>
+            </div>
+        `).join('');
+    }
+
+    async function saveTemplate() {
+        const name = document.getElementById('reportName').value;
+        if (!name) {
+            alert('Please enter a report name');
+            return;
+        }
+
+        try {
+            const res = await fetch('/api/reports/templates', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    name: name,
+                    org_id: orgId,
+                    project_id: projectId,
+                    configuration: {
+                        sections: selectedSections
+                    }
+                })
+            });
+
+            if (res.ok) {
+                alert('Template saved successfully!');
+            } else {
+                alert('Failed to save template');
+            }
+        } catch (e) {
+            console.error(e);
+            alert('Error saving template');
+        }
+    }
+
+    async function generateReport() {
+        if (selectedSections.length === 0) {
+            alert('Please select at least one section');
+            return;
+        }
+
+        alert('Generating report... (This is a demo action)');
+        // In real implementation, this would call an API to generate PDF
+    }
+</script>
+{% endblock %}

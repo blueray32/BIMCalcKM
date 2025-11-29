@@ -112,6 +112,11 @@ async def get_session() -> AsyncGenerator[AsyncSession, None]:
         await session.close()
 
 
+async def get_db() -> AsyncGenerator[AsyncSession, None]:
+    """Get async database session (FastAPI dependency)."""
+    async with get_session() as session:
+        yield session
+
 async def init_db() -> None:
     """Initialize database (create all tables).
 

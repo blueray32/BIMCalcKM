@@ -166,13 +166,99 @@ async def batch_generate_checklists_job(
             progress_callback=report_progress
         )
         
-        print(f"Batch generation complete: {results}")
-        return results
+async def process_document_job(ctx: dict[str, Any], document_id: str) -> dict[str, Any]:
+    """ARQ worker task for processing a document.
+    
+    Args:
+        ctx: ARQ context
+        document_id: ID of the document to process
+        
+    Returns:
+        Result dict
+    """
+    from bimcalc.intelligence.document_processor import DocumentProcessor
+    from bimcalc.db.models_documents import ProjectDocumentModel
+    from sqlalchemy import select
+    
+    print(f"Starting document processing job for {document_id}")
+    
+    session_maker = ctx["session_maker"]
+    async with session_maker() as session:
+        # Verify document exists
+        result = await session.execute(select(ProjectDocumentModel).where(ProjectDocumentModel.id == document_id))
+        document = result.scalars().first()
+        
+        if not document:
+            print(f"Document {document_id} not found")
+            return {"status": "failed", "error": "Document not found"}
+            
+        # Update status to processing
+        document.status = "processing"
+        await session.commit()
+        
+        try:
+            processor = DocumentProcessor(session)
+            # Re-fetch document to ensure it's attached to session if needed, 
+            # though DocumentProcessor takes session.
+            # Note: DocumentProcessor.process_document expects UUID or str? 
+            # Let's check implementation. It likely takes UUID.
+            from uuid import UUID
+            await processor.process_document(UUID(document_id))
+            
+            print(f"Document {document_id} processing completed successfully")
+            return {"status": "completed"}
+            
+        except Exception as e:
+            print(f"Document {document_id} processing failed: {str(e)}")
+            # Update status to failed
+            document.status = "failed"
+            document.error_message = str(e)
+            await session.commit()
+            return {"status": "failed", "error": str(e)}
 
 
-# Worker settings
+async def send_scheduled_report_job(ctx, project_id: str, recipient_emails: list[str], report_type: str = "weekly"):
+    """Background job to generate and send scheduled reports via email.
+    
+    Args:
+        ctx: ARQ context
+        project_id: UUID of the project
+        recipient_emails: List of email addresses to send the report to
+        report_type: Type of report ("weekly", "monthly", etc.)
+    """
+    from bimcalc.notifications.email import EmailService
+    from bimcalc.reporting.dashboard_metrics import compute_dashboard_metrics
+    from uuid import UUID
+    
+    print(f"Starting scheduled {report_type} report for project {project_id}")
+    
+    try:
+        async with get_session() as session:
+            # Fetch project metrics
+            metrics = await compute_dashboard_metrics(session, "default", project_id)
+            
+            # Send email
+            email_service = EmailService()
+            success = email_service.send_weekly_report(
+                to_emails=recipient_emails,
+                project_name=f"Project {project_id}",
+                metrics=metrics
+            )
+            
+            if success:
+                print(f"Successfully sent {report_type} report to {recipient_emails}")
+                return {"status": "sent", "recipients": recipient_emails}
+            else:
+                print(f"Failed to send {report_type} report (SMTP not configured)")
+                return {"status": "skipped", "reason": "SMTP not configured"}
+                
+    except Exception as e:
+        print(f"Report generation/sending failed: {str(e)}")
+        return {"status": "failed", "error": str(e)}
+
+
 class WorkerSettings:
-    functions = [run_crail4_sync, send_daily_digest, batch_generate_checklists_job]
+    functions = [run_crail4_sync, send_daily_digest, batch_generate_checklists_job, process_document_job, send_scheduled_report_job]
     on_startup = startup
     on_shutdown = shutdown
     redis_settings = RedisSettings.from_dsn(

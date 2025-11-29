@@ -1,207 +1,86 @@
-"""Report builder with SCD2 as-of queries and EU formatting.
+from typing import List, Dict, Any
+from uuid import UUID
+import json
 
-Generates deterministic, reproducible cost reports.
-"""
-
-from __future__ import annotations
-
-from datetime import datetime
-
-import pandas as pd
-from sqlalchemy import and_, or_, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from bimcalc.config import get_config
-from bimcalc.db.models import ItemMappingModel, ItemModel, PriceItemModel
-
+from bimcalc.db.models_reporting import ReportTemplateModel
+from bimcalc.reporting.analytics import AnalyticsEngine
 
 class ReportBuilder:
-    """Builds cost reports with SCD2 temporal queries."""
+    """Service for managing report templates and generating reports."""
 
-    def __init__(self, session: AsyncSession):
-        """Initialize builder with database session.
+    def __init__(self, db: AsyncSession):
+        self.db = db
+        self.analytics = AnalyticsEngine(db)
 
-        Args:
-            session: SQLAlchemy async session
-        """
-        self.session = session
-        self.config = get_config()
-
-    async def build(
-        self,
-        org_id: str,
-        project_id: str,
-        as_of: datetime | None = None,
-    ) -> pd.DataFrame:
-        """Generate cost report using SCD2 as-of query.
-
-        Query joins items with mappings valid at as_of timestamp,
-        then joins with price items. Report is deterministic and
-        reproducible for same timestamp.
-
-        Args:
-            org_id: Organization identifier
-            project_id: Project identifier
-            as_of: Report timestamp (default: now)
-
-        Returns:
-            pandas DataFrame with EU-formatted cost report
-
-        Raises:
-            SQLAlchemyError: If database query fails
-        """
-        if as_of is None:
-            as_of = datetime.utcnow()
-
-        # SCD2 as-of join query
-        stmt = (
-            select(
-                ItemModel.id.label("item_id"),
-                ItemModel.family,
-                ItemModel.type_name,
-                ItemModel.category,
-                ItemModel.quantity,
-                ItemModel.unit.label("item_unit"),
-                ItemModel.canonical_key,
-                ItemModel.source_file,  # ADDED: Revit source traceability
-                PriceItemModel.sku,
-                PriceItemModel.description,
-                PriceItemModel.unit_price,
-                PriceItemModel.unit.label("price_unit"),
-                PriceItemModel.currency,
-                PriceItemModel.vat_rate,
-                ItemMappingModel.created_by.label("matched_by"),
-                ItemMappingModel.reason.label("match_reason"),
-            )
-            .select_from(ItemModel)
-            .outerjoin(
-                ItemMappingModel,
-                and_(
-                    ItemModel.canonical_key == ItemMappingModel.canonical_key,
-                    ItemMappingModel.org_id == org_id,
-                    ItemMappingModel.start_ts <= as_of,
-                    or_(
-                        ItemMappingModel.end_ts.is_(None),
-                        ItemMappingModel.end_ts > as_of,
-                    ),
-                ),
-            )
-            .outerjoin(
-                PriceItemModel,
-                ItemMappingModel.price_item_id == PriceItemModel.id,
-            )
-            .where(
-                and_(
-                    ItemModel.org_id == org_id,
-                    ItemModel.project_id == project_id,
-                )
-            )
-            .order_by(ItemModel.family, ItemModel.type_name)
+    async def create_template(self, org_id: str, name: str, config: Dict[str, Any], project_id: str = None) -> ReportTemplateModel:
+        """Create a new report template."""
+        template = ReportTemplateModel(
+            org_id=org_id,
+            project_id=project_id,
+            name=name,
+            configuration=config
         )
+        self.db.add(template)
+        await self.db.commit()
+        await self.db.refresh(template)
+        return template
 
-        result = await self.session.execute(stmt)
-        rows = result.all()
-
-        # Convert to list of dicts
-        data = [
-            {
-                "item_id": str(row.item_id),
-                "family": row.family,
-                "type": row.type_name,
-                "category": row.category,
-                "quantity": float(row.quantity) if row.quantity else None,
-                "unit": row.item_unit,
-                "canonical_key": row.canonical_key,
-                "source_file": row.source_file,  # ADDED: Revit source traceability
-                "sku": row.sku,
-                "description": row.description,
-                "unit_price": float(row.unit_price) if row.unit_price else None,
-                "currency": row.currency,
-                "vat_rate": float(row.vat_rate) if row.vat_rate else None,
-                "matched_by": row.matched_by,
-                "match_reason": row.match_reason,
-            }
-            for row in rows
-        ]
-
-        # Create DataFrame
-        df = pd.DataFrame(data)
-
-        if df.empty:
-            return df
-
-        # Calculate totals
-        df["total_net"] = df.apply(
-            lambda x: (
-                float(x["quantity"]) * float(x["unit_price"])
-                if x["quantity"] and x["unit_price"]
-                else None
-            ),
-            axis=1,
-        )
-
-        df["total_gross"] = df.apply(
-            lambda x: (
-                x["total_net"] * (1 + float(x["vat_rate"]))
-                if x["total_net"] and x["vat_rate"]
-                else x["total_net"]
-            ),
-            axis=1,
-        )
-
-        # Apply EU formatting
-        df = self._format_eu(df)
-
-        return df
-
-    def _format_eu(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Apply EU locale formatting (EUR symbol, comma thousands, period decimal).
-
-        Args:
-            df: DataFrame to format
-
-        Returns:
-            Formatted DataFrame
-        """
-        eu_config = self.config.eu
-
-        # Format currency columns
-        for col in ["unit_price", "total_net", "total_gross"]:
-            if col in df.columns:
-                df[f"{col}_formatted"] = df[col].apply(
-                    lambda x: self._format_currency(x, eu_config.currency)
-                    if pd.notna(x)
-                    else ""
-                )
-
-        # Format VAT rate as percentage
-        if "vat_rate" in df.columns:
-            df["vat_rate_formatted"] = df["vat_rate"].apply(
-                lambda x: f"{x * 100:.0f}%" if pd.notna(x) else ""
+    async def get_templates(self, org_id: str, project_id: str = None) -> List[ReportTemplateModel]:
+        """Get available templates for an org/project."""
+        query = select(ReportTemplateModel).where(ReportTemplateModel.org_id == org_id)
+        
+        if project_id:
+            # Include project-specific templates OR global org templates
+            query = query.where(
+                (ReportTemplateModel.project_id == project_id) | 
+                (ReportTemplateModel.project_id.is_(None))
             )
-
-        return df
-
-    def _format_currency(self, value: float, currency: str) -> str:
-        """Format currency value with EU locale.
-
-        Args:
-            value: Numeric value
-            currency: Currency code (default EUR)
-
-        Returns:
-            Formatted string (e.g., "€1.234,56")
-        """
-        # Format with thousands separator (.) and decimal separator (,)
-        # Note: Using standard comma decimal for now (can be locale-specific)
-        formatted = f"{value:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-
-        # Add currency symbol
-        if currency == "EUR":
-            return f"€{formatted}"
         else:
-            return f"{formatted} {currency}"
+            query = query.where(ReportTemplateModel.project_id.is_(None))
+            
+        result = await self.db.execute(query)
+        return result.scalars().all()
 
+    async def generate_report_data(self, project_id: UUID, template_id: UUID) -> Dict[str, Any]:
+        """Gather all data required for the report based on template config."""
+        template = await self.db.get(ReportTemplateModel, template_id)
+        if not template:
+            raise ValueError("Template not found")
+
+        config = template.configuration
+        sections = config.get("sections", [])
+        
+        report_data = {
+            "project_id": str(project_id),
+            "generated_at": str(datetime.now()),
+            "sections": {}
+        }
+
+        # Gather data for selected sections
+        if "cost_trends" in sections:
+            report_data["sections"]["cost_trends"] = await self.analytics.get_cost_trends(project_id)
+            
+        if "category_distribution" in sections:
+            report_data["sections"]["category_distribution"] = await self.analytics.get_category_distribution(project_id)
+            
+        if "resource_utilization" in sections:
+            report_data["sections"]["resource_utilization"] = await self.analytics.get_resource_utilization(project_id)
+
+        # Add more sections as needed (e.g., risk, compliance)
+        
+        return report_data
+
+    # Future: generate_pdf(data), generate_excel(data)
+
+
+import pandas as pd
+from datetime import datetime, timezone
+from sqlalchemy import and_, func
+
+from bimcalc.db.models import ItemModel, ItemMappingModel, PriceItemModel
 
 async def generate_report(
     session: AsyncSession,
@@ -209,16 +88,80 @@ async def generate_report(
     project_id: str,
     as_of: datetime | None = None,
 ) -> pd.DataFrame:
-    """Convenience function: generate cost report.
+    """Generate cost report with as-of temporal query.
 
     Args:
         session: Database session
-        org_id: Organization identifier
-        project_id: Project identifier
-        as_of: Report timestamp (default: now)
+        org_id: Organization ID
+        project_id: Project ID
+        as_of: Timestamp for temporal query (default: now)
 
     Returns:
-        pandas DataFrame with EU-formatted report
+        DataFrame with report data
     """
-    builder = ReportBuilder(session)
-    return await builder.build(org_id, project_id, as_of)
+    if as_of is None:
+        as_of = datetime.now(timezone.utc)
+
+    # Query: Items -> Mapping (SCD2 as-of) -> Price
+    stmt = (
+        select(
+            ItemModel.family,
+            ItemModel.type_name,
+            ItemModel.quantity,
+            ItemModel.unit,
+            PriceItemModel.sku,
+            PriceItemModel.description,
+            PriceItemModel.unit_price,
+            PriceItemModel.currency,
+            PriceItemModel.vat_rate,
+        )
+        .select_from(ItemModel)
+        .join(
+            ItemMappingModel,
+            and_(
+                ItemMappingModel.org_id == ItemModel.org_id,
+                ItemMappingModel.canonical_key == ItemModel.canonical_key,
+                ItemMappingModel.start_ts <= as_of,
+                (ItemMappingModel.end_ts.is_(None)) | (ItemMappingModel.end_ts > as_of),
+            ),
+            isouter=True,  # Left join to include unmatched items
+        )
+        .join(
+            PriceItemModel,
+            ItemMappingModel.price_item_id == PriceItemModel.id,
+            isouter=True,
+        )
+        .where(
+            ItemModel.org_id == org_id,
+            ItemModel.project_id == project_id,
+        )
+    )
+
+    result = await session.execute(stmt)
+    rows = result.all()
+
+    data = []
+    for row in rows:
+        qty = float(row.quantity or 0)
+        price = float(row.unit_price or 0)
+        vat = float(row.vat_rate or 0)
+        
+        net = qty * price
+        gross = net * (1 + vat)
+
+        data.append({
+            "family": row.family,
+            "type": row.type_name,
+            "quantity": qty,
+            "unit": row.unit,
+            "sku": row.sku,
+            "description": row.description,
+            "unit_price": price,
+            "currency": row.currency,
+            "vat_rate": vat,
+            "total_net": net,
+            "total_gross": gross,
+        })
+
+    return pd.DataFrame(data)
+

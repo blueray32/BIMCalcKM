@@ -358,6 +358,11 @@ bimcalc web serve --host 0.0.0.0 --port 8001
 
 # Reporting
 bimcalc report --project <project-id> --output report.csv
+
+# Agent (RAG)
+bimcalc agent ingest <file> --title "Doc Title"
+bimcalc agent search "query"
+bimcalc agent chat
 ```
 
 ## 🐳 Docker Tips

@@ -39,6 +39,8 @@ dependencies = [
     "aiosmtplib>=3.0",       # Email sending
     "email-validator>=2.1",  # Email validation
     "aiohttp>=3.9",          # Slack integration
+    "pdfplumber>=0.10.0",    # PDF text extraction
+    "aiofiles>=23.0",        # Async file I/O
 ]
 
 [tool.setuptools.packages.find]

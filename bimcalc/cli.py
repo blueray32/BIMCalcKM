@@ -42,6 +42,11 @@ app.add_typer(review_cli, name="review")
 
 web_cli = typer.Typer(help="Web UI / API")
 app.add_typer(web_cli, name="web")
+
+# Register Agent CLI
+from bimcalc.agent.cli import agent_cli
+app.add_typer(agent_cli, name="agent")
+
 console = Console()
 
 

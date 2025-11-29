@@ -88,6 +88,18 @@ trust_levels:
     priority: 50
     description: "Keyword pattern matching in family/type names"
     rules:
+      # Architectural / Structural (Sample Data Support)
+      - family_contains: ["block", "brick", "masonry"]
+        classification_code: 420
+      - family_contains: ["column", "beam", "steel"]
+        classification_code: 510
+      - family_contains: ["slab", "concrete"]
+        classification_code: 330
+      - family_contains: ["door"]
+        classification_code: 810
+      - family_contains: ["window"]
+        classification_code: 850
+
       # Electrical keywords
       - family_contains: ["tray", "containment", "ladder"]
         classification_code: 2650
@@ -137,5 +149,10 @@ classification_codes:
   2650: "Cable Management (Trays & Conduit)"
   2701: "Communications & Data"
   2801: "Fire Detection & Alarm"
+  420: "Unit Masonry"
+  510: "Structural Metal Framing"
+  330: "Cast-in-Place Concrete"
+  810: "Doors"
+  850: "Windows"
   9999: "Unknown (Requires Manual Classification)"
   61: "Electrical Distribution (Project Specific)"

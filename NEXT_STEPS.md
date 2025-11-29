@@ -68,7 +68,30 @@ python -m bimcalc.cli sync-prices
 
 ---
 
-### 3. Configure Production Data Sources (30-60 minutes)
+### 3. Configure Agent & Knowledge Base (15 minutes)
+
+**Why:** Enable the AI assistant to answer questions about your specific project data.
+
+1.  **Set OpenAI API Key:**
+    Ensure `OPENAI_API_KEY` is set in your `.env` or production environment.
+
+2.  **Ingest Documentation:**
+    Populate the RAG vector database with your project docs:
+    ```bash
+    # Ingest all markdown files in docs/
+    for f in docs/*.md; do
+        bimcalc agent ingest "$f" --doc-type "documentation"
+    done
+    ```
+
+3.  **Verify Agent:**
+    ```bash
+    bimcalc agent search "deployment"
+    ```
+
+---
+
+### 4. Configure Production Data Sources (30-60 minutes)
 
 **Current Status:** Only test data enabled
 

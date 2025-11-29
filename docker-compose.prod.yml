@@ -70,15 +70,22 @@ services:
       PLAYWRIGHT_CDP_URL: ws://browser:3000
       BIMCALC_AUTH_DISABLED: "false"
       LOG_LEVEL: INFO
+      # Email/SMTP Configuration (AWS SES)
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_USE_TLS: ${SMTP_USE_TLS:-true}
+      FROM_EMAIL: ${FROM_EMAIL:-noreply@bimcalc.com}
+      FROM_NAME: ${FROM_NAME:-BIMCalc Reports}
     command:
-      - "gunicorn"
+      - "uvicorn"
       - "bimcalc.web.app_enhanced:app"
-      - "--workers"
-      - "4"
-      - "--worker-class"
-      - "uvicorn.workers.UvicornWorker"
-      - "--bind"
-      - "0.0.0.0:8001"
+      - "--host"
+      - "0.0.0.0"
+      - "--port"
+      - "8001"
+      - "--reload"
     ports:
       - "8001:8001"
     networks:
@@ -96,6 +103,14 @@ services:
       - PLAYWRIGHT_CDP_URL=ws://browser:3000
       - BIMCALC_AUTH_DISABLED=false
       - API_BASE_URL=http://app:8001
+      # Email/SMTP Configuration (AWS SES)
+      - SMTP_HOST=${SMTP_HOST:-}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USERNAME=${SMTP_USERNAME:-}
+      - SMTP_PASSWORD=${SMTP_PASSWORD:-}
+      - SMTP_USE_TLS=${SMTP_USE_TLS:-true}
+      - FROM_EMAIL=${FROM_EMAIL:-noreply@bimcalc.com}
+      - FROM_NAME=${FROM_NAME:-BIMCalc Reports}
     depends_on:
       db:
         condition: service_healthy
