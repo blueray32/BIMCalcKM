@@ -15,6 +15,7 @@ from __future__ import annotations
 
 from pydantic import BaseModel, Field
 from typing import List, Literal, Optional, Dict, Any
+from uuid import UUID
 
 
 # ============================================================================
@@ -22,11 +23,17 @@ from typing import List, Literal, Optional, Dict, Any
 # ============================================================================
 
 class BulkUpdateRequest(BaseModel):
-    """Request for bulk match updates (approve/reject)."""
+    """Request for bulk match updates (approve/reject).
 
-    match_ids: List[int] = Field(..., description="List of match IDs to update")
-    action: Literal["approve", "reject"] = Field(..., description="Action to perform")
-    reason: Optional[str] = Field(None, description="Reason for rejection (optional)")
+    Extracted from app_enhanced.py:826
+    Used by: POST /api/matches/bulk-update
+    """
+
+    match_result_ids: List[UUID]
+    action: Literal["approve", "reject"]
+    annotation: Optional[str] = None
+    org_id: str
+    project_id: str
 
 
 # ============================================================================
@@ -34,19 +41,33 @@ class BulkUpdateRequest(BaseModel):
 # ============================================================================
 
 class BulkPriceImportRequest(BaseModel):
-    """Request for bulk price import."""
+    """Request schema for Crail4 -> BIMCalc bulk imports.
 
-    items: List[Dict[str, Any]] = Field(..., description="List of price items to import")
-    org_id: int = Field(..., description="Organization ID")
-    source: Optional[str] = Field(None, description="Price source identifier")
+    Extracted from app_enhanced.py:2464
+    Used by: POST /api/price-items/bulk-import
+    """
+
+    org_id: str
+    items: list[dict]
+    source: str = "crail4_api"
+    target_scheme: str = "UniClass2015"
+    created_by: str = "system"
 
 
 class BulkPriceImportResponse(BaseModel):
-    """Response for bulk price import operation."""
+    """Response schema for bulk price imports.
 
-    imported_count: int = Field(..., description="Number of items successfully imported")
-    errors: List[str] = Field(default_factory=list, description="List of error messages")
-    run_id: Optional[int] = Field(None, description="Import run ID if created")
+    Extracted from app_enhanced.py:2474
+    Used by: POST /api/price-items/bulk-import
+    """
+
+    run_id: str
+    status: str
+    items_received: int
+    items_loaded: int
+    items_rejected: int
+    rejection_reasons: dict
+    errors: list[str]
 
 
 # ============================================================================
@@ -54,34 +75,46 @@ class BulkPriceImportResponse(BaseModel):
 # ============================================================================
 
 class RuleUpdate(BaseModel):
-    """Update an existing compliance rule."""
+    """Update an existing compliance rule.
 
-    title: Optional[str] = None
+    Extracted from app_enhanced.py:4901
+    Used by: PUT /api/projects/{project_uuid}/intelligence/rules/{rule_id}
+    """
+
+    name: Optional[str] = None
     description: Optional[str] = None
-    severity: Optional[Literal["critical", "high", "medium", "low"]] = None
-    enabled: Optional[bool] = None
+    is_active: Optional[bool] = None
+    configuration: Optional[Dict] = None
+    severity: Optional[str] = None
 
 
 class RuleCreate(BaseModel):
-    """Create a new compliance rule."""
+    """Create a new compliance rule.
 
-    title: str = Field(..., min_length=1, max_length=255)
+    Extracted from app_enhanced.py:4908
+    Used by: POST /api/projects/{project_uuid}/intelligence/rules
+    """
+
+    name: str
     description: str
-    severity: Literal["critical", "high", "medium", "low"] = "medium"
-    enabled: bool = True
-    rule_type: Optional[str] = None
+    rule_type: str
+    severity: str
+    is_active: bool = True
+    configuration: Dict = {}
 
 
 # ============================================================================
-# Item Management Models
+# Document Management Models
 # ============================================================================
 
 class ConvertItemsRequest(BaseModel):
-    """Request to convert items between schedules and pricebooks."""
+    """Request to convert extracted items to project estimate items.
 
-    item_ids: List[int] = Field(..., description="Items to convert")
-    target_type: Literal["schedule", "pricebook"] = Field(..., description="Target item type")
-    org_id: Optional[int] = Field(None, description="Organization ID")
+    Extracted from app_enhanced.py:5087
+    Used by: POST /api/projects/{project_uuid}/documents/{document_id}/convert
+    """
+
+    item_ids: List[UUID] | Literal["all"]
 
 
 # ============================================================================
@@ -89,21 +122,27 @@ class ConvertItemsRequest(BaseModel):
 # ============================================================================
 
 class ReportTemplateCreate(BaseModel):
-    """Create a custom report template."""
+    """Create a custom report template.
 
-    name: str = Field(..., min_length=1, max_length=255)
-    description: Optional[str] = None
-    template_type: Literal["excel", "pdf", "csv"] = "excel"
-    config: Dict[str, Any] = Field(default_factory=dict, description="Template configuration")
+    Extracted from app_enhanced.py:5251
+    Used by: POST /api/reports/templates
+    """
+
+    name: str
+    org_id: str
+    project_id: str | None = None
+    configuration: dict
 
 
 class SendEmailRequest(BaseModel):
-    """Request to send an email report."""
+    """Request to send a project report via email.
 
-    recipients: List[str] = Field(..., min_length=1, description="Email recipients")
-    subject: str = Field(..., min_length=1)
-    body: str
-    attachment_path: Optional[str] = Field(None, description="Path to attachment file")
+    Extracted from app_enhanced.py:5288
+    Used by: POST /api/projects/{project_uuid}/email/send-report
+    """
+
+    recipient_emails: list[str]
+    report_type: str = "weekly"
 
 
 # ============================================================================
@@ -116,12 +155,22 @@ __all__ = [
     # Price Import
     "BulkPriceImportRequest",
     "BulkPriceImportResponse",
-    # Compliance
+    # Compliance & Intelligence
     "RuleUpdate",
     "RuleCreate",
-    # Item Management
+    # Document Management
     "ConvertItemsRequest",
     # Reporting
     "ReportTemplateCreate",
     "SendEmailRequest",
 ]
+
+
+# Future models to extract (as routers are created):
+# - ProjectCreate, ProjectUpdate (from projects routes)
+# - AnalyticsRequest (from analytics routes)
+# - ComplianceCheckRequest (from compliance routes)
+# - ClassificationMappingRequest (from classifications routes)
+# - Crail4ConfigRequest (from crail4 routes)
+# - ScenarioCompareRequest (from scenarios routes)
+# - Additional models discovered during router extraction
