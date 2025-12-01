@@ -49,13 +49,14 @@ scp $SSH_OPTS README_BIMCALC_MVP.md "$TARGET":/opt/bimcalc/README_BIMCALC_MVP.md
 # Using tar to bundle source for cleaner transfer
 echo "📦 Bundling and transferring source code..."
 # Explicitly exclude macOS metadata files
-tar --exclude='._*' --exclude='.DS_Store' -czf bimcalc_src.tar.gz bimcalc config examples tests alembic.ini
+tar --exclude='._*' --exclude='.DS_Store' -czf bimcalc_src.tar.gz bimcalc config examples tests scripts alembic.ini
 scp $SSH_OPTS bimcalc_src.tar.gz "$TARGET":/opt/bimcalc/
 rm bimcalc_src.tar.gz
 
 # 4. Execute remote deployment
 echo "🚀 Executing remote deployment..."
 ssh $SSH_OPTS "$TARGET" "cd /opt/bimcalc && \
+    rm -rf bimcalc && \
     tar -xzf bimcalc_src.tar.gz && \
     rm bimcalc_src.tar.gz && \
     echo 'Installing Docker if missing...' && \

@@ -45,6 +45,7 @@ class Item(BaseModel):
     family: str
     type_name: str
     system_type: str | None = None
+    element_id: str | None = None  # Revit Element ID for visual verification
 
     # Explicit classification overrides (highest trust)
     omniclass_code: int | None = None

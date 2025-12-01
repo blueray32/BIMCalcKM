@@ -29,17 +29,18 @@ class CandidateGenerator:
         self.session = session
         self.config = get_config()
 
-    async def generate(self, item: Item, limit: int | None = None) -> list[PriceItem]:
+    async def generate(self, item: Item, limit: int | None = None, region: str = "EU") -> list[PriceItem]:
         """Generate candidates using classification-first blocking.
 
         Filter logic (applied in order):
         1. Classification blocking (indexed)
-        2. Numeric pre-filters (tolerance-based)
-        3. Unit filter (optional, strict match)
+        2. Region filtering (SCD2 active unique index)
+        3. Numeric pre-filters (tolerance-based)
 
         Args:
             item: BIM item with classification_code and attributes
             limit: Max candidates to return (default from config)
+            region: Project region (default "EU")
 
         Returns:
             List of candidate PriceItem objects
@@ -60,11 +61,13 @@ class CandidateGenerator:
         # Start with classification blocking (CRITICAL for 20× reduction)
         # ALWAYS filter by is_current=True to get latest prices (SCD Type-2)
         # CRITICAL: Filter by org_id for multi-tenant isolation
+        # CRITICAL: Filter by region for correct price book
         stmt = select(PriceItemModel).where(
             and_(
                 PriceItemModel.org_id == item.org_id,
-                PriceItemModel.classification_code == item.classification_code,
+                PriceItemModel.classification_code == str(item.classification_code),
                 PriceItemModel.is_current == True,
+                PriceItemModel.region == region,
             )
         )
 
@@ -117,12 +120,6 @@ class CandidateGenerator:
         if filters:
             stmt = stmt.where(and_(*filters))
 
-        # Optional unit filter (strict match) - REMOVED to allow Unit Mismatch flags
-        # if item.unit is not None:
-        #     stmt = stmt.where(
-        #         or_(PriceItemModel.unit == item.unit, PriceItemModel.unit.is_(None))
-        #     )
-
         # Limit results
         stmt = stmt.limit(limit)
 
@@ -156,7 +153,7 @@ class CandidateGenerator:
 
 
     async def generate_with_escape_hatch(
-        self, item: Item, max_escape_hatch: int = 2
+        self, item: Item, max_escape_hatch: int = 2, region: str = "EU"
     ) -> tuple[list[PriceItem], bool]:
         """Generate candidates with escape-hatch for out-of-class items.
 
@@ -171,18 +168,15 @@ class CandidateGenerator:
         Args:
             item: BIM item with classification_code and attributes
             max_escape_hatch: Maximum out-of-class candidates (default 2)
+            region: Project region (default "EU")
 
         Returns:
             Tuple of (candidates, used_escape_hatch_flag)
             - candidates: List of PriceItem objects
             - used_escape_hatch_flag: True if classification filter was relaxed
-
-        Raises:
-            ValueError: If item.classification_code or item.org_id is None
-            SQLAlchemyError: If database query fails
         """
         # First, try normal classification-first matching
-        candidates = await self.generate(item)
+        candidates = await self.generate(item, region=region)
 
         if len(candidates) > 0:
             # Success with normal classification blocking
@@ -198,10 +192,12 @@ class CandidateGenerator:
             raise ValueError("item.org_id is required for multi-tenant candidate filtering")
 
         # Relaxed query: Remove classification blocking, keep all other filters
+        # BUT keep region filter!
         stmt = select(PriceItemModel).where(
             and_(
                 PriceItemModel.org_id == item.org_id,
                 PriceItemModel.is_current == True,
+                PriceItemModel.region == region,
             )
         )
 
@@ -253,12 +249,6 @@ class CandidateGenerator:
         if filters:
             stmt = stmt.where(and_(*filters))
 
-        # Optional unit filter - REMOVED to allow Unit Mismatch flags
-        # if item.unit is not None:
-        #     stmt = stmt.where(
-        #         or_(PriceItemModel.unit == item.unit, PriceItemModel.unit.is_(None))
-        #     )
-
         # Limit to escape-hatch max
         stmt = stmt.limit(max_escape_hatch)
 
@@ -300,7 +290,7 @@ class CandidateGenerator:
 
 
 async def generate_candidates(
-    session: AsyncSession, item: Item, limit: int | None = None
+    session: AsyncSession, item: Item, limit: int | None = None, region: str = "EU"
 ) -> list[PriceItem]:
     """Convenience function: generate candidates.
 
@@ -308,9 +298,10 @@ async def generate_candidates(
         session: SQLAlchemy async session
         item: BIM item with classification_code
         limit: Max candidates to return
+        region: Project region
 
     Returns:
         List of candidate PriceItem objects
     """
     generator = CandidateGenerator(session)
-    return await generator.generate(item, limit)
+    return await generator.generate(item, limit, region=region)

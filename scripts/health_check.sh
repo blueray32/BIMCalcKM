@@ -27,14 +27,14 @@ echo ""
 echo "🐳 Docker Containers"
 echo "-------------------"
 
-if ! docker ps --format '{{.Names}}' | grep -q "^bimcalckm-app-1$"; then
-    ISSUES+=("❌ Application container (bimcalckm-app-1) is not running")
+if ! docker ps --format '{{.Names}}' | grep -q "bimcalc-app"; then
+    ISSUES+=("❌ Application container (bimcalc-app) is not running")
     STATUS=$EXIT_CRITICAL
 else
     echo "✅ Application container: Running"
 fi
 
-if ! docker ps --format '{{.Names}}' | grep -q "^bimcalc-postgres$"; then
+if ! docker ps --format '{{.Names}}' | grep -q "bimcalc-postgres"; then
     ISSUES+=("❌ PostgreSQL container (bimcalc-postgres) is not running")
     STATUS=$EXIT_CRITICAL
 else
@@ -87,7 +87,8 @@ if [ -f "$PROJECT_DIR/logs/pipeline.log" ]; then
 
     # Check if pipeline ran in last 25 hours (should run daily at 2 AM)
     if [ -f "$PROJECT_DIR/logs/pipeline.log" ]; then
-        LAST_RUN_TIME=$(stat -f "%m" "$PROJECT_DIR/logs/pipeline.log" 2>/dev/null || stat -c "%Y" "$PROJECT_DIR/logs/pipeline.log" 2>/dev/null || echo "0")
+        # Linux stat syntax
+        LAST_RUN_TIME=$(stat -c %Y "$PROJECT_DIR/logs/pipeline.log" 2>/dev/null || echo "0")
         CURRENT_TIME=$(date +%s)
         HOURS_SINCE=$(( (CURRENT_TIME - LAST_RUN_TIME) / 3600 ))
 
@@ -120,7 +121,9 @@ if [ -d "$PROJECT_DIR/backups" ]; then
         # Check age of latest backup
         LATEST_BACKUP=$(ls -t "$PROJECT_DIR/backups"/*.sql.gz 2>/dev/null | head -1)
         if [ -n "$LATEST_BACKUP" ]; then
-            BACKUP_AGE_SECONDS=$((CURRENT_TIME - $(stat -f "%m" "$LATEST_BACKUP" 2>/dev/null || stat -c "%Y" "$LATEST_BACKUP" 2>/dev/null)))
+            # Linux stat syntax
+            BACKUP_TIME=$(stat -c %Y "$LATEST_BACKUP" 2>/dev/null)
+            BACKUP_AGE_SECONDS=$((CURRENT_TIME - BACKUP_TIME))
             BACKUP_AGE_HOURS=$((BACKUP_AGE_SECONDS / 3600))
 
             echo "   Latest backup: $(basename "$LATEST_BACKUP")"

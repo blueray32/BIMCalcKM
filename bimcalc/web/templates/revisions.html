@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+
+{% block title %}Revision History - BIMCalc{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Revision History</h1>
+    <p>Track field-level changes across Revit imports</p>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <span>Recent Changes</span>
+        <div style="font-size: 0.875rem; font-weight: normal;">
+            <label style="margin-right: 1rem;">
+                <input type="checkbox" id="critical-only" onchange="loadRevisions()"> Critical Only
+            </label>
+        </div>
+    </div>
+    <div class="table-container">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Item</th>
+                    <th>Field</th>
+                    <th>Old Value</th>
+                    <th>New Value</th>
+                    <th>Change Type</th>
+                    <th>Source</th>
+                </tr>
+            </thead>
+            <tbody id="revisions-table-body">
+                <tr>
+                    <td colspan="7" style="text-align: center; color: #718096;">Loading revisions...</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    async function loadRevisions() {
+        const org = "{{ org_id }}";
+        const project = "{{ project_id }}";
+        const tbody = document.getElementById('revisions-table-body');
+        const criticalOnly = document.getElementById('critical-only').checked;
+
+        try {
+            const response = await fetch(`/api/revisions?org=${org}&project=${project}&limit=50`);
+            const data = await response.json();
+
+            if (data.revisions.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: #718096;">No revisions found</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = data.revisions.map(rev => {
+                const date = new Date(rev.ingest_timestamp).toLocaleString();
+
+                let typeClass = 'badge-info';
+                if (rev.change_type === 'added') typeClass = 'badge-success';
+                if (rev.change_type === 'deleted') typeClass = 'badge-error';
+                if (rev.change_type === 'modified') typeClass = 'badge-warning';
+
+                // Highlight critical fields
+                const isCritical = ['width_mm', 'height_mm', 'material', 'quantity'].includes(rev.field_name);
+                if (criticalOnly && !isCritical) return '';
+
+                return `
+                <tr>
+                    <td>${date}</td>
+                    <td>
+                        <a href="/items/${rev.item_id}" style="font-weight: 500;">${rev.item_name}</a>
+                    </td>
+                    <td>
+                        ${rev.field_name}
+                        ${isCritical ? '<span style="color: #c53030; font-size: 0.7em;">●</span>' : ''}
+                    </td>
+                    <td class="diff-old">${rev.old_value || '<span class="text-muted">null</span>'}</td>
+                    <td class="diff-new">${rev.new_value || '<span class="text-muted">null</span>'}</td>
+                    <td><span class="badge ${typeClass}">${rev.change_type}</span></td>
+                    <td class="text-muted" style="font-size: 0.85em;">${rev.source_filename || '-'}</td>
+                </tr>
+            `;
+            }).join('');
+
+        } catch (error) {
+            console.error('Error loading revisions:', error);
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: #e53e3e;">Failed to load revisions</td></tr>';
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', loadHistory);
+    // Alias for loadRevisions to match event listener if needed, but here we call loadRevisions directly
+    document.addEventListener('DOMContentLoaded', loadRevisions);
+</script>
+
+<style>
+    .badge {
+        padding: 0.25rem 0.5rem;
+        border-radius: 9999px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+
+    .badge-success {
+        background: #def7ec;
+        color: #03543f;
+    }
+
+    .badge-error {
+        background: #fde8e8;
+        color: #9b1c1c;
+    }
+
+    .badge-warning {
+        background: #fdf6b2;
+        color: #723b13;
+    }
+
+    .badge-info {
+        background: #e1effe;
+        color: #1e429f;
+    }
+
+    .diff-old {
+        background-color: #fff5f5;
+        text-decoration: line-through;
+        color: #c53030;
+    }
+
+    .diff-new {
+        background-color: #f0fff4;
+        color: #047857;
+    }
+
+    .text-muted {
+        color: #a0aec0;
+    }
+</style>
+{% endblock %}

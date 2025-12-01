@@ -92,8 +92,11 @@ class MatchOrchestrator:
 
                 return result, price_item
 
+        # Fetch project region
+        region = await self._get_project_region(item.org_id, item.project_id)
+
         # Step 4: Mapping miss → Generate candidates with escape-hatch
-        candidates, used_escape_hatch = await self.candidate_generator.generate_with_escape_hatch(item)
+        candidates, used_escape_hatch = await self.candidate_generator.generate_with_escape_hatch(item, region=region)
 
         if not candidates:
             # No candidates found even with escape-hatch
@@ -202,6 +205,27 @@ class MatchOrchestrator:
             vendor_note=row.vendor_note,
             attributes=row.attributes or {},
         )
+
+
+    async def _get_project_region(self, org_id: str, project_id: str) -> str:
+        """Get project region.
+
+        Args:
+            org_id: Organization ID
+            project_id: Project ID
+
+        Returns:
+            Region code (default "EU")
+        """
+        from sqlalchemy import select
+        from bimcalc.db.models import ProjectModel
+
+        stmt = select(ProjectModel.region).where(
+            ProjectModel.org_id == org_id,
+            ProjectModel.project_id == project_id
+        )
+        result = await self.session.execute(stmt)
+        return result.scalar_one_or_none() or "EU"
 
 
 async def match_item(

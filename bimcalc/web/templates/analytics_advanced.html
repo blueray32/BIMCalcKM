@@ -1,0 +1,245 @@
+{% extends "base.html" %}
+
+{% block title %}Advanced Analytics - BIMCalc{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>📈 Advanced Analytics</h1>
+    <p>Deep dive into pricing trends, vendor performance, and future forecasts.</p>
+</div>
+
+<!-- Tabs -->
+<div class="tabs">
+    <button class="tab-btn active" onclick="openTab(event, 'history')">Price History</button>
+    <button class="tab-btn" onclick="openTab(event, 'vendors')">Vendor Comparison</button>
+    <button class="tab-btn" onclick="openTab(event, 'forecast')">Cost Forecast</button>
+</div>
+
+<!-- Tab Content: Price History -->
+<div id="history" class="tab-content" style="display: block;">
+    <div class="card">
+        <div class="card-header">
+            <span>Item Price History</span>
+            <div class="flex gap-2">
+                <input type="text" id="history-item-code" placeholder="Enter Item Code (e.g. DOOR-001)"
+                    class="form-control">
+                <button class="btn btn-primary" onclick="loadHistory()">Load</button>
+            </div>
+        </div>
+        <div class="card-body">
+            <canvas id="historyChart"></canvas>
+        </div>
+    </div>
+</div>
+
+<!-- Tab Content: Vendor Comparison -->
+<div id="vendors" class="tab-content" style="display: none;">
+    <div class="card">
+        <div class="card-header">
+            <span>Vendor Basket Comparison</span>
+            <div class="flex gap-2">
+                <input type="text" id="vendor-items" placeholder="Item Codes (comma separated)" class="form-control"
+                    style="width: 300px;">
+                <button class="btn btn-primary" onclick="loadVendorComparison()">Compare</button>
+            </div>
+        </div>
+        <div class="card-body">
+            <canvas id="vendorChart"></canvas>
+            <div id="vendor-table-container" class="mt-4"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Tab Content: Forecast -->
+<div id="forecast" class="tab-content" style="display: none;">
+    <div class="card">
+        <div class="card-header">
+            <span>Project Cost Forecast (Next 90 Days)</span>
+            <button class="btn btn-success" onclick="loadForecast()">Generate Forecast</button>
+        </div>
+        <div class="card-body">
+            <canvas id="forecastChart"></canvas>
+            <div id="forecast-stats" class="mt-2 text-muted"></div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const orgId = urlParams.get('org') || 'default';
+    const projectId = urlParams.get('project') || 'default';
+
+    function openTab(evt, tabName) {
+        var i, tabcontent, tablinks;
+        tabcontent = document.getElementsByClassName("tab-content");
+        for (i = 0; i < tabcontent.length; i++) {
+            tabcontent[i].style.display = "none";
+        }
+        tablinks = document.getElementsByClassName("tab-btn");
+        for (i = 0; i < tablinks.length; i++) {
+            tablinks[i].className = tablinks[i].className.replace(" active", "");
+        }
+        document.getElementById(tabName).style.display = "block";
+        evt.currentTarget.className += " active";
+    }
+
+    // --- Price History ---
+    let historyChart = null;
+    async function loadHistory() {
+        const itemCode = document.getElementById('history-item-code').value;
+        if (!itemCode) return showToast('Please enter an item code', 'warning');
+
+        const response = await fetch(`/api/analytics/history/${itemCode}?org=${orgId}`);
+        const data = await response.json();
+
+        if (data.history.length === 0) return showToast('No history found for this item', 'warning');
+
+        const ctx = document.getElementById('historyChart').getContext('2d');
+        if (historyChart) historyChart.destroy();
+
+        historyChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: data.history.map(h => h.date),
+                datasets: [{
+                    label: `Price History: ${itemCode}`,
+                    data: data.history.map(h => h.price),
+                    borderColor: '#4F46E5',
+                    tension: 0.1
+                }]
+            },
+            options: { responsive: true }
+        });
+    }
+
+    // --- Vendor Comparison ---
+    let vendorChart = null;
+    async function loadVendorComparison() {
+        const itemsInput = document.getElementById('vendor-items').value;
+        if (!itemsInput) return showToast('Please enter item codes', 'warning');
+
+        const itemCodes = itemsInput.split(',').map(s => s.trim());
+
+        const response = await fetch(`/api/analytics/vendor-comparison?org=${orgId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(itemCodes)
+        });
+        const data = await response.json();
+
+        if (data.comparison.length === 0) return showToast('No data found', 'warning');
+
+        // Chart
+        const ctx = document.getElementById('vendorChart').getContext('2d');
+        if (vendorChart) vendorChart.destroy();
+
+        vendorChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: data.comparison.map(c => c.vendor || 'Unknown'),
+                datasets: [{
+                    label: 'Total Basket Cost',
+                    data: data.comparison.map(c => c.total_cost),
+                    backgroundColor: '#10B981'
+                }]
+            },
+            options: { responsive: true }
+        });
+
+        // Table
+        const tableHtml = `
+            <table class="table">
+                <thead><tr><th>Vendor</th><th>Total Cost</th><th>Items Covered</th><th>Coverage %</th></tr></thead>
+                <tbody>
+                    ${data.comparison.map(c => `
+                        <tr>
+                            <td>${c.vendor || 'Unknown'}</td>
+                            <td>${c.total_cost.toFixed(2)}</td>
+                            <td>${c.item_count}</td>
+                            <td>${c.coverage_percent.toFixed(1)}%</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        `;
+        document.getElementById('vendor-table-container').innerHTML = tableHtml;
+    }
+
+    // --- Forecast ---
+    let forecastChart = null;
+    async function loadForecast() {
+        const response = await fetch(`/api/analytics/forecast?project=${projectId}&days=90`);
+        const data = await response.json();
+
+        if (data.message) return showToast(data.message, 'warning');
+
+        const ctx = document.getElementById('forecastChart').getContext('2d');
+        if (forecastChart) forecastChart.destroy();
+
+        forecastChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: [...data.original_labels, ...data.forecast_labels],
+                datasets: [
+                    {
+                        label: 'Historical Cost',
+                        data: [...data.original_data, ...Array(data.forecast_data.length).fill(null)],
+                        borderColor: '#6B7280',
+                        fill: false
+                    },
+                    {
+                        label: 'Forecast (90 Days)',
+                        data: [...Array(data.original_data.length).fill(null), ...data.forecast_data],
+                        borderColor: '#F59E0B',
+                        borderDash: [5, 5],
+                        fill: false
+                    }
+                ]
+            },
+            options: { responsive: true }
+        });
+
+        document.getElementById('forecast-stats').innerText = `Trend Slope: ${data.trend_slope.toFixed(2)} cost/day`;
+    }
+</script>
+
+<style>
+    .tabs {
+        margin-bottom: 20px;
+        border-bottom: 1px solid #e5e7eb;
+    }
+
+    .tab-btn {
+        padding: 10px 20px;
+        background: none;
+        border: none;
+        border-bottom: 2px solid transparent;
+        cursor: pointer;
+        font-weight: 500;
+        color: #6b7280;
+    }
+
+    .tab-btn.active {
+        border-bottom-color: #4f46e5;
+        color: #4f46e5;
+    }
+
+    .tab-content {
+        animation: fadeIn 0.3s;
+    }
+
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+        }
+
+        to {
+            opacity: 1;
+        }
+    }
+</style>
+{% endblock %}

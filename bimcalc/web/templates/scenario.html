@@ -1,0 +1,180 @@
+{% extends "base.html" %}
+
+{% block title %}Scenario Planning - BIMCalc{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <div class="flex justify-between items-center mb-8">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-900">Scenario Planning</h1>
+            <p class="text-gray-600 mt-1">Compare project costs across different vendors</p>
+        </div>
+        <div class="flex gap-2">
+            <select id="vendorSelect" multiple
+                class="form-multiselect block w-full mt-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+                style="min-width: 200px;">
+                <!-- Populated by JS -->
+            </select>
+            <button onclick="updateComparison()"
+                class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700">
+                Compare
+            </button>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+        <!-- Cost Chart -->
+        <div class="bg-white rounded-lg shadow p-6">
+            <h3 class="text-lg font-semibold text-gray-800 mb-4">Total Cost Projection</h3>
+            <div class="relative" style="height: 300px;">
+                <canvas id="costChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Coverage Chart -->
+        <div class="bg-white rounded-lg shadow p-6">
+            <h3 class="text-lg font-semibold text-gray-800 mb-4">Catalog Coverage</h3>
+            <div class="relative" style="height: 300px;">
+                <canvas id="coverageChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Detailed Table -->
+    <div class="bg-white rounded-lg shadow overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-200">
+            <h3 class="text-lg font-semibold text-gray-800">Detailed Comparison</h3>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Vendor</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total
+                            Cost (Est.)</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Coverage</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Matched Items</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Missing Items</th>
+                    </tr>
+                </thead>
+                <tbody id="comparisonTable" class="bg-white divide-y divide-gray-200">
+                    <!-- Populated by JS -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    let costChart = null;
+    let coverageChart = null;
+
+    document.addEventListener('DOMContentLoaded', () => {
+        updateComparison();
+    });
+
+    async function updateComparison() {
+        const vendorSelect = document.getElementById('vendorSelect');
+        const selectedVendors = Array.from(vendorSelect.selectedOptions).map(opt => opt.value);
+
+        let url = `/api/scenarios/compare?org={{ org_id }}&project={{ project_id }}`;
+        selectedVendors.forEach(v => url += `&vendors=${encodeURIComponent(v)}`);
+
+        try {
+            const response = await fetch(url);
+            const data = await response.json();
+
+            // Populate dropdown if empty
+            if (vendorSelect.options.length === 0) {
+                data.all_vendors.forEach(v => {
+                    const option = document.createElement('option');
+                    option.value = v;
+                    option.text = v;
+                    vendorSelect.add(option);
+                });
+            }
+
+            renderCharts(data.scenarios);
+            renderTable(data.scenarios);
+        } catch (error) {
+            console.error('Error fetching scenarios:', error);
+        }
+    }
+
+    function renderCharts(scenarios) {
+        const labels = scenarios.map(s => s.vendor);
+        const costs = scenarios.map(s => s.total_cost);
+        const coverages = scenarios.map(s => s.coverage);
+
+        // Cost Chart
+        const costCtx = document.getElementById('costChart').getContext('2d');
+        if (costChart) costChart.destroy();
+
+        costChart = new Chart(costCtx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Total Cost (€)',
+                    data: costs,
+                    backgroundColor: 'rgba(79, 70, 229, 0.6)',
+                    borderColor: 'rgba(79, 70, 229, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: { beginAtZero: true }
+                }
+            }
+        });
+
+        // Coverage Chart
+        const covCtx = document.getElementById('coverageChart').getContext('2d');
+        if (coverageChart) coverageChart.destroy();
+
+        coverageChart = new Chart(covCtx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Catalog Coverage (%)',
+                    data: coverages,
+                    backgroundColor: 'rgba(16, 185, 129, 0.6)',
+                    borderColor: 'rgba(16, 185, 129, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: { beginAtZero: true, max: 100 }
+                }
+            }
+        });
+    }
+
+    function renderTable(scenarios) {
+        const tbody = document.getElementById('comparisonTable');
+        tbody.innerHTML = scenarios.map(s => `
+            <tr>
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${s.vendor}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">€${s.total_cost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${s.coverage.toFixed(1)}%</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${s.matched}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${s.missing}</td>
+            </tr>
+        `).join('');
+    }
+</script>
+{% endblock %}

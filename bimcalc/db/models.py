@@ -59,6 +59,7 @@ class ItemModel(Base):
     family: Mapped[str] = mapped_column(Text, nullable=False)
     type_name: Mapped[str] = mapped_column(Text, nullable=False)
     system_type: Mapped[str | None] = mapped_column(Text)
+    element_id: Mapped[str | None] = mapped_column(Text)  # Revit Element ID
 
     # Explicit classification overrides
     omniclass_code: Mapped[int | None] = mapped_column(Integer)
@@ -456,6 +457,17 @@ class DocumentModel(Base):
         TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
     )
 
+    __table_args__ = (
+        # HNSW Index for fast approximate nearest neighbor search
+        Index(
+            "idx_documents_embedding",
+            "embedding",
+            postgresql_using="hnsw",
+            postgresql_with={"m": 16, "ef_construction": 64},
+            postgresql_ops={"embedding": "vector_cosine_ops"},
+        ),
+    )
+
 
 class DocumentLinkModel(Base):
     """Link between an Item and a Document (Many-to-Many)."""
@@ -571,6 +583,7 @@ class ProjectModel(Base):
     # Project identification
     org_id: Mapped[str] = mapped_column(Text, nullable=False)
     project_id: Mapped[str] = mapped_column(Text, nullable=False)
+    region: Mapped[str] = mapped_column(Text, nullable=False, default="EU")  # EU, UK, US
     
     # Metadata
     display_name: Mapped[str] = mapped_column(Text, nullable=False)
@@ -734,3 +747,36 @@ class IngestLogModel(Base):
         ),
         Index("idx_ingest_org_project_started", "org_id", "project_id", "started_at"),
     )
+
+
+class TrainingExampleModel(Base):
+    """User feedback for training the classifier.
+    
+    Captures instances where a user manually confirms or corrects a match,
+    providing a 'ground truth' label (classification code) for an item description.
+    """
+    
+    __tablename__ = "training_examples"
+    
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    org_id: Mapped[str] = mapped_column(Text, nullable=False, index=True)
+    
+    # Input features (snapshot at time of feedback)
+    item_family: Mapped[str] = mapped_column(Text, nullable=False)
+    item_type: Mapped[str] = mapped_column(Text, nullable=False)
+    item_description: Mapped[str | None] = mapped_column(Text) # Constructed from attributes
+    
+    # Target label (Ground Truth)
+    target_classification_code: Mapped[str] = mapped_column(Text, nullable=False, index=True)
+    
+    # Metadata
+    source_item_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), index=True)
+    price_item_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), index=True)
+    feedback_type: Mapped[str] = mapped_column(Text, nullable=False) # 'confirmation', 'correction'
+    
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    created_by: Mapped[str] = mapped_column(Text, default="system")
+
+

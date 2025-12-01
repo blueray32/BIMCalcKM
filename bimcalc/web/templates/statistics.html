@@ -19,7 +19,8 @@
     <div class="stat-card success">
         <div class="label">Matched Items</div>
         <div class="value">{{ matched_items }}</div>
-        <div class="description">{{ "%.1f"|format((matched_items / total_items * 100) if total_items > 0 else 0) }}% matched</div>
+        <div class="description">{{ "%.1f"|format((matched_items / total_items * 100) if total_items > 0 else 0) }}%
+            matched</div>
     </div>
 
     <div class="stat-card warning">
@@ -60,26 +61,22 @@
                     <strong>{{ stat.count }}</strong>
                 </td>
                 <td>
+                    {% set width_pct = (stat.count / total_items * 100) if total_items > 0 else 0 %}
+                    {% set bg_color = '#48bb78' if stat.decision == 'auto-approved' else '#ed8936' if stat.decision ==
+                    'manual-review' else '#cbd5e0' %}
                     <div style="display: flex; align-items: center; gap: 0.5rem;">
-                        <div style="
-                            width: 100px;
-                            height: 20px;
-                            background: #e2e8f0;
-                            border-radius: 4px;
-                            overflow: hidden;
-                        ">
-                            <div style="
-                                width: {{ (stat.count / total_items * 100) if total_items > 0 else 0 }}%;
-                                height: 100%;
-                                background: {% if stat.decision == 'auto-approved' %}#48bb78{% elif stat.decision == 'manual-review' %}#ed8936{% else %}#cbd5e0{% endif %};
-                            "></div>
+                        <div
+                            style="width: 100px; height: 20px; background: #e2e8f0; border-radius: 4px; overflow: hidden;">
+                            <div class="dynamic-match-bar" data-width="{{ width_pct }}" data-bg="{{ bg_color }}"
+                                style="height: 100%;"></div>
                         </div>
-                        <span>{{ "%.1f"|format((stat.count / total_items * 100) if total_items > 0 else 0) }}%</span>
+                        <span>{{ "%.1f"|format(width_pct) }}%</span>
                     </div>
                 </td>
                 <td style="text-align: center;">
                     {% if stat.avg_confidence %}
-                    <span class="badge {% if stat.avg_confidence >= 85 %}badge-success{% elif stat.avg_confidence >= 70 %}badge-advisory{% else %}badge-critical{% endif %}">
+                    <span
+                        class="badge {% if stat.avg_confidence >= 85 %}badge-success{% elif stat.avg_confidence >= 70 %}badge-advisory{% else %}badge-critical{% endif %}">
                         {{ "%.1f"|format(stat.avg_confidence) }}%
                     </span>
                     {% else %}
@@ -103,7 +100,7 @@
     </table>
     {% else %}
     <div class="message message-info" style="margin: 1rem;">
-        <strong>No matching results yet</strong><br/>
+        <strong>No matching results yet</strong><br />
         Run the <a href="/match?org={{ org_id }}&project={{ project_id }}">Matching Pipeline</a> to see statistics.
     </div>
     {% endif %}
@@ -173,7 +170,7 @@
         </p>
         {% else %}
         <div class="message message-info">
-            <strong>No cost data available</strong><br/>
+            <strong>No cost data available</strong><br />
             Match items and approve mappings to see cost breakdown.
         </div>
         {% endif %}
@@ -184,19 +181,32 @@
 <div class="card">
     <div class="card-header">⚡ Quick Actions</div>
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; padding: 1rem;">
-        <a href="/match?org={{ org_id }}&project={{ project_id }}" class="btn btn-primary" style="text-align: center; padding: 1rem;">
+        <a href="/match?org={{ org_id }}&project={{ project_id }}" class="btn btn-primary"
+            style="text-align: center; padding: 1rem;">
             🔍 Re-run Matching
         </a>
-        <a href="/review?org={{ org_id }}&project={{ project_id }}" class="btn btn-primary" style="text-align: center; padding: 1rem;">
+        <a href="/review?org={{ org_id }}&project={{ project_id }}" class="btn btn-primary"
+            style="text-align: center; padding: 1rem;">
             📋 Review Pending Items
         </a>
-        <a href="/reports?org={{ org_id }}&project={{ project_id }}" class="btn btn-success" style="text-align: center; padding: 1rem;">
+        <a href="/reports?org={{ org_id }}&project={{ project_id }}" class="btn btn-success"
+            style="text-align: center; padding: 1rem;">
             📊 Generate Report
         </a>
-        <a href="/audit?org={{ org_id }}&project={{ project_id }}" class="btn" style="text-align: center; padding: 1rem; background: #e2e8f0; color: #2d3748;">
+        <a href="/audit?org={{ org_id }}&project={{ project_id }}" class="btn"
+            style="text-align: center; padding: 1rem; background: #e2e8f0; color: #2d3748;">
             📜 View Audit Trail
         </a>
     </div>
 </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        document.querySelectorAll('.dynamic-match-bar').forEach(bar => {
+            bar.style.width = bar.dataset.width + '%';
+            bar.style.backgroundColor = bar.dataset.bg;
+        });
+    });
+</script>
 
 {% endblock %}

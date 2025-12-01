@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+
+{% block title %}Ingest History - BIMCalc{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Ingest History</h1>
+    <p>View logs of past Revit schedule and price book imports</p>
+</div>
+
+<div class="card">
+    <div class="card-header">Recent Imports</div>
+    <div class="table-container">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Timestamp</th>
+                    <th>Filename</th>
+                    <th>Status</th>
+                    <th>Items</th>
+                    <th>Added</th>
+                    <th>Modified</th>
+                    <th>Deleted</th>
+                    <th>Details</th>
+                </tr>
+            </thead>
+            <tbody id="history-table-body">
+                <tr>
+                    <td colspan="8" style="text-align: center; color: #718096;">Loading history...</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    async function loadHistory() {
+        const org = "{{ org_id }}";
+        const project = "{{ project_id }}";
+        const tbody = document.getElementById('history-table-body');
+
+        try {
+            const response = await fetch(`/api/ingest/history?org=${org}&project=${project}&limit=20`);
+            const data = await response.json();
+
+            if (data.history.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: #718096;">No imports found</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = data.history.map(log => {
+                const date = new Date(log.timestamp).toLocaleString();
+                const statusClass = log.status === 'completed' ? 'badge-success' :
+                    log.status === 'failed' ? 'badge-error' : 'badge-warning';
+
+                return `
+                <tr>
+                    <td>${date}</td>
+                    <td>${log.filename}</td>
+                    <td><span class="badge ${statusClass}">${log.status}</span></td>
+                    <td>${log.statistics.total}</td>
+                    <td class="text-success">+${log.statistics.added}</td>
+                    <td class="text-warning">~${log.statistics.modified}</td>
+                    <td class="text-error">-${log.statistics.deleted}</td>
+                    <td>
+                        ${log.errors > 0 ? `<span class="text-error">${log.errors} errors</span>` :
+                        log.warnings > 0 ? `<span class="text-warning">${log.warnings} warnings</span>` :
+                            '<span class="text-muted">OK</span>'}
+                    </td>
+                </tr>
+            `;
+            }).join('');
+
+        } catch (error) {
+            console.error('Error loading history:', error);
+            tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: #e53e3e;">Failed to load history</td></tr>';
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', loadHistory);
+</script>
+
+<style>
+    .badge {
+        padding: 0.25rem 0.5rem;
+        border-radius: 9999px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+
+    .badge-success {
+        background: #def7ec;
+        color: #03543f;
+    }
+
+    .badge-error {
+        background: #fde8e8;
+        color: #9b1c1c;
+    }
+
+    .badge-warning {
+        background: #fdf6b2;
+        color: #723b13;
+    }
+
+    .text-success {
+        color: #047857;
+    }
+
+    .text-warning {
+        color: #b45309;
+    }
+
+    .text-error {
+        color: #c53030;
+    }
+
+    .text-muted {
+        color: #718096;
+    }
+</style>
+{% endblock %}

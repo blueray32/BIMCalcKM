@@ -102,6 +102,7 @@ async def ingest_schedule(
             dn_mm = _get_float(row, ["DN", "Diameter", "D"])
             angle_deg = _get_float(row, ["Angle", "Angle (deg)", "Degrees"])
             material = _get_str(row, "Material")
+            element_id = _get_str(row, ["Element Id", "ElementId", "Id", "Element ID"])
 
             # Create Item model
             item_model = ItemModel(
@@ -111,6 +112,7 @@ async def ingest_schedule(
                 type_name=type_name,
                 category=category,
                 system_type=system_type,
+                element_id=element_id,
                 quantity=quantity,
                 unit=unit,
                 width_mm=width_mm,

@@ -10,7 +10,7 @@ from __future__ import annotations
 from datetime import datetime
 from uuid import uuid4, UUID
 
-from sqlalchemy import Text, ForeignKey, Float, Boolean, Integer, JSON, DateTime, func, CheckConstraint
+from sqlalchemy import Text, ForeignKey, Float, Boolean, Integer, JSON, DateTime, func, CheckConstraint, Index
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID as Uuid
 
@@ -56,29 +56,31 @@ class ComplianceRuleModel(Base):
 
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
     org_id: Mapped[str] = mapped_column(Text, nullable=False, index=True)
+    project_id: Mapped[str] = mapped_column(Text, nullable=False, index=True)
     
     name: Mapped[str] = mapped_column(Text, nullable=False)
-    description: Mapped[str] = mapped_column(Text, nullable=False)
-    rule_type: Mapped[str] = mapped_column(Text, nullable=False)  # e.g., "vendor_whitelist", "classification_required"
-    severity: Mapped[str] = mapped_column(Text, nullable=False)   # "critical", "warning", "info"
+    description: Mapped[str | None] = mapped_column(Text)
     
-    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
-    configuration: Mapped[dict] = mapped_column(JSON, default=dict)  # Rule-specific config
+    # Rule definition
+    rule_logic: Mapped[dict] = mapped_column(JSON, nullable=False) # e.g. {"field": "fire_rating", "op": ">=", "val": 60}
+    
+    # Metadata
+    source_document_id: Mapped[UUID | None] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("documents.id", ondelete="SET NULL"), index=True
+    )
     
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
+    created_by: Mapped[str] = mapped_column(Text, default="system")
 
 
 class ComplianceResultModel(Base):
-    """Result of a compliance check on an item."""
+    """Result of checking an item against a compliance rule."""
     
     __tablename__ = "compliance_results"
 
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
-    org_id: Mapped[str] = mapped_column(Text, nullable=False, index=True)
-    project_id: Mapped[str] = mapped_column(Text, nullable=False, index=True)
-    
     item_id: Mapped[UUID] = mapped_column(
         Uuid(as_uuid=True), 
         ForeignKey("items.id", ondelete="CASCADE"), 
@@ -88,12 +90,22 @@ class ComplianceResultModel(Base):
     rule_id: Mapped[UUID] = mapped_column(
         Uuid(as_uuid=True), 
         ForeignKey("compliance_rules.id", ondelete="CASCADE"), 
-        nullable=False
+        nullable=False,
+        index=True
     )
     
-    passed: Mapped[bool] = mapped_column(Boolean, nullable=False)
-    message: Mapped[str] = mapped_column(Text)
+    # Outcome
+    status: Mapped[str] = mapped_column(Text, nullable=False, index=True) # 'pass', 'fail', 'warning'
+    message: Mapped[str] = mapped_column(Text, nullable=False)
     
     checked_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('pass', 'fail', 'warning')", name="check_compliance_status"
+        ),
+        Index("idx_compliance_results_item", "item_id"),
+        Index("idx_compliance_results_rule", "rule_id"),
     )

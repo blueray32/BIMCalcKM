@@ -16,8 +16,8 @@ fi
 echo "Setting up cron jobs for BIMCalc in $PROJECT_DIR..."
 
 # Define cron jobs
-BACKUP_JOB="0 1 * * * cd $PROJECT_DIR && ./scripts/backup_database.sh >> $LOG_DIR/backup.log 2>&1"
-PIPELINE_JOB="0 2 * * * cd $PROJECT_DIR && python -m bimcalc.cli sync-prices >> $LOG_DIR/pipeline.log 2>&1"
+BACKUP_JOB="0 1 * * * cd $PROJECT_DIR && ./scripts/backup_postgres.sh >> $LOG_DIR/backup.log 2>&1"
+PIPELINE_JOB="0 2 * * * cd $PROJECT_DIR && docker compose exec -T app python -m bimcalc.cli sync-prices >> $LOG_DIR/pipeline.log 2>&1"
 HEALTH_JOB="0 */4 * * * cd $PROJECT_DIR && ./scripts/health_check.sh >> $LOG_DIR/health.log 2>&1"
 
 # Function to add job if not exists

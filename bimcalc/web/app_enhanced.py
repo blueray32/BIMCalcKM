@@ -45,6 +45,8 @@ from bimcalc.db.models import (
     DocumentModel,
     DocumentLinkModel,
 )
+from bimcalc.db.models_intelligence import ComplianceRuleModel, ComplianceResultModel
+from bimcalc.intelligence.compliance import extract_rules_from_text, run_compliance_check
 from bimcalc.ingestion.pricebooks import ingest_pricebook
 from bimcalc.ingestion.schedules import ingest_schedule
 from bimcalc.intelligence.notifications import get_email_notifier, get_slack_notifier
@@ -574,6 +576,55 @@ async def get_ingest_history(
             "history": history,
         })
 
+@app.get("/api/revisions")
+async def get_revisions(
+    org: str = Query(...),
+    project: str = Query(...),
+    item_id: UUID | None = Query(None),
+    limit: int = Query(default=50, ge=1, le=100),
+    username: str = Depends(require_auth) if AUTH_ENABLED else None,
+):
+    """Get revision history for items."""
+    from bimcalc.db.models import ItemRevisionModel, ItemModel
+
+    async with get_session() as session:
+        query = (
+            select(ItemRevisionModel, ItemModel.family, ItemModel.type_name)
+            .join(ItemModel, ItemRevisionModel.item_id == ItemModel.id)
+            .where(
+                ItemRevisionModel.org_id == org,
+                ItemRevisionModel.project_id == project,
+            )
+            .order_by(ItemRevisionModel.ingest_timestamp.desc())
+            .limit(limit)
+        )
+
+        if item_id:
+            query = query.where(ItemRevisionModel.item_id == item_id)
+
+        results = (await session.execute(query)).all()
+
+        revisions = [
+            {
+                "id": str(row.ItemRevisionModel.id),
+                "item_id": str(row.ItemRevisionModel.item_id),
+                "item_name": f"{row.family} / {row.type_name}",
+                "field_name": row.ItemRevisionModel.field_name,
+                "old_value": row.ItemRevisionModel.old_value,
+                "new_value": row.ItemRevisionModel.new_value,
+                "change_type": row.ItemRevisionModel.change_type,
+                "ingest_timestamp": row.ItemRevisionModel.ingest_timestamp.isoformat(),
+                "source_filename": row.ItemRevisionModel.source_filename,
+            }
+            for row in results
+        ]
+
+        return JSONResponse(content={
+            "org_id": org,
+            "project_id": project,
+            "count": len(revisions),
+            "revisions": revisions,
+        })
 
 # ============================================================================
 # Review Workflow (existing functionality)
@@ -683,6 +734,41 @@ async def approve_item(
     return RedirectResponse(redirect_url, status_code=303)
 
 
+
+@app.get("/ingest/history", response_class=HTMLResponse)
+async def ingest_history_page(
+    request: Request,
+    org: str | None = None,
+    project: str | None = None,
+):
+    """Ingest history dashboard."""
+    org_id, project_id = _get_org_project(request, org, project)
+    return templates.TemplateResponse(
+        "ingest_history.html",
+        {
+            "request": request,
+            "org_id": org_id,
+            "project_id": project_id,
+        },
+    )
+
+@app.get("/revisions", response_class=HTMLResponse)
+async def revisions_page(
+    request: Request,
+    org: str | None = None,
+    project: str | None = None,
+):
+    """Revision history dashboard."""
+    org_id, project_id = _get_org_project(request, org, project)
+    return templates.TemplateResponse(
+        "revisions.html",
+        {
+            "request": request,
+            "org_id": org_id,
+            "project_id": project_id,
+        },
+    )
+
 # ============================================================================
 # File Upload & Ingestion
 # ============================================================================
@@ -736,6 +822,251 @@ async def reject_review(
         url=f"/review?{query_string}", 
         status_code=303
     )
+
+class BulkUpdateRequest(BaseModel):
+    match_result_ids: List[UUID]
+    action: Literal["approve", "reject"]
+    annotation: Optional[str] = None
+    org_id: str
+    project_id: str
+
+@app.post("/api/matches/bulk-update")
+async def bulk_update_matches(
+    request: BulkUpdateRequest,
+    username: str = Depends(require_auth) if AUTH_ENABLED else None,
+):
+    """Bulk approve or reject matches."""
+    async with get_session() as session:
+        # Verify all match results exist and belong to org/project
+        stmt = select(MatchResultModel).join(ItemModel).where(
+            MatchResultModel.id.in_(request.match_result_ids),
+            ItemModel.org_id == request.org_id,
+            ItemModel.project_id == request.project_id
+        )
+        results = (await session.execute(stmt)).scalars().all()
+        
+        if len(results) != len(request.match_result_ids):
+            found_ids = {r.id for r in results}
+            missing = set(request.match_result_ids) - found_ids
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Some match results not found or access denied: {missing}"
+            )
+
+        processed_count = 0
+        for match_result in results:
+            if request.action == "approve":
+                # Re-use existing approval logic
+                # We need to fetch the full record structure expected by approve_review_record
+                # For now, we'll implement a simplified version or fetch the record
+                record = await fetch_review_record(session, match_result.id)
+                if record:
+                    await approve_review_record(
+                        session, 
+                        record, 
+                        created_by=username or "web-ui", 
+                        annotation=request.annotation
+                    )
+                    processed_count += 1
+            
+            elif request.action == "reject":
+                match_result.decision = "rejected"
+                match_result.reason = request.annotation or "Bulk rejection via web UI"
+                match_result.created_by = username or "web-ui" # Update audit field
+                # Note: 'reviewed_at' isn't on MatchResultModel based on previous view, 
+                # but 'timestamp' is creation time. We might need a separate audit log or update existing fields.
+                # For now, we update the decision.
+                processed_count += 1
+        
+        await session.commit()
+        
+        return {"processed": processed_count, "action": request.action}
+
+        return {"processed": processed_count, "action": request.action}
+
+
+# ============================================================================
+# Integrations (Autodesk Construction Cloud)
+# ============================================================================
+
+@app.get("/api/integrations/acc/connect")
+async def acc_connect():
+    """Initiate ACC OAuth flow."""
+    from bimcalc.integrations.acc import get_acc_client
+    client = get_acc_client()
+    return RedirectResponse(client.get_auth_url())
+
+@app.get("/api/integrations/acc/callback")
+async def acc_callback(code: str, request: Request):
+    """Handle ACC OAuth callback."""
+    from bimcalc.integrations.acc import get_acc_client
+    client = get_acc_client()
+    tokens = await client.exchange_code(code)
+    
+    # Store token in session or cookie (simplified for MVP)
+    response = RedirectResponse("/integrations/acc/browser")
+    response.set_cookie("acc_token", tokens["access_token"], max_age=3600, httponly=True)
+    return response
+
+@app.get("/integrations/acc/browser", response_class=HTMLResponse)
+async def acc_browser(request: Request):
+    """Browser for ACC files."""
+    token = request.cookies.get("acc_token")
+    if not token:
+        return RedirectResponse("/api/integrations/acc/connect")
+        
+    from bimcalc.integrations.acc import get_acc_client
+    client = get_acc_client()
+    projects = await client.list_projects(token)
+    
+    # Simple HTML for file browsing
+    project_list = "".join([f"<li><a href='?project_id={p['id']}'>{p['name']}</a></li>" for p in projects])
+    
+    files_html = ""
+    project_id = request.query_params.get("project_id")
+    if project_id:
+        files = await client.list_files(token, project_id)
+        files_html = "<h3>Files</h3><ul>" + "".join([
+            f"<li>{f.name} (v{f.version}) - <button onclick='importFile(\"{f.id}\")'>Import</button></li>" 
+            for f in files
+        ]) + "</ul>"
+        
+    return f"""
+    <html>
+        <head><title>ACC Browser</title></head>
+        <body>
+            <h1>Autodesk Construction Cloud</h1>
+            <h2>Projects</h2>
+            <ul>{project_list}</ul>
+            {files_html}
+            <script>
+                function importFile(fileId) {{
+                    alert('Importing file ' + fileId);
+                    // Call ingest API here
+                }}
+            </script>
+        </body>
+    </html>
+    """
+
+# ============================================================================
+# Scenario Planning
+# ============================================================================
+
+@app.get("/api/scenarios/export")
+async def export_scenarios(
+    org: str = Query(...),
+    project: str = Query(...),
+    vendors: List[str] = Query(default=None),
+):
+    """Export scenario comparison to Excel."""
+    from bimcalc.reporting.scenario import compute_vendor_scenario, get_available_vendors
+    from bimcalc.reporting.export import export_scenario_to_excel
+    
+    async with get_session() as session:
+        # Reuse logic from compare endpoint
+        available_vendors = await get_available_vendors(session, org)
+        
+        selected_vendors = vendors if vendors else available_vendors[:3]
+        
+        comparisons = []
+        for vendor in selected_vendors:
+            result = await compute_vendor_scenario(session, org, project, vendor)
+            comparisons.append(result)
+            
+        data = {
+            "org_id": org,
+            "project_id": project,
+            "comparisons": [c.to_dict() for c in comparisons] # Assuming dataclass has to_dict or we convert
+        }
+        
+        # Convert dataclasses to dict if needed
+        # compute_vendor_scenario returns VendorScenario dataclass
+        # We need to ensure it's serializable or access fields directly
+        # The export function expects dicts.
+        # Let's update the data construction to be explicit
+        dict_comparisons = []
+        for c in comparisons:
+            dict_comparisons.append({
+                "vendor_name": c.vendor_name,
+                "total_cost": c.total_cost,
+                "coverage_percent": c.coverage_percent,
+                "matched_items_count": c.matched_items_count,
+                "missing_items_count": c.missing_items_count,
+                "details": [
+                    {
+                        "item_family": m.item.family,
+                        "item_type": m.item.type_name,
+                        "quantity": float(m.item.quantity) if m.item.quantity else 0,
+                        "unit": m.item.unit,
+                        "unit_price": float(m.price.unit_price) if m.price else 0,
+                        "line_total": float(m.line_total),
+                        "status": "matched"
+                    } for m in c.matched_items
+                ]
+            })
+            
+        excel_file = export_scenario_to_excel({"comparisons": dict_comparisons}, org, project)
+        
+        filename = f"scenario_comparison_{org}_{project}_{datetime.now().strftime('%Y%m%d')}.xlsx"
+        
+        return Response(
+            content=excel_file.getvalue(),
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": f"attachment; filename={filename}"}
+        )
+# ============================================================================
+
+@app.get("/scenarios", response_class=HTMLResponse)
+async def scenario_page(
+    request: Request, 
+    org: str | None = None, 
+    project: str | None = None
+):
+    """Scenario planning dashboard."""
+    org_id, project_id = _get_org_project(request, org, project)
+    
+    return templates.TemplateResponse(
+        "scenario.html",
+        {
+            "request": request,
+            "org_id": org_id,
+            "project_id": project_id,
+        },
+    )
+
+@app.get("/api/scenarios/compare")
+async def compare_scenarios(
+    org: str = Query(...),
+    project: str = Query(...),
+    vendors: List[str] = Query(default=[]),
+    username: str = Depends(require_auth) if AUTH_ENABLED else None,
+):
+    """Compare costs across multiple vendors."""
+    from bimcalc.reporting.scenario import get_available_vendors, compute_vendor_scenario
+    
+    async with get_session() as session:
+        # If no vendors specified, fetch top 3 available
+        target_vendors = vendors
+        if not target_vendors:
+            available = await get_available_vendors(session, org)
+            target_vendors = available[:3]
+            
+        scenarios = []
+        for vendor in target_vendors:
+            scenario = await compute_vendor_scenario(session, org, project, vendor)
+            scenarios.append({
+                "vendor": scenario.vendor_name,
+                "total_cost": scenario.total_cost,
+                "coverage": scenario.coverage_percent,
+                "matched": scenario.matched_items,
+                "missing": scenario.missing_items
+            })
+            
+        return {
+            "scenarios": scenarios,
+            "all_vendors": await get_available_vendors(session, org)
+        }
 
 @app.get("/ingest", response_class=HTMLResponse)
 async def ingest_page(request: Request, org: str | None = None, project: str | None = None):
@@ -3892,7 +4223,8 @@ async def create_project(
     display_name: str,
     description: str = None,
     start_date: str = None,
-    target_completion: str = None
+    target_completion: str = None,
+    region: str = "EU"
 ):
     """Create a new project."""
     from bimcalc.db.models import ProjectModel
@@ -3923,7 +4255,8 @@ async def create_project(
             description=description,
             start_date=start,
             target_completion=target,
-            status="active"
+            status="active",
+            region=region
         )
         
         session.add(project)
@@ -5224,3 +5557,170 @@ async def delete_classification_mapping(mapping_id: UUID):
         await session.commit()
 
     return {"success": True, "message": "Mapping deleted successfully"}
+
+# ============================================================================
+# Compliance Checker Routes
+# ============================================================================
+
+@app.get("/compliance", response_class=HTMLResponse)
+async def compliance_dashboard(
+    request: Request,
+    org: str | None = None,
+    project: str | None = None,
+):
+    """Compliance Checker Dashboard."""
+    org_id, project_id = _get_org_project(request, org, project)
+    return templates.TemplateResponse(
+        "compliance.html",
+        {
+            "request": request,
+            "org_id": org_id,
+            "project_id": project_id,
+        },
+    )
+
+@app.post("/api/compliance/upload")
+async def upload_compliance_spec(
+    file: UploadFile = File(...),
+    org_id: str = Form(...),
+    project_id: str = Form(...),
+):
+    """Upload specification and extract rules."""
+    content = await file.read()
+    text_content = ""
+    
+    # Simple text extraction
+    try:
+        text_content = content.decode("utf-8")
+    except UnicodeDecodeError:
+        # TODO: Handle PDF/Docx
+        return JSONResponse(
+            status_code=400, 
+            content={"detail": "Only text files supported for MVP."}
+        )
+        
+    rules = await extract_rules_from_text(text_content)
+    
+    if not rules:
+        return JSONResponse(content={"rule_count": 0, "message": "No rules found."})
+        
+    async with get_session() as session:
+        # Save rules
+        for r in rules:
+            rule_model = ComplianceRuleModel(
+                org_id=org_id,
+                project_id=project_id,
+                name=r["name"],
+                description=r["description"],
+                rule_logic=r["rule_logic"],
+                created_by="web-upload"
+            )
+            session.add(rule_model)
+        await session.commit()
+        
+    return {"rule_count": len(rules)}
+
+@app.get("/api/compliance/rules")
+async def get_compliance_rules(
+    org: str = Query(...),
+    project: str = Query(...),
+):
+    async with get_session() as session:
+        stmt = select(ComplianceRuleModel).where(
+            ComplianceRuleModel.org_id == org,
+            ComplianceRuleModel.project_id == project
+        )
+        rules = (await session.execute(stmt)).scalars().all()
+        return {"rules": rules}
+
+@app.post("/api/compliance/check")
+async def trigger_compliance_check(
+    org: str = Query(...),
+    project: str = Query(...),
+):
+    async with get_session() as session:
+        stats = await run_compliance_check(session, org, project)
+        return {"stats": stats}
+
+@app.get("/api/compliance/results")
+async def get_compliance_results(
+    org: str = Query(...),
+    project: str = Query(...),
+):
+    async with get_session() as session:
+        # Join with Item and Rule to get names
+        stmt = (
+            select(ComplianceResultModel, ItemModel.type_name, ComplianceRuleModel.name)
+            .join(ItemModel, ComplianceResultModel.item_id == ItemModel.id)
+            .join(ComplianceRuleModel, ComplianceResultModel.rule_id == ComplianceRuleModel.id)
+            .where(
+                ItemModel.org_id == org,
+                ItemModel.project_id == project
+            )
+            .order_by(ComplianceResultModel.status)
+        )
+        results = (await session.execute(stmt)).all()
+        
+        data = []
+        for res, item_name, rule_name in results:
+            data.append({
+                "id": str(res.id),
+                "status": res.status,
+                "message": res.message,
+                "item_name": item_name,
+                "rule_name": rule_name,
+                "checked_at": res.checked_at.isoformat()
+            })
+            
+        return {"results": data}
+
+# ============================================================================
+# Advanced Analytics Routes
+# ============================================================================
+
+@app.get("/analytics/advanced", response_class=HTMLResponse)
+async def analytics_advanced_dashboard(
+    request: Request,
+    org: str | None = None,
+    project: str | None = None,
+):
+    """Advanced Analytics Dashboard."""
+    org_id, project_id = _get_org_project(request, org, project)
+    return templates.TemplateResponse(
+        "analytics_advanced.html",
+        {
+            "request": request,
+            "org_id": org_id,
+            "project_id": project_id,
+        },
+    )
+
+@app.get("/api/analytics/history/{item_code}")
+async def get_item_history_api(
+    item_code: str,
+    org: str = Query(...),
+):
+    from bimcalc.reporting.analytics import AnalyticsEngine
+    async with get_session() as session:
+        engine = AnalyticsEngine(session)
+        return await engine.get_item_price_history(item_code, org)
+
+@app.post("/api/analytics/vendor-comparison")
+async def get_vendor_comparison_api(
+    item_codes: List[str] = Body(...),
+    org: str = Query(...),
+):
+    from bimcalc.reporting.analytics import AnalyticsEngine
+    async with get_session() as session:
+        engine = AnalyticsEngine(session)
+        return await engine.compare_vendors(item_codes, org)
+
+@app.get("/api/analytics/forecast")
+async def get_forecast_api(
+    project: str = Query(...),
+    days: int = Query(90),
+):
+    from bimcalc.reporting.analytics import AnalyticsEngine
+    async with get_session() as session:
+        engine = AnalyticsEngine(session)
+        return await engine.forecast_cost_trends(project, days)

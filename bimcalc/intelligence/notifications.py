@@ -278,6 +278,77 @@ class EmailNotifier:
         
         await self._send_email(recipients, subject, html)
     
+    async def send_revision_alert(
+        self,
+        recipients: list[str],
+        item_data: dict[str, Any],
+        changes: list[dict[str, Any]]
+    ):
+        """Send alert for critical item revisions.
+        
+        Args:
+            recipients: List of email addresses
+            item_data: Item details (family, type, project_id, id)
+            changes: List of dicts with 'field', 'old', 'new'
+        """
+        subject = f"⚠️ Critical Revision: {item_data['family']} {item_data['type_name']}"
+        
+        change_rows = ""
+        for change in changes:
+            change_rows += f"""
+            <tr>
+                <td>{change['field']}</td>
+                <td style="color: #c53030; text-decoration: line-through;">{change['old']}</td>
+                <td style="color: #047857; font-weight: bold;">{change['new']}</td>
+            </tr>
+            """
+
+        html = f"""
+        <html>
+        <head>
+            <style>
+                body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
+                .header {{ background: #fff7ed; padding: 20px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #f97316; }}
+                table {{ width: 100%; border-collapse: collapse; margin: 20px 0; }}
+                th, td {{ padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: left; }}
+                th {{ background: #f9fafb; }}
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <h1>⚠️ Critical Item Revision</h1>
+                <p>Important properties have changed in the latest import.</p>
+            </div>
+            
+            <div class="details">
+                <p><strong>Family:</strong> {item_data['family']}</p>
+                <p><strong>Type:</strong> {item_data['type_name']}</p>
+                <p><strong>Project:</strong> {item_data['project_id']}</p>
+            </div>
+            
+            <h2>Changes</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Field</th>
+                        <th>Old Value</th>
+                        <th>New Value</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {change_rows}
+                </tbody>
+            </table>
+            
+            <p style="margin-top: 30px;">
+                <a href="http://localhost:8001/revisions?item_id={item_data['id']}">View Revision History</a>
+            </p>
+        </body>
+        </html>
+        """
+        
+        await self._send_email(recipients, subject, html)
+
     async def _send_email(self, recipients: list[str], subject: str, html: str):
         """Send HTML email via SMTP.
         

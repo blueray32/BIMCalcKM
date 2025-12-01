@@ -1,187 +1,202 @@
 {% extends "base.html" %}
 
-{% block title %}Compliance - BIMCalc{% endblock %}
+{% block title %}Compliance Checker - BIMCalc{% endblock %}
 
 {% block content %}
 <div class="page-header">
-    <h1>✅ Compliance & QA Tracking</h1>
-    <p>Track quality assurance and testing coverage across project items.</p>
+    <h1>✅ Compliance Checker</h1>
+    <p>Automated specification compliance verification using AI.</p>
 </div>
 
-<!-- Loading State -->
-<div id="loadingState" class="text-center" style="padding: 3rem;">
-    <div class="loading-spinner"
-        style="width: 50px; height: 50px; border: 4px solid #f3f3f3; border-top: 4px solid #4299e1; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto;">
+<!-- Stats Grid -->
+<div class="stats-grid">
+    <div class="stat-card primary">
+        <div class="label">Total Checks</div>
+        <div class="value" id="stat-total">-</div>
+        <div class="description">Items checked against rules</div>
     </div>
-    <p class="text-muted" style="margin-top: 1rem;">Loading compliance metrics...</p>
-</div>
-
-<!-- Metrics Dashboard (Hidden until loaded) -->
-<div id="metricsContainer" style="display: none;">
-    <!-- Overview Cards -->
-    <div class="stats-grid" style="margin-bottom: 2rem;">
-        <div class="stat-card primary">
-            <div class="label">Total Items</div>
-            <div class="value" id="totalItems">-</div>
-        </div>
-        <div class="stat-card success">
-            <div class="label">Items with QA Evidence</div>
-            <div class="value" id="itemsWithQA">-</div>
-        </div>
-        <div class="stat-card" style="border-left: 4px solid #805ad5;">
-            <div class="label">Completion Rate</div>
-            <div class="value" id="completionPercent">-</div>
-        </div>
+    <div class="stat-card success">
+        <div class="label">Passed</div>
+        <div class="value" id="stat-passed">-</div>
+        <div class="description">Compliant items</div>
     </div>
-
-    <!-- Coverage by Classification -->
-    <div class="card" style="margin-bottom: 2rem;">
-        <div class="card-header">QA Coverage by Classification</div>
-        <div class="card-body">
-            <canvas id="coverageChart" width="400" height="200"></canvas>
-        </div>
+    <div class="stat-card danger">
+        <div class="label">Failed</div>
+        <div class="value" id="stat-failed">-</div>
+        <div class="description">Non-compliant items</div>
     </div>
-
-    <!-- Deficiencies Table -->
-    <div class="card">
-        <div class="card-header">Items Without QA Evidence (<span id="deficiencyCount">0</span>)</div>
-        <div class="card-body">
-            <table id="deficienciesTable">
-                <thead>
-                    <tr>
-                        <th>Classification</th>
-                        <th>Family</th>
-                        <th>Type Name</th>
-                    </tr>
-                </thead>
-                <tbody id="deficienciesBody">
-                    <!-- Populated by JS -->
-                </tbody>
-            </table>
-        </div>
+    <div class="stat-card warning">
+        <div class="label">Warnings</div>
+        <div class="value" id="stat-warnings">-</div>
+        <div class="description">Data missing or N/A</div>
     </div>
 </div>
 
-<style>
-    @keyframes spin {
-        0% {
-            transform: rotate(0deg);
-        }
+<div class="flex gap-2" style="align-items: flex-start;">
+    <!-- Left Column: Rules & Upload -->
+    <div style="flex: 1;">
+        <div class="card">
+            <div class="card-header flex flex-between flex-center">
+                <span>📜 Specification Rules</span>
+                <button class="btn btn-primary" onclick="document.getElementById('spec-upload').click()">
+                    + Upload Spec (PDF/Text)
+                </button>
+                <input type="file" id="spec-upload" style="display: none;" onchange="uploadSpec(this)">
+            </div>
+            <div class="card-body">
+                <div id="rules-list" style="max-height: 400px; overflow-y: auto;">
+                    <p class="text-muted text-center">No rules loaded. Upload a specification to extract rules.</p>
+                </div>
+            </div>
+        </div>
+    </div>
 
-        100% {
-            transform: rotate(360deg);
-        }
-    }
-</style>
+    <!-- Right Column: Results -->
+    <div style="flex: 2;">
+        <div class="card">
+            <div class="card-header flex flex-between flex-center">
+                <span>🔍 Check Results</span>
+                <button class="btn btn-success" onclick="runCheck()">
+                    ▶ Run Compliance Check
+                </button>
+            </div>
+            <div class="card-body">
+                <table id="results-table">
+                    <thead>
+                        <tr>
+                            <th>Status</th>
+                            <th>Item</th>
+                            <th>Rule</th>
+                            <th>Message</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td colspan="4" class="text-center text-muted">Run a check to see results.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
 
 {% endblock %}
 
 {% block scripts %}
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
-    async function loadMetrics() {
-        const org = '{{ org_id }}';
-        const project = '{{ project_id }}';
+    const urlParams = new URLSearchParams(window.location.search);
+    const orgId = urlParams.get('org') || 'default';
+    const projectId = urlParams.get('project') || 'default';
+
+    async function uploadSpec(input) {
+        if (!input.files || !input.files[0]) return;
+
+        const formData = new FormData();
+        formData.append('file', input.files[0]);
+        formData.append('org_id', orgId);
+        formData.append('project_id', projectId);
 
         try {
-            const response = await fetch(`/api/compliance/metrics?org=${org}&project=${project}`);
+            document.body.classList.add('htmx-request'); // Show loading
+            const response = await fetch('/api/compliance/upload', {
+                method: 'POST',
+                body: formData
+            });
+
             const data = await response.json();
-
-            // Hide loading, show metrics
-            document.getElementById('loadingState').style.display = 'none';
-            document.getElementById('metricsContainer').style.display = 'block';
-
-            // Update overview cards
-            document.getElementById('totalItems').textContent = data.total_items;
-            document.getElementById('itemsWithQA').textContent = data.items_with_qa;
-            document.getElementById('completionPercent').textContent = data.completion_percent.toFixed(1) + '%';
-
-            // Render coverage chart
-            renderCoverageChart(data.coverage_by_classification);
-
-            // Render deficiencies table
-            renderDeficiencies(data.items_without_qa);
-
-        } catch (error) {
-            console.error('Failed to load metrics:', error);
-            document.getElementById('loadingState').innerHTML = `
-            <div class="message message-error">
-                Failed to load compliance metrics. Please try again.
-            </div>
-        `;
+            if (response.ok) {
+                showToast(`Success: Extracted ${data.rule_count} rules!`, 'success');
+                loadRules();
+            } else {
+                showToast('Error: ' + data.detail, 'error');
+            }
+        } catch (e) {
+            showToast('Upload failed', 'error');
+        } finally {
+            document.body.classList.remove('htmx-request');
+            input.value = ''; // Reset
         }
     }
 
-    function renderCoverageChart(coverage) {
-        const ctx = document.getElementById('coverageChart').getContext('2d');
+    async function loadRules() {
+        const response = await fetch(`/api/compliance/rules?org=${orgId}&project=${projectId}`);
+        const data = await response.json();
 
-        const labels = coverage.map(c => `Class ${c.classification}`);
-        const withQA = coverage.map(c => c.with_qa);
-        const withoutQA = coverage.map(c => c.total - c.with_qa);
-
-        new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: labels,
-                datasets: [
-                    {
-                        label: 'With QA',
-                        data: withQA,
-                        backgroundColor: '#48bb78',
-                    },
-                    {
-                        label: 'Without QA',
-                        data: withoutQA,
-                        backgroundColor: '#f56565',
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    x: { stacked: true },
-                    y: { stacked: true, beginAtZero: true }
-                },
-                plugins: {
-                    legend: { position: 'top' },
-                    title: {
-                        display: false
-                    }
-                }
-            }
-        });
-    }
-
-    function renderDeficiencies(items) {
-        const tbody = document.getElementById('deficienciesBody');
-        document.getElementById('deficiencyCount').textContent = items.length;
-
-        if (items.length === 0) {
-            tbody.innerHTML = `
-            <tr>
-                <td colspan="3" class="text-center text-muted" style="padding: 2rem;">
-                    🎉 All items have QA evidence!
-                </td>
-            </tr>
-        `;
+        const list = document.getElementById('rules-list');
+        if (data.rules.length === 0) {
+            list.innerHTML = '<p class="text-muted text-center">No rules loaded.</p>';
             return;
         }
 
-        tbody.innerHTML = items.map(item => `
-        <tr>
-            <td>
-                <span class="badge" style="background: #edf2f7; color: #4a5568;">
-                    ${item.classification_code || 'N/A'}
-                </span>
-            </td>
-            <td>${item.family}</td>
-            <td>${item.type_name}</td>
-        </tr>
-    `).join('');
+        list.innerHTML = data.rules.map(r => `
+            <div style="padding: 10px; border-bottom: 1px solid #eee;">
+                <div style="font-weight: 600;">${r.name}</div>
+                <div style="font-size: 0.9em; color: #666;">${r.description}</div>
+                <div style="font-size: 0.8em; color: #999; margin-top: 4px;">
+                    <code>${JSON.stringify(r.rule_logic)}</code>
+                </div>
+            </div>
+        `).join('');
     }
 
-    // Load on page load
-    document.addEventListener('DOMContentLoaded', loadMetrics);
+    async function runCheck() {
+        try {
+            document.body.classList.add('htmx-request');
+            const response = await fetch(`/api/compliance/check?org=${orgId}&project=${projectId}`, {
+                method: 'POST'
+            });
+            const data = await response.json();
+
+            if (response.ok) {
+                showToast('Check complete!', 'success');
+                updateStats(data.stats);
+                loadResults();
+            } else {
+                showToast('Check failed: ' + data.detail, 'error');
+            }
+        } catch (e) {
+            showToast('Check failed', 'error');
+        } finally {
+            document.body.classList.remove('htmx-request');
+        }
+    }
+
+    function updateStats(stats) {
+        document.getElementById('stat-total').textContent = stats.passed + stats.failed + stats.warnings;
+        document.getElementById('stat-passed').textContent = stats.passed;
+        document.getElementById('stat-failed').textContent = stats.failed;
+        document.getElementById('stat-warnings').textContent = stats.warnings;
+    }
+
+    async function loadResults() {
+        const response = await fetch(`/api/compliance/results?org=${orgId}&project=${projectId}`);
+        const data = await response.json();
+
+        const tbody = document.querySelector('#results-table tbody');
+        if (data.results.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">No results found.</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = data.results.map(r => `
+            <tr>
+                <td><span class="badge badge-${getStatusClass(r.status)}">${r.status.toUpperCase()}</span></td>
+                <td>${r.item_name}</td>
+                <td>${r.rule_name}</td>
+                <td>${r.message}</td>
+            </tr>
+        `).join('');
+    }
+
+    function getStatusClass(status) {
+        if (status === 'pass') return 'success';
+        if (status === 'fail') return 'danger';
+        return 'warning';
+    }
+
+    // Initial load
+    loadRules();
+    loadResults();
 </script>
 {% endblock %}

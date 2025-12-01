@@ -56,6 +56,31 @@ async def approve_review_record(
 
     await record_match_result(session, record.item.id, match_result)
 
+    # INTELLIGENCE: Capture training example
+    # If the item has a classification, or if we are confirming a match that implies a classification
+    if record.price.classification_code:
+        from bimcalc.db.models import TrainingExampleModel
+        
+        # Determine if this is a correction or confirmation
+        # If item had no class, or different class, it's a correction/imputation
+        feedback_type = "confirmation"
+        if not record.item.classification_code or record.item.classification_code != record.price.classification_code:
+            feedback_type = "correction"
+            
+        example = TrainingExampleModel(
+            org_id=record.item.org_id,
+            item_family=record.item.family,
+            item_type=record.item.type_name,
+            item_description=f"{record.item.family} {record.item.type_name}", # Simplified description
+            target_classification_code=record.price.classification_code,
+            source_item_id=record.item.id,
+            price_item_id=record.price.id,
+            feedback_type=feedback_type,
+            created_by=created_by
+        )
+        session.add(example)
+
+
 
 def _build_reason(annotation: str | None, record: ReviewRecord) -> str:
     base = "Manual approval via review UI"
