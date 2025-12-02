@@ -78,6 +78,7 @@ from bimcalc.web.routes import ingestion  # Phase 3.3 - Ingestion router
 from bimcalc.web.routes import matching   # Phase 3.4 - Matching router
 from bimcalc.web.routes import review     # Phase 3.5 - Review router
 from bimcalc.web.routes import items      # Phase 3.6 - Items router
+from bimcalc.web.routes import mappings   # Phase 3.7 - Mappings router
 
 from starlette.middleware.base import BaseHTTPMiddleware
 import structlog
@@ -117,6 +118,9 @@ app.include_router(review.router)
 
 # Phase 3.6 - Items router (replaces inline items routes at lines 732, 822, 930, 973)
 app.include_router(items.router)
+
+# Phase 3.7 - Mappings router (replaces inline mappings routes at lines 746, 799)
+app.include_router(mappings.router)
 
 # Intelligence Features
 config = get_config()
@@ -742,77 +746,9 @@ async def compare_scenarios(
 # ============================================================================
 # Mappings Management
 # ============================================================================
-
-@app.get("/mappings", response_class=HTMLResponse)
-async def mappings_list(
-    request: Request,
-    org: str | None = None,
-    project: str | None = None,
-    page: int = Query(default=1, ge=1),
-):
-    """List and manage active mappings."""
-    org_id, project_id = _get_org_project(request, org, project)
-    per_page = 50
-    offset = (page - 1) * per_page
-
-    async with get_session() as session:
-        # Get active mappings with pagination (only current prices)
-        stmt = (
-            select(ItemMappingModel, PriceItemModel)
-            .join(PriceItemModel, PriceItemModel.id == ItemMappingModel.price_item_id)
-            .where(
-                ItemMappingModel.org_id == org_id,
-                ItemMappingModel.end_ts.is_(None),
-                PriceItemModel.is_current == True,
-            )
-            .order_by(ItemMappingModel.start_ts.desc())
-            .limit(per_page)
-            .offset(offset)
-        )
-        result = await session.execute(stmt)
-        mappings = result.all()
-
-        # Get total count
-        count_result = await session.execute(
-            select(func.count()).select_from(ItemMappingModel).where(
-                ItemMappingModel.org_id == org_id,
-                ItemMappingModel.end_ts.is_(None),
-            )
-        )
-        total = count_result.scalar_one()
-
-    return templates.TemplateResponse(
-        "mappings.html",
-        {
-            "request": request,
-            "mappings": mappings,
-            "org_id": org_id,
-            "project_id": project_id,
-            "page": page,
-            "per_page": per_page,
-            "total": total,
-            "total_pages": (total + per_page - 1) // per_page,
-        },
-    )
-
-
-@app.delete("/mappings/{mapping_id}")
-async def delete_mapping(mapping_id: UUID):
-    """Delete (close) a mapping."""
-    async with get_session() as session:
-        result = await session.execute(
-            select(ItemMappingModel).where(ItemMappingModel.id == mapping_id)
-        )
-        mapping = result.scalar_one_or_none()
-
-        if not mapping:
-            raise HTTPException(status_code=404, detail="Mapping not found")
-
-        # Close mapping (SCD2)
-        mapping.end_ts = datetime.utcnow()
-        await session.commit()
-
-    return {"success": True, "message": "Mapping closed"}
+# REFACTORED: Mappings routes moved to bimcalc.web.routes.mappings (Phase 3.7)
+# - GET    /mappings            -> mappings.mappings_list()   (was line 746-796)
+# - DELETE /mappings/{mapping_id} -> mappings.delete_mapping() (was line 799-815)
 
 
 # ============================================================================
