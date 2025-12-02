@@ -81,6 +81,7 @@ from bimcalc.web.routes import items      # Phase 3.6 - Items router
 from bimcalc.web.routes import mappings   # Phase 3.7 - Mappings router
 from bimcalc.web.routes import reports    # Phase 3.8 - Reports router
 from bimcalc.web.routes import audit      # Phase 3.9 - Audit router
+from bimcalc.web.routes import pipeline   # Phase 3.10 - Pipeline router
 
 from starlette.middleware.base import BaseHTTPMiddleware
 import structlog
@@ -129,6 +130,9 @@ app.include_router(reports.router)
 
 # Phase 3.9 - Audit router (replaces inline audit route at line 776)
 app.include_router(audit.router)
+
+# Phase 3.10 - Pipeline router (replaces inline pipeline routes at lines 787, 857, 895)
+app.include_router(pipeline.router)
 
 # Intelligence Features
 config = get_config()
@@ -783,142 +787,10 @@ async def compare_scenarios(
 # ============================================================================
 # Pipeline Management (NEW - SCD Type-2 Support)
 # ============================================================================
-
-@app.get("/pipeline", response_class=HTMLResponse)
-async def pipeline_dashboard(
-    request: Request,
-    org: str | None = None,
-    project: str | None = None,
-    page: int = Query(default=1, ge=1)
-):
-    """Pipeline status and management dashboard."""
-    org_id, project_id = _get_org_project(request, org, project)
-    per_page = 20
-    offset = (page - 1) * per_page
-
-    async with get_session() as session:
-        # Get pipeline run history
-        stmt = (
-            select(DataSyncLogModel)
-            .order_by(DataSyncLogModel.run_timestamp.desc())
-            .limit(per_page)
-            .offset(offset)
-        )
-        result = await session.execute(stmt)
-        pipeline_runs = result.scalars().all()
-
-        # Get total count
-        count_result = await session.execute(
-            select(func.count()).select_from(DataSyncLogModel)
-        )
-        total = count_result.scalar_one()
-
-        # Get summary statistics
-        success_result = await session.execute(
-            select(func.count()).select_from(DataSyncLogModel).where(
-                DataSyncLogModel.status == "SUCCESS"
-            )
-        )
-        success_count = success_result.scalar_one()
-
-        failed_result = await session.execute(
-            select(func.count()).select_from(DataSyncLogModel).where(
-                DataSyncLogModel.status == "FAILED"
-            )
-        )
-        failed_count = failed_result.scalar_one()
-
-        # Get last run timestamp
-        last_run_result = await session.execute(
-            select(DataSyncLogModel.run_timestamp)
-            .order_by(DataSyncLogModel.run_timestamp.desc())
-            .limit(1)
-        )
-        last_run = last_run_result.scalar_one_or_none()
-
-    return templates.TemplateResponse(
-        "pipeline.html",
-        {
-            "request": request,
-            "pipeline_runs": pipeline_runs,
-            "org_id": org_id,
-            "project_id": project_id,
-            "page": page,
-            "per_page": per_page,
-            "total": total,
-            "total_pages": (total + per_page - 1) // per_page,
-            "success_count": success_count,
-            "failed_count": failed_count,
-            "last_run": last_run,
-        },
-    )
-
-
-@app.post("/pipeline/run")
-async def run_pipeline_manual():
-    """Manually trigger pipeline run."""
-    try:
-        # Load configuration
-        config_path = Path(__file__).parent.parent.parent / "config" / "pipeline_sources.yaml"
-
-        if not config_path.exists():
-            return JSONResponse(
-                status_code=400,
-                content={"success": False, "message": f"Configuration file not found: {config_path}"},
-            )
-
-        importers = load_pipeline_config(config_path)
-
-        if not importers:
-            return JSONResponse(
-                status_code=400,
-                content={"success": False, "message": "No enabled data sources configured"},
-            )
-
-        # Run pipeline
-        orchestrator = PipelineOrchestrator(importers)
-        summary = await orchestrator.run()
-
-        return {
-            "success": summary["overall_success"],
-            "message": f"Pipeline completed: {summary['successful_sources']}/{summary['total_sources']} sources successful",
-            "details": summary,
-        }
-
-    except Exception as e:
-        return JSONResponse(
-            status_code=500,
-            content={"success": False, "message": str(e)},
-        )
-
-
-@app.get("/pipeline/sources")
-async def get_pipeline_sources():
-    """Get configured pipeline sources."""
-    try:
-        config_path = Path(__file__).parent.parent.parent / "config" / "pipeline_sources.yaml"
-
-        if not config_path.exists():
-            return JSONResponse(
-                status_code=404,
-                content={"success": False, "message": f"Configuration file not found: {config_path}"},
-            )
-
-        importers = load_pipeline_config(config_path)
-        sources = [
-            {
-                "name": imp.source_name,
-                "type": imp.__class__.__name__,
-                "config": imp.config,
-            }
-            for imp in importers
-        ]
-        return {"success": True, "sources": sources}
-    except Exception as e:
-        return JSONResponse(
-            status_code=500,
-            content={"success": False, "message": str(e)},
-        )
+# REFACTORED: Pipeline routes moved to bimcalc.web.routes.pipeline (Phase 3.10)
+# - GET  /pipeline         -> pipeline.pipeline_dashboard() (was line 787-854)
+# - POST /pipeline/run     -> pipeline.run_pipeline_manual() (was line 857-892)
+# - GET  /pipeline/sources -> pipeline.get_pipeline_sources() (was line 895-921)
 
 
 # ============================================================================
