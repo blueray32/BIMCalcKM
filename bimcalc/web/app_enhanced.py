@@ -84,6 +84,7 @@ from bimcalc.web.routes import audit      # Phase 3.9 - Audit router
 from bimcalc.web.routes import pipeline   # Phase 3.10 - Pipeline router
 from bimcalc.web.routes import prices     # Phase 3.11 - Prices router
 from bimcalc.web.routes import scenarios  # Phase 3.12 - Scenarios router
+from bimcalc.web.routes import crail4     # Phase 3.13 - Crail4 router
 
 from starlette.middleware.base import BaseHTTPMiddleware
 import structlog
@@ -141,6 +142,9 @@ app.include_router(prices.router)
 
 # Phase 3.12 - Scenarios router (replaces inline scenarios routes at lines 627, 691, 709)
 app.include_router(scenarios.router)
+
+# Phase 3.13 - Crail4 router (replaces inline crail4 routes at lines 1383, 1499, 1542, 1569, 1609, 1690)
+app.include_router(crail4.router)
 
 # Intelligence Features
 config = get_config()

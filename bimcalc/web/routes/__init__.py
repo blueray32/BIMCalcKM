@@ -23,7 +23,7 @@ Usage:
 """
 
 # Import routers as they are created
-from bimcalc.web.routes import audit, auth, dashboard, ingestion, items, mappings, matching, pipeline, prices, reports, review, scenarios
+from bimcalc.web.routes import audit, auth, crail4, dashboard, ingestion, items, mappings, matching, pipeline, prices, reports, review, scenarios
 
 __all__ = [
     "auth",       # Phase 3.1 - Authentication routes
@@ -38,4 +38,5 @@ __all__ = [
     "pipeline",   # Phase 3.10 - Pipeline management routes
     "prices",     # Phase 3.11 - Prices management routes
     "scenarios",  # Phase 3.12 - Scenario planning routes
+    "crail4",     # Phase 3.13 - Crail4 integration routes
 ]
