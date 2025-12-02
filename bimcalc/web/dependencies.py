@@ -18,7 +18,10 @@ Usage:
 from __future__ import annotations
 
 from pathlib import Path
+from fastapi import Request
 from fastapi.templating import Jinja2Templates
+
+from bimcalc.config import get_config
 
 # Global singleton for templates
 _templates: Jinja2Templates | None = None
@@ -52,8 +55,39 @@ def get_templates() -> Jinja2Templates:
     return _templates
 
 
+def get_org_project(
+    request: Request,
+    org: str | None = None,
+    project: str | None = None
+) -> tuple[str, str]:
+    """Get organization and project IDs with fallbacks to config defaults.
+
+    Extracted from app_enhanced.py:179 for use in dashboard and other routes.
+
+    Args:
+        request: FastAPI request object (for future session/cookie support)
+        org: Organization ID from query parameter
+        project: Project ID from query parameter
+
+    Returns:
+        Tuple of (org_id, project_id) with config defaults applied
+
+    Example:
+        @router.get("/dashboard")
+        async def dashboard(
+            request: Request,
+            org: str | None = None,
+            project: str | None = None,
+        ):
+            org_id, project_id = get_org_project(request, org, project)
+            # Use org_id and project_id...
+    """
+    config = get_config()
+    return (org or config.org_id, project or "default")
+
+
 # Future dependencies can be added here:
 # - get_current_user() - Extract user from session
-# - get_org_context() - Multi-tenancy organization context
+# - get_org_context() - Multi-tenancy organization context (extended from get_org_project)
 # - get_cache() - Redis/in-memory cache
 # - get_config() - Application configuration (already exists in bimcalc.config)

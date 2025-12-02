@@ -23,8 +23,9 @@ Usage:
 """
 
 # Import routers as they are created
-from bimcalc.web.routes import auth
+from bimcalc.web.routes import auth, dashboard
 
 __all__ = [
-    "auth",  # Phase 3.1 - Authentication routes
+    "auth",       # Phase 3.1 - Authentication routes
+    "dashboard",  # Phase 3.2 - Dashboard and progress routes
 ]
