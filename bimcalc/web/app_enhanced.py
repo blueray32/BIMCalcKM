@@ -80,6 +80,7 @@ from bimcalc.web.routes import review     # Phase 3.5 - Review router
 from bimcalc.web.routes import items      # Phase 3.6 - Items router
 from bimcalc.web.routes import mappings   # Phase 3.7 - Mappings router
 from bimcalc.web.routes import reports    # Phase 3.8 - Reports router
+from bimcalc.web.routes import audit      # Phase 3.9 - Audit router
 
 from starlette.middleware.base import BaseHTTPMiddleware
 import structlog
@@ -125,6 +126,9 @@ app.include_router(mappings.router)
 
 # Phase 3.8 - Reports router (replaces inline reports routes at lines 758, 802, 837, 880)
 app.include_router(reports.router)
+
+# Phase 3.9 - Audit router (replaces inline audit route at line 776)
+app.include_router(audit.router)
 
 # Intelligence Features
 config = get_config()
@@ -772,85 +776,8 @@ async def compare_scenarios(
 # ============================================================================
 # Audit Trail
 # ============================================================================
-
-@app.get("/audit", response_class=HTMLResponse)
-async def audit_trail(
-    request: Request,
-    org: str | None = None,
-    project: str | None = None,
-    page: int = Query(default=1, ge=1),
-    view: str | None = Query(default=None),
-):
-    """View audit trail of all decisions.
-
-    Supports two views:
-    - view=executive: Compliance and governance metrics dashboard
-    - (default): Detailed audit trail with pagination
-    """
-    org_id, project_id = _get_org_project(request, org, project)
-
-    # Executive view: Show compliance metrics dashboard
-    if view == "executive":
-        from bimcalc.reporting.audit_metrics import compute_audit_metrics
-
-        async with get_session() as session:
-            metrics = await compute_audit_metrics(session, org_id, project_id)
-
-        return templates.TemplateResponse(
-            "audit_executive.html",
-            {
-                "request": request,
-                "metrics": metrics,
-                "org_id": org_id,
-                "project_id": project_id,
-            },
-        )
-
-    # Default view: Detailed audit trail
-    per_page = 50
-    offset = (page - 1) * per_page
-
-    async with get_session() as session:
-        # Get match results with item info
-        stmt = (
-            select(MatchResultModel, ItemModel)
-            .join(ItemModel, ItemModel.id == MatchResultModel.item_id)
-            .where(
-                ItemModel.org_id == org_id,
-                ItemModel.project_id == project_id,
-            )
-            .order_by(MatchResultModel.timestamp.desc())
-            .limit(per_page)
-            .offset(offset)
-        )
-        result = await session.execute(stmt)
-        audit_records = result.all()
-
-        # Get total count
-        count_result = await session.execute(
-            select(func.count())
-            .select_from(MatchResultModel)
-            .join(ItemModel, ItemModel.id == MatchResultModel.item_id)
-            .where(
-                ItemModel.org_id == org_id,
-                ItemModel.project_id == project_id,
-            )
-        )
-        total = count_result.scalar_one()
-
-    return templates.TemplateResponse(
-        "audit.html",
-        {
-            "request": request,
-            "audit_records": audit_records,
-            "org_id": org_id,
-            "project_id": project_id,
-            "page": page,
-            "per_page": per_page,
-            "total": total,
-            "total_pages": (total + per_page - 1) // per_page,
-        },
-    )
+# REFACTORED: Audit trail routes moved to bimcalc.web.routes.audit (Phase 3.9)
+# - GET /audit -> audit.audit_trail() (was line 776-853)
 
 
 # ============================================================================

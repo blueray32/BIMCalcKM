@@ -23,7 +23,7 @@ Usage:
 """
 
 # Import routers as they are created
-from bimcalc.web.routes import auth, dashboard, ingestion, items, mappings, matching, reports, review
+from bimcalc.web.routes import audit, auth, dashboard, ingestion, items, mappings, matching, reports, review
 
 __all__ = [
     "auth",       # Phase 3.1 - Authentication routes
@@ -34,4 +34,5 @@ __all__ = [
     "items",      # Phase 3.6 - Items management routes
     "mappings",   # Phase 3.7 - Mappings management routes
     "reports",    # Phase 3.8 - Reports routes
+    "audit",      # Phase 3.9 - Audit trail routes
 ]
