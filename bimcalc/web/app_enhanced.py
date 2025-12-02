@@ -72,8 +72,9 @@ from bimcalc.web.auth import (
     logout as auth_logout,
 )
 from bimcalc.intelligence.routes import router as intelligence_router
-from bimcalc.web.routes import auth      # Phase 3.1 - Auth router
+from bimcalc.web.routes import auth       # Phase 3.1 - Auth router
 from bimcalc.web.routes import dashboard  # Phase 3.2 - Dashboard router
+from bimcalc.web.routes import ingestion  # Phase 3.3 - Ingestion router
 
 from starlette.middleware.base import BaseHTTPMiddleware
 import structlog
@@ -101,6 +102,9 @@ app.include_router(auth.router)
 
 # Phase 3.2 - Dashboard router (replaces inline dashboard/progress routes at lines 202, 323, 359)
 app.include_router(dashboard.router)
+
+# Phase 3.3 - Ingestion router (replaces inline ingestion routes at lines 515, 848, 863, 918)
+app.include_router(ingestion.router)
 
 # Intelligence Features
 config = get_config()
@@ -511,23 +515,28 @@ async def approve_item(
     return RedirectResponse(redirect_url, status_code=303)
 
 
+# ============================================================================
+# Ingestion Routes - MOVED TO ingestion ROUTER (Phase 3.3)
+# ============================================================================
+# The following routes have been extracted to bimcalc/web/routes/ingestion.py:
+#   - GET  /ingest/history  (was line 519) - Ingest history dashboard
+#   - GET  /ingest          (was line 848) - File upload page
+#   - POST /ingest/schedules (was line 863) - Upload schedules
+#   - POST /ingest/prices   (was line 918) - Upload prices
+#
+# Router included above: app.include_router(ingestion.router)
+# ============================================================================
 
-@app.get("/ingest/history", response_class=HTMLResponse)
-async def ingest_history_page(
-    request: Request,
-    org: str | None = None,
-    project: str | None = None,
-):
-    """Ingest history dashboard."""
-    org_id, project_id = _get_org_project(request, org, project)
-    return templates.TemplateResponse(
-        "ingest_history.html",
-        {
-            "request": request,
-            "org_id": org_id,
-            "project_id": project_id,
-        },
-    )
+
+# ============================================================================
+# Ingestion Routes - REMOVED (moved to ingestion router)
+# ============================================================================
+# The following routes were here (now in ingestion.py):
+#   @app.get("/ingest/history")  - was line 519
+#   @app.get("/ingest")          - was line 848
+#   @app.post("/ingest/schedules") - was line 863
+#   @app.post("/ingest/prices")  - was line 918
+
 
 @app.get("/revisions", response_class=HTMLResponse)
 async def revisions_page(
@@ -845,138 +854,7 @@ async def compare_scenarios(
             "all_vendors": await get_available_vendors(session, org)
         }
 
-@app.get("/ingest", response_class=HTMLResponse)
-async def ingest_page(request: Request, org: str | None = None, project: str | None = None):
-    """File upload page for schedules and price books."""
-    org_id, project_id = _get_org_project(request, org, project)
-
-    return templates.TemplateResponse(
-        "ingest.html",
-        {
-            "request": request,
-            "org_id": org_id,
-            "project_id": project_id,
-        },
-    )
-
-
-@app.post("/ingest/schedules")
-async def ingest_schedules(
-    file: UploadFile = File(...),
-    org: str = Form(...),
-    project: str = Form(...),
-):
-    """Upload and ingest Revit schedules (CSV/XLSX)."""
-    # Save uploaded file temporarily
-    temp_path = Path(f"/tmp/{file.filename}")
-    with open(temp_path, "wb") as f:
-        content = await file.read()
-        f.write(content)
-
-    # Ingest
-    try:
-        async with get_session() as session:
-            success_count, errors = await ingest_schedule(session, temp_path, org, project)
-
-        # Clean up
-        temp_path.unlink()
-
-        return {
-            "success": True,
-            "message": f"Imported {success_count} items",
-            "errors": errors[:5] if errors else [],  # Show first 5 errors
-        }
-    except Exception as e:
-        if temp_path.exists():
-            temp_path.unlink()
-        
-        # Send alerts
-        error_msg = str(e)
-        email_notifier = get_email_notifier()
-        slack_notifier = get_slack_notifier()
-        
-        # Background tasks for alerts to not block response too long (or use BackgroundTasks)
-        # For now, await them as they are async and shouldn't take too long
-        try:
-            await email_notifier.send_ingestion_failure_alert(
-                recipients=["admin@bimcalc.com"],  # TODO: Configure recipients
-                filename=file.filename,
-                error_message=error_msg,
-                org_id=org
-            )
-            await slack_notifier.post_ingestion_failure_alert(
-                filename=file.filename,
-                error_message=error_msg,
-                org_id=org
-            )
-        except Exception as alert_err:
-            print(f"Failed to send alerts: {alert_err}")
-
-        raise HTTPException(status_code=500, detail=error_msg)
-
-
-@app.post("/ingest/prices")
-async def ingest_prices(
-    file: UploadFile = File(...),
-    vendor: str = Form(default="default"),
-    use_cmm: bool = Form(default=True),
-):
-    """Upload and ingest price books (CSV/XLSX) with optional CMM translation."""
-    # Save uploaded file temporarily
-    temp_path = Path(f"/tmp/{file.filename}")
-    with open(temp_path, "wb") as f:
-        content = await file.read()
-        f.write(content)
-
-    # Ingest
-    try:
-        async with get_session() as session:
-            success_count, errors = await ingest_pricebook(
-                session, temp_path, vendor, use_cmm=use_cmm
-            )
-    except (ValueError, FileNotFoundError) as e:
-        if temp_path.exists():
-            temp_path.unlink()
-        return JSONResponse(
-            status_code=400,
-            content={"success": False, "message": str(e)},
-        )
-    except Exception as e:
-        if temp_path.exists():
-            temp_path.unlink()
-            
-        # Send alerts
-        error_msg = str(e)
-        email_notifier = get_email_notifier()
-        slack_notifier = get_slack_notifier()
-        
-        try:
-            await email_notifier.send_ingestion_failure_alert(
-                recipients=["admin@bimcalc.com"],
-                filename=file.filename,
-                error_message=error_msg,
-                org_id=f"Vendor: {vendor}"
-            )
-            await slack_notifier.post_ingestion_failure_alert(
-                filename=file.filename,
-                error_message=error_msg,
-                org_id=f"Vendor: {vendor}"
-            )
-        except Exception as alert_err:
-            print(f"Failed to send alerts: {alert_err}")
-            
-        raise HTTPException(status_code=500, detail=error_msg)
-
-    # Clean up
-    temp_path.unlink()
-
-    cmm_status = "with CMM enabled" if use_cmm else "without CMM"
-    return {
-        "success": True,
-        "message": f"Imported {success_count} price items ({cmm_status})",
-        "errors": errors[:5] if errors else [],
-    }
-
+# Old ingestion routes removed - now in ingestion router module (see lines 531-538)
 
 # ============================================================================
 # Matching Pipeline
