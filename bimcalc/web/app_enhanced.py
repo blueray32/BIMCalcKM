@@ -79,6 +79,7 @@ from bimcalc.web.routes import matching   # Phase 3.4 - Matching router
 from bimcalc.web.routes import review     # Phase 3.5 - Review router
 from bimcalc.web.routes import items      # Phase 3.6 - Items router
 from bimcalc.web.routes import mappings   # Phase 3.7 - Mappings router
+from bimcalc.web.routes import reports    # Phase 3.8 - Reports router
 
 from starlette.middleware.base import BaseHTTPMiddleware
 import structlog
@@ -121,6 +122,9 @@ app.include_router(items.router)
 
 # Phase 3.7 - Mappings router (replaces inline mappings routes at lines 746, 799)
 app.include_router(mappings.router)
+
+# Phase 3.8 - Reports router (replaces inline reports routes at lines 758, 802, 837, 880)
+app.include_router(reports.router)
 
 # Intelligence Features
 config = get_config()
@@ -754,179 +758,15 @@ async def compare_scenarios(
 # ============================================================================
 # Reports
 # ============================================================================
-
-@app.get("/reports", response_class=HTMLResponse)
-async def reports_page(
-    request: Request,
-    org: str | None = None,
-    project: str | None = None,
-    view: str | None = Query(default=None),
-):
-    """Reports page with optional executive view.
-
-    Supports two views:
-    - view=executive: Financial summary dashboard for stakeholders
-    - (default): Report generation page
-    """
-    org_id, project_id = _get_org_project(request, org, project)
-
-    # Executive view: Show financial metrics dashboard
-    if view == "executive":
-        from bimcalc.reporting.financial_metrics import compute_financial_metrics
-
-        async with get_session() as session:
-            metrics = await compute_financial_metrics(session, org_id, project_id)
-
-        return templates.TemplateResponse(
-            "reports_executive.html",
-            {
-                "request": request,
-                "metrics": metrics,
-                "org_id": org_id,
-                "project_id": project_id,
-            },
-        )
-
-    # Default view: Report generation page
-    return templates.TemplateResponse(
-        "reports.html",
-        {
-            "request": request,
-            "org_id": org_id,
-            "project_id": project_id,
-        },
-    )
-
-
-
-@app.get("/reports/generate")
-async def generate_report(
-    request: Request,
-    org: str | None = None,
-    project: str | None = None,
-    format: str = Query("xlsx", regex="^(xlsx|pdf|csv)$"),
-    as_of: str | None = Query(None),
-):
-    """Generate and download financial reports."""
-    from bimcalc.reporting.financial_metrics import compute_financial_metrics
-    from bimcalc.reporting.export_utils import export_reports_to_excel, export_reports_to_pdf
-    
-    org_id, project_id = _get_org_project(request, org, project)
-
-    # TODO: Handle as_of timestamp for temporal reporting (SCD2)
-    # For now, we use current state as per existing logic
-    
-    async with get_session() as session:
-        metrics = await compute_financial_metrics(session, org_id, project_id)
-
-    if format == "pdf":
-        content = export_reports_to_pdf(metrics, org_id, project_id)
-        media_type = "application/pdf"
-        filename = f"financial_report_{org_id}_{project_id}_{datetime.now().strftime('%Y%m%d')}.pdf"
-    else:
-        content = export_reports_to_excel(metrics, org_id, project_id)
-        media_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        filename = f"financial_report_{org_id}_{project_id}_{datetime.now().strftime('%Y%m%d')}.xlsx"
-
-    headers = {
-        "Content-Disposition": f"attachment; filename={filename}"
-    }
-    
-    return Response(content=content, media_type=media_type, headers=headers)
-
-@app.get("/reports/generate")
-async def generate_report_endpoint(
-    org: str = Query(...),
-    project: str = Query(...),
-    as_of: str | None = Query(default=None),
-    format: str = Query(default="csv"),
-):
-    """Generate and download cost report."""
-    as_of_dt = datetime.fromisoformat(as_of) if as_of else datetime.utcnow()
-
-    async with get_session() as session:
-        df = await generate_report(session, org, project, as_of_dt)
-
-    if df.empty:
-        raise HTTPException(status_code=404, detail="No data found for report")
-
-    # Generate filename
-    timestamp = as_of_dt.strftime("%Y%m%d_%H%M%S")
-    filename = f"bimcalc_report_{project}_{timestamp}.{format}"
-
-    if format == "xlsx":
-        # Export to Excel
-        output = io.BytesIO()
-        with pd.ExcelWriter(output, engine='openpyxl') as writer:
-            df.to_excel(writer, index=False, sheet_name='Cost Report')
-        output.seek(0)
-
-        return StreamingResponse(
-            output,
-            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            headers={"Content-Disposition": f"attachment; filename={filename}"},
-        )
-    else:
-        # Export to CSV
-        csv_content = df.to_csv(index=False)
-
-        return StreamingResponse(
-            io.StringIO(csv_content),
-            media_type="text/csv",
-            headers={"Content-Disposition": f"attachment; filename={filename}"},
-        )
-
-
-@app.get("/reports/statistics", response_class=HTMLResponse)
-async def statistics_page(
-    request: Request,
-    org: str | None = None,
-    project: str | None = None,
-):
-    """Project statistics dashboard."""
-    org_id, project_id = _get_org_project(request, org, project)
-
-    async with get_session() as session:
-        # Get match statistics
-        match_stats_result = await session.execute(
-            select(
-                MatchResultModel.decision,
-                func.count().label("count"),
-                func.avg(MatchResultModel.confidence_score).label("avg_confidence"),
-            )
-            .join(ItemModel, ItemModel.id == MatchResultModel.item_id)
-            .where(
-                ItemModel.org_id == org_id,
-                ItemModel.project_id == project_id,
-            )
-            .group_by(MatchResultModel.decision)
-        )
-        match_stats = match_stats_result.all()
-
-        # Get cost summary from latest report
-        df = await generate_report(session, org_id, project_id, datetime.utcnow())
-
-        if not df.empty:
-            total_items = len(df)
-            matched_items = df["sku"].notna().sum()
-            total_net = df["total_net"].sum()
-            total_gross = df["total_gross"].sum()
-        else:
-            total_items = matched_items = total_net = total_gross = 0
-
-    return templates.TemplateResponse(
-        "statistics.html",
-        {
-            "request": request,
-            "org_id": org_id,
-            "project_id": project_id,
-            "match_stats": match_stats,
-            "total_items": total_items,
-            "matched_items": matched_items,
-            "total_net": total_net,
-            "total_gross": total_gross,
-        },
-    )
+# REFACTORED: Reports routes moved to bimcalc.web.routes.reports (Phase 3.8)
+# - GET /reports              -> reports.reports_page()             (was line 758-798)
+# - GET /reports/generate     -> reports.generate_report_download() (was line 802-835)
+# - GET /reports/generate     -> DUPLICATE ROUTE - commented out    (was line 837-877)
+# - GET /reports/statistics   -> reports.statistics_page()          (was line 880-929)
+#
+# NOTE: Original code had two /reports/generate routes (lines 802 and 837).
+# This is a bug - FastAPI will only register one. The second route has been
+# commented out in the new router module and needs investigation.
 
 
 # ============================================================================
