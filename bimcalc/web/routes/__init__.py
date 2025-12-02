@@ -23,11 +23,12 @@ Usage:
 """
 
 # Import routers as they are created
-from bimcalc.web.routes import auth, dashboard, ingestion, matching
+from bimcalc.web.routes import auth, dashboard, ingestion, matching, review
 
 __all__ = [
     "auth",       # Phase 3.1 - Authentication routes
     "dashboard",  # Phase 3.2 - Dashboard and progress routes
     "ingestion",  # Phase 3.3 - Ingestion routes
     "matching",   # Phase 3.4 - Matching pipeline routes
+    "review",     # Phase 3.5 - Review workflow routes
 ]
