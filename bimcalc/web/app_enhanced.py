@@ -72,6 +72,7 @@ from bimcalc.web.auth import (
     logout as auth_logout,
 )
 from bimcalc.intelligence.routes import router as intelligence_router
+from bimcalc.web.routes import auth  # Phase 3.1 - Auth router
 
 from starlette.middleware.base import BaseHTTPMiddleware
 import structlog
@@ -92,6 +93,10 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url="/redoc",
 )
+
+# Include routers
+# Phase 3.1 - Auth router (replaces inline auth routes at lines 149, 183, 192, 219)
+app.include_router(auth.router)
 
 # Intelligence Features
 config = get_config()
@@ -146,9 +151,10 @@ static_dir = Path(__file__).parent / "static"
 if static_dir.exists():
     app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
 
-@app.get("/favicon.ico", include_in_schema=False)
-async def favicon():
-    return Response(status_code=204)
+# Removed: favicon route - now in auth router (Phase 3.1)
+# @app.get("/favicon.ico", include_in_schema=False)
+# async def favicon():
+#     return Response(status_code=204)
 
 
 # ============================================================================
@@ -177,54 +183,16 @@ def _get_org_project(request: Request, org: str | None = None, project: str | No
 
 
 # ============================================================================
-# Authentication Routes
+# Authentication Routes - MOVED TO auth ROUTER (Phase 3.1)
 # ============================================================================
-
-@app.get("/login", response_class=HTMLResponse)
-async def login_page(request: Request, error: str | None = None):
-    """Login page."""
-    return templates.TemplateResponse("login.html", {
-        "request": request,
-        "error": error,
-    })
-
-
-@app.post("/login")
-async def login(
-    request: Request,
-    response: Response,
-    username: str = Form(...),
-    password: str = Form(...),
-):
-    """Process login form."""
-    if verify_credentials(username, password):
-        # Create session
-        session_token = create_session(username)
-
-        # Set cookie
-        response = RedirectResponse(url="/", status_code=302)
-        response.set_cookie(
-            key="session",
-            value=session_token,
-            httponly=True,
-            max_age=86400,  # 24 hours
-            samesite="lax",
-        )
-        return response
-    else:
-        # Invalid credentials
-        return RedirectResponse(url="/login?error=invalid", status_code=302)
-
-
-@app.get("/logout")
-async def logout(response: Response, session: str | None = Cookie(default=None)):
-    """Logout and clear session."""
-    if session:
-        auth_logout(session)
-
-    response = RedirectResponse(url="/login", status_code=302)
-    response.delete_cookie("session")
-    return response
+# The following routes have been extracted to bimcalc/web/routes/auth.py:
+#   - GET  /login       (was line 183)
+#   - POST /login       (was line 192)
+#   - GET  /logout      (was line 219)
+#   - GET  /favicon.ico (was line 149)
+#
+# Router included above: app.include_router(auth.router)
+# ============================================================================
 
 
 # ============================================================================

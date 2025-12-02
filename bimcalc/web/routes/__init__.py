@@ -16,6 +16,15 @@ Pattern (from intelligence/routes.py):
     @router.get("/endpoint")
     async def handler(...):
         pass
+
+Usage:
+    from bimcalc.web.routes import auth
+    app.include_router(auth.router)
 """
 
-__all__ = []  # Will be populated as routers are created
+# Import routers as they are created
+from bimcalc.web.routes import auth
+
+__all__ = [
+    "auth",  # Phase 3.1 - Authentication routes
+]
