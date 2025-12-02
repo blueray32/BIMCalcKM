@@ -80,12 +80,13 @@ from bimcalc.web.routes import review     # Phase 3.5 - Review router
 from bimcalc.web.routes import items      # Phase 3.6 - Items router
 from bimcalc.web.routes import mappings   # Phase 3.7 - Mappings router
 from bimcalc.web.routes import reports    # Phase 3.8 - Reports router
-from bimcalc.web.routes import audit      # Phase 3.9 - Audit router
-from bimcalc.web.routes import pipeline   # Phase 3.10 - Pipeline router
-from bimcalc.web.routes import prices     # Phase 3.11 - Prices router
-from bimcalc.web.routes import scenarios  # Phase 3.12 - Scenarios router
-from bimcalc.web.routes import crail4     # Phase 3.13 - Crail4 router
-from bimcalc.web.routes import revisions  # Phase 3.14 - Revisions router
+from bimcalc.web.routes import audit        # Phase 3.9 - Audit router
+from bimcalc.web.routes import pipeline     # Phase 3.10 - Pipeline router
+from bimcalc.web.routes import prices       # Phase 3.11 - Prices router
+from bimcalc.web.routes import scenarios    # Phase 3.12 - Scenarios router
+from bimcalc.web.routes import crail4       # Phase 3.13 - Crail4 router
+from bimcalc.web.routes import revisions    # Phase 3.14 - Revisions router
+from bimcalc.web.routes import integrations # Phase 3.15 - Integrations router
 
 from starlette.middleware.base import BaseHTTPMiddleware
 import structlog
@@ -149,6 +150,9 @@ app.include_router(crail4.router)
 
 # Phase 3.14 - Revisions router (replaces inline revisions routes at lines 400, 482)
 app.include_router(revisions.router)
+
+# Phase 3.15 - Integrations router (replaces inline ACC integration routes at lines 575, 582, 594)
+app.include_router(integrations.router)
 
 # Intelligence Features
 config = get_config()
