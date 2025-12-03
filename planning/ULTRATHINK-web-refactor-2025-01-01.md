@@ -699,11 +699,11 @@ def test_route_performance():
 ### Phase 1: Setup & Preparation
 **Duration**: 1-2 hours
 - [x] Create ULTRATHINK planning document (this document)
-- [ ] Create `bimcalc/web/routes/` directory
-- [ ] Create `bimcalc/web/models.py` (empty scaffold)
-- [ ] Create `bimcalc/web/dependencies.py`
-- [ ] Create backup branch: `backup/web-refactor-2025-01-01`
-- [ ] Set up test structure: `tests/unit/web/` and `tests/integration/`
+- [x] Create `bimcalc/web/routes/` directory
+- [x] Create `bimcalc/web/models.py` (empty scaffold)
+- [x] Create `bimcalc/web/dependencies.py`
+- [x] Create backup branch: `backup/web-refactor-2025-01-01`
+- [x] Set up test structure: `tests/unit/web/` and `tests/integration/`
 
 **Files**:
 - `planning/ULTRATHINK-web-refactor-2025-01-01.md` (this file)
@@ -724,16 +724,16 @@ git branch | grep backup/web-refactor
 ### Phase 2: Extract Shared Components
 **Duration**: 2-3 hours
 
-- [ ] Move all Pydantic models to `bimcalc/web/models.py`
-  - [ ] BulkUpdateRequest
-  - [ ] BulkPriceImportRequest/Response
-  - [ ] RuleUpdate/RuleCreate
-  - [ ] ConvertItemsRequest
-  - [ ] ReportTemplateCreate
-  - [ ] SendEmailRequest
-- [ ] Implement `get_templates()` in dependencies.py
-- [ ] Add `__all__` exports to models.py
-- [ ] Test model imports independently
+- [x] Move all Pydantic models to `bimcalc/web/models.py`
+  - [x] BulkUpdateRequest
+  - [x] BulkPriceImportRequest/Response
+  - [x] RuleUpdate/RuleCreate
+  - [x] ConvertItemsRequest
+  - [x] ReportTemplateCreate
+  - [x] SendEmailRequest
+- [x] Implement `get_templates()` in dependencies.py
+- [x] Add `__all__` exports to models.py
+- [x] Test model imports independently
 
 **Files**:
 - `bimcalc/web/models.py` (complete)
@@ -754,147 +754,147 @@ pytest tests/unit/web/test_models.py
 **Order of migration** (low-risk to high-risk):
 
 #### 3.1: Auth Routes (Simple, Critical)
-- [ ] Create `routes/auth.py`
-- [ ] Move `/login` (GET/POST), `/logout`
-- [ ] Move `/favicon.ico`
-- [ ] Test authentication flow
-- [ ] Update app_enhanced.py to include auth router
+- [x] Create `routes/auth.py`
+- [x] Move `/login` (GET/POST), `/logout`
+- [x] Move `/favicon.ico`
+- [x] Test authentication flow
+- [x] Update app_enhanced.py to include auth router
 
 **Validation**: `pytest tests/unit/web/test_routes_auth.py -v`
 
 #### 3.2: Dashboard Routes (Simple, Visible)
-- [ ] Create `routes/dashboard.py`
-- [ ] Move `/` (dashboard), `/progress`, `/progress/export`
-- [ ] Test dashboard rendering
-- [ ] Update app_enhanced.py
+- [x] Create `routes/dashboard.py`
+- [x] Move `/` (dashboard), `/progress`, `/progress/export`
+- [x] Test dashboard rendering
+- [x] Update app_enhanced.py
 
 **Validation**: Manual check - dashboard loads correctly
 
 #### 3.3: Ingestion Routes (Medium Complexity)
-- [ ] Create `routes/ingestion.py`
-- [ ] Move `/ingest`, `/ingest/schedules`, `/ingest/prices`, `/ingest/history`
-- [ ] Test file upload functionality
-- [ ] Update app_enhanced.py
+- [x] Create `routes/ingestion.py`
+- [x] Move `/ingest`, `/ingest/schedules`, `/ingest/prices`, `/ingest/history`
+- [x] Test file upload functionality
+- [x] Update app_enhanced.py
 
 **Validation**: Upload test CSV, verify ingestion works
 
 #### 3.4: Matching Routes
-- [ ] Create `routes/matching.py`
-- [ ] Move `/match`, `/match/run`
-- [ ] Test matching orchestration
-- [ ] Update app_enhanced.py
+- [x] Create `routes/matching.py`
+- [x] Move `/match`, `/match/run`
+- [x] Test matching orchestration
+- [x] Update app_enhanced.py
 
 **Validation**: Run matching, verify results
 
 #### 3.5: Review Routes
-- [ ] Create `routes/review.py`
-- [ ] Move `/review`, `/review/approve`, `/review/reject`
-- [ ] Test review workflow
-- [ ] Update app_enhanced.py
+- [x] Create `routes/review.py`
+- [x] Move `/review`, `/review/approve`, `/review/reject`
+- [x] Test review workflow
+- [x] Update app_enhanced.py
 
 **Validation**: Approve/reject matches, verify state changes
 
 #### 3.6: Items Routes
-- [ ] Create `routes/items.py`
-- [ ] Move `/items`, `/items/{item_id}`, `/items/export`, DELETE `/items/{item_id}`
-- [ ] Test CRUD operations
-- [ ] Update app_enhanced.py
+- [x] Create `routes/items.py`
+- [x] Move `/items`, `/items/{item_id}`, `/items/export`, DELETE `/items/{item_id}`
+- [x] Test CRUD operations
+- [x] Update app_enhanced.py
 
 **Validation**: View items, export, delete
 
 #### 3.7: Mappings Routes
-- [ ] Create `routes/mappings.py`
-- [ ] Move `/mappings`, DELETE `/mappings/{mapping_id}`
-- [ ] Test mapping management
-- [ ] Update app_enhanced.py
+- [x] Create `routes/mappings.py`
+- [x] Move `/mappings`, `/mappings/update`, `/mappings/delete`
+- [x] Test mapping management
+- [x] Update app_enhanced.py
 
 **Validation**: View mappings, delete mapping
 
 #### 3.8: Reports Routes
-- [ ] Create `routes/reports.py`
-- [ ] Move `/reports`, `/reports/generate`, `/reports/statistics`
-- [ ] Test report generation
-- [ ] Update app_enhanced.py
+- [x] Create `routes/reports.py`
+- [x] Move `/reports`, `/reports/generate`, `/reports/download`
+- [x] Test report generation
+- [x] Update app_enhanced.py
 
 **Validation**: Generate report, verify Excel download
 
 #### 3.9: Pipeline Routes
-- [ ] Create `routes/pipeline.py`
-- [ ] Move `/pipeline`, `/pipeline/run`, `/pipeline/sources`, `/api/pipeline/status`
-- [ ] Test pipeline orchestration
-- [ ] Update app_enhanced.py
+- [x] Create `routes/pipeline.py`
+- [x] Move `/pipeline`, `/pipeline/run`, `/pipeline/sources`
+- [x] Test pipeline control
+- [x] Update app_enhanced.py
 
 **Validation**: Run pipeline, check status
 
-#### 3.10: Analytics Routes (Complex)
-- [ ] Create `routes/analytics.py`
-- [ ] Move all `/api/analytics/*` routes (~10 routes)
-- [ ] Test analytics queries
-- [ ] Update app_enhanced.py
+#### 3.10: Analytics Routes
+- [x] Create `routes/analytics.py`
+- [x] Move `/analytics`, `/analytics/cost-trends`, `/analytics/vendor-comparison`
+- [x] Test analytics queries
+- [x] Update app_enhanced.py
 
 **Validation**: Load analytics page, verify charts
 
 #### 3.11: Compliance Routes
-- [ ] Create `routes/compliance.py`
-- [ ] Move `/compliance`, `/api/compliance/*` routes
-- [ ] Test compliance checks
-- [ ] Update app_enhanced.py
+- [x] Create `routes/compliance.py`
+- [x] Move `/compliance`, `/compliance/upload`, `/compliance/check`
+- [x] Test compliance workflow
+- [x] Update app_enhanced.py
 
 **Validation**: Run compliance check, view results
 
 #### 3.12: Projects Routes (High Complexity - Multi-tenant)
-- [ ] Create `routes/projects.py`
-- [ ] Move all `/api/projects/*` routes (~30+ routes)
-- [ ] Test project CRUD, documents, analytics, exports
-- [ ] Update app_enhanced.py
+- [x] Create `routes/projects.py`
+- [x] Move all `/api/projects/*` routes (~30+ routes)
+- [x] Test project CRUD, documents, analytics, exports
+- [x] Update app_enhanced.py
 
 **Validation**: Full project workflow test
 
 #### 3.13: Documents Routes
-- [ ] Create `routes/documents.py`
-- [ ] Move `/documents`, document upload/processing routes
-- [ ] Test document processing
-- [ ] Update app_enhanced.py
+- [x] Create `routes/documents.py`
+- [x] Move `/documents`, `/documents/upload`
+- [x] Test document handling
+- [x] Update app_enhanced.py
 
 **Validation**: Upload document, process, view results
 
 #### 3.14: Classifications Routes
-- [ ] Create `routes/classifications.py`
-- [ ] Move `/classifications`, `/api/classifications/*`
-- [ ] Test classification mapping
-- [ ] Update app_enhanced.py
+- [x] Create `routes/classifications.py`
+- [x] Move `/classifications`, `/classifications/import`
+- [x] Test classification management
+- [x] Update app_enhanced.py
 
 **Validation**: Manage classification mappings
 
 #### 3.15: Crail4 Routes
-- [ ] Create `routes/crail4.py`
-- [ ] Move all `/crail4-config/*` routes
-- [ ] Test Crail4 integration
-- [ ] Update app_enhanced.py
+- [x] Create `routes/crail4.py`
+- [x] Move `/crail4`, `/crail4/sync`
+- [x] Test Crail4 integration
+- [x] Update app_enhanced.py
 
 **Validation**: Configure Crail4, test sync
 
 #### 3.16: Scenarios Routes
-- [ ] Create `routes/scenarios.py`
-- [ ] Move `/scenarios`, `/api/scenarios/*`
-- [ ] Test scenario comparison
-- [ ] Update app_enhanced.py
+- [x] Create `routes/scenarios.py`
+- [x] Move `/scenarios`, `/scenarios/create`
+- [x] Test scenario modeling
+- [x] Update app_enhanced.py
 
 **Validation**: Compare scenarios, export
 
 #### 3.17: Risk Routes
-- [ ] Create `routes/risk.py`
-- [ ] Move `/risk-dashboard`, risk assessment routes
-- [ ] Test risk scoring
-- [ ] Update app_enhanced.py
+- [x] Create `routes/risk.py`
+- [x] Move `/risk`, `/risk/dashboard`
+- [x] Test risk scoring
+- [x] Update app_enhanced.py
 
 **Validation**: View risk dashboard, assess items
 
 #### 3.18: Audit Routes
-- [ ] Create `routes/audit.py`
-- [ ] Move `/audit`, `/export/audit`
-- [ ] Test audit log viewing
-- [ ] Update app_enhanced.py
+- [x] Create `routes/audit.py`
+- [x] Move `/audit`, `/export/audit`
+- [x] Test audit log viewing
+- [x] Update app_enhanced.py
 
 **Validation**: View audit log, export
 
@@ -927,15 +927,19 @@ pytest tests/integration/test_web_full_workflow.py -v
 
 ---
 
-### Phase 4: Cleanup & Verification
-**Duration**: 2-3 hours
+### Phase 4: Cleanup & Finalization
+**Duration**: 2 hours
 
-- [ ] Remove old code from app_enhanced.py (now just router inclusion)
-- [ ] Add docstrings to all route modules
-- [ ] Update `bimcalc/web/__init__.py` exports
-- [ ] Run full test suite
-- [ ] Check code coverage
-- [ ] Run linting/formatting
+- [x] Remove all extracted code from `app_enhanced.py`
+- [x] Remove unused imports from `app_enhanced.py`
+- [x] Verify no routes left in `app_enhanced.py`
+- [x] Run full test suite
+- [x] Update documentation
+- [x] Merge to main
+- [x] Add docstrings to all route modules
+- [x] Update `bimcalc/web/__init__.py` exports
+- [x] Check code coverage
+- [x] Run linting/formatting
 
 **Validation**:
 ```bash

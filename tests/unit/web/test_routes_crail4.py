@@ -12,13 +12,29 @@ from pathlib import Path
 from bimcalc.web.routes import crail4
 
 
+from bimcalc.web.auth import require_auth
+
+@pytest.fixture(autouse=True)
+def mock_arq():
+    """Mock arq module."""
+    mock_arq_mod = MagicMock()
+    mock_arq_jobs = MagicMock()
+    mock_arq_conn = MagicMock()
+    
+    with patch.dict("sys.modules", {
+        "arq": mock_arq_mod,
+        "arq.jobs": mock_arq_jobs,
+        "arq.connections": mock_arq_conn
+    }):
+        yield
+
 @pytest.fixture
 def app():
     """Create test FastAPI app with crail4 router."""
     test_app = FastAPI()
     test_app.include_router(crail4.router)
+    test_app.dependency_overrides[require_auth] = lambda: {"username": "test-user"}
     return test_app
-
 
 @pytest.fixture
 def client(app):
@@ -138,7 +154,7 @@ class TestTestCrail4Connection:
         assert data["status"] == "error"
         assert "not configured" in data["message"].lower()
 
-    @patch("bimcalc.web.routes.crail4.Crail4Client")
+    @patch("bimcalc.integration.crail4_client.Crail4Client")
     @patch.dict("os.environ", {"CRAIL4_API_KEY": "test-key"})
     def test_test_connection_success(self, mock_client_class, client):
         """Test successful connection test."""
@@ -151,7 +167,7 @@ class TestTestCrail4Connection:
         data = response.json()
         assert data["status"] == "success"
 
-    @patch("bimcalc.web.routes.crail4.Crail4Client")
+    @patch("bimcalc.integration.crail4_client.Crail4Client")
     @patch.dict("os.environ", {"CRAIL4_API_KEY": "test-key"})
     def test_test_connection_failure(self, mock_client_class, client):
         """Test connection test handles API errors."""
@@ -167,7 +183,7 @@ class TestTestCrail4Connection:
 class TestTriggerCrail4Sync:
     """Tests for POST /crail4-config/sync route."""
 
-    @patch("bimcalc.web.routes.crail4.get_queue")
+    @patch("bimcalc.core.queue.get_queue")
     @patch("bimcalc.web.routes.crail4.get_config")
     def test_trigger_sync_success(self, mock_get_config, mock_get_queue, client):
         """Test triggering sync job successfully."""
@@ -188,7 +204,7 @@ class TestTriggerCrail4Sync:
         assert "text/html" in response.headers["content-type"]
         assert "job-123" in response.text
 
-    @patch("bimcalc.web.routes.crail4.get_queue")
+    @patch("bimcalc.core.queue.get_queue")
     @patch("bimcalc.web.routes.crail4.get_config")
     def test_trigger_sync_error(self, mock_get_config, mock_get_queue, client):
         """Test sync trigger handles errors."""
@@ -207,8 +223,8 @@ class TestTriggerCrail4Sync:
 class TestGetSyncStatus:
     """Tests for GET /crail4-config/status/{job_id} route."""
 
-    @patch("bimcalc.web.routes.crail4.get_queue")
-    @patch("bimcalc.web.routes.crail4.Job")
+    @patch("bimcalc.core.queue.get_queue")
+    @patch("arq.jobs.Job")
     def test_get_status_complete(self, mock_job_class, mock_get_queue, client):
         """Test getting status for completed job."""
         mock_redis = AsyncMock()
@@ -225,8 +241,8 @@ class TestGetSyncStatus:
         assert "Sync Complete" in response.text
         assert "100" in response.text
 
-    @patch("bimcalc.web.routes.crail4.get_queue")
-    @patch("bimcalc.web.routes.crail4.Job")
+    @patch("bimcalc.core.queue.get_queue")
+    @patch("arq.jobs.Job")
     def test_get_status_in_progress(self, mock_job_class, mock_get_queue, client):
         """Test getting status for running job."""
         mock_redis = AsyncMock()
@@ -240,8 +256,8 @@ class TestGetSyncStatus:
         assert response.status_code == 200
         assert "Syncing" in response.text
 
-    @patch("bimcalc.web.routes.crail4.get_queue")
-    @patch("bimcalc.web.routes.crail4.Job")
+    @patch("bimcalc.core.queue.get_queue")
+    @patch("arq.jobs.Job")
     def test_get_status_failed(self, mock_job_class, mock_get_queue, client):
         """Test getting status for failed job."""
         mock_redis = AsyncMock()

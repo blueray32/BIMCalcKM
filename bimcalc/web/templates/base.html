@@ -658,7 +658,7 @@
         // Load projects and populate dropdown
         async function loadProjects() {
             try {
-                const response = await fetch('/api/projects');
+                const response = await fetch('/api/projects/all');
                 const data = await response.json();
                 const dropdown = document.getElementById('project-dropdown');
                 const currentOrg = '{{ org_id }}';

@@ -77,7 +77,7 @@ async def price_history(
     )
 
 
-@router.get("/prices-legacy", response_class=HTMLResponse)
+@router.get("/prices", response_class=HTMLResponse)
 async def prices_list(
     request: Request,
     org: str | None = None,
@@ -262,8 +262,17 @@ async def prices_list(
             "vendors": vendors,
             "classifications": classifications,
             "regions": regions,
+            "request_url": str(request.url).replace("/prices-legacy", "/prices"), # Ensure correct URL in template
         },
     )
+
+from fastapi.responses import RedirectResponse
+
+@router.get("/prices-legacy")
+async def prices_legacy_redirect(request: Request):
+    """Redirect legacy /prices-legacy URLs to /prices."""
+    new_url = str(request.url).replace("/prices-legacy", "/prices")
+    return RedirectResponse(url=new_url)
 
 
 @router.get("/prices/export")

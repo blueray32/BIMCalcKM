@@ -15,7 +15,7 @@
     <!-- Search and Filter Form -->
     <div
         style="background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 1.5rem; margin-bottom: 2rem;">
-        <form method="GET" action="/prices-legacy"
+        <form method="GET" action="/prices"
             style="display: grid; grid-template-columns: 2fr 1fr 1fr 1fr auto; gap: 1rem; align-items: end;">
             <input type="hidden" name="org" value="{{ org_id }}">
             <input type="hidden" name="project" value="{{ project_id }}">
@@ -64,7 +64,7 @@
             <div style="display: flex; gap: 0.5rem;">
                 <button type="submit"
                     style="background: #3182ce; color: white; padding: 0.75rem 1.5rem; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">Filter</button>
-                <a href="/prices-legacy?org={{ org_id }}&project={{ project_id }}"
+                <a href="/prices?org={{ org_id }}&project={{ project_id }}"
                     style="background: #edf2f7; color: #4a5568; padding: 0.75rem 1.5rem; border-radius: 6px; text-decoration: none; font-weight: 600;">Clear</a>
             </div>
         </form>

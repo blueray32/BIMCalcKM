@@ -4,6 +4,7 @@ import sys
 from typing import Any
 
 import structlog
+from pathlib import Path
 
 
 def configure_logging() -> None:
@@ -39,8 +40,15 @@ def configure_logging() -> None:
     )
 
     # Configure standard library logging to use structlog
+    handlers = [logging.StreamHandler(sys.stdout)]
+    
+    # Add FileHandler if logs directory exists
+    log_file = Path("logs/bimcalc.log")
+    if log_file.parent.exists():
+        handlers.append(logging.FileHandler(log_file))
+
     logging.basicConfig(
         format="%(message)s",
-        stream=sys.stdout,
+        handlers=handlers,
         level=os.getenv("LOG_LEVEL", "INFO").upper(),
     )

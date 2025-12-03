@@ -406,3 +406,52 @@ async def add_classification_mapping(
             "status": "success",
             "message": "Classification mapping added successfully"
         })
+
+
+@router.get("/price-imports/{run_id}", response_class=HTMLResponse)
+async def get_price_import_details(
+    request: Request,
+    run_id: str,
+    current_user: str = Depends(require_auth),
+    templates=Depends(get_templates),
+):
+    """Get details of a specific price import run.
+
+    Returns HTML page with full details including rejection reasons and error messages.
+    """
+    from bimcalc.db.models import PriceImportRunModel
+
+    async with get_session() as session:
+        result = await session.execute(
+            select(PriceImportRunModel).where(PriceImportRunModel.id == run_id)
+        )
+        run = result.scalar_one_or_none()
+
+        if not run:
+            return templates.TemplateResponse(
+                "error.html",
+                {
+                    "request": request,
+                    "message": "Import run not found",
+                    "org_id": "default", # Fallback
+                    "project_id": "default", # Fallback
+                },
+                status_code=404,
+            )
+
+        return templates.TemplateResponse(
+            "price_import_detail.html",
+            {
+                "request": request,
+                "run": run,
+                "org_id": run.org_id,
+            },
+        )
+
+
+from fastapi.responses import RedirectResponse
+
+@router.get("/api/price-imports/{run_id}")
+async def redirect_price_import_details(run_id: str):
+    """Redirect legacy API route to new UI route."""
+    return RedirectResponse(url=f"/price-imports/{run_id}")

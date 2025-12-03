@@ -222,8 +222,56 @@
             return;
         }
 
-        alert('Generating report... (This is a demo action)');
-        // In real implementation, this would call an API to generate PDF
+        const name = document.getElementById('reportName').value;
+        const btn = document.querySelector('button[onclick="generateReport()"]');
+        const originalText = btn.innerText;
+        btn.innerText = 'Generating...';
+        btn.disabled = true;
+
+        try {
+            const response = await fetch('/api/reports/custom/generate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    org_id: orgId,
+                    project_id: projectId,
+                    sections: selectedSections,
+                    name: name
+                })
+            });
+
+            if (response.ok) {
+                // Trigger download
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+
+                // Get filename from header if available
+                const contentDisposition = response.headers.get('Content-Disposition');
+                let filename = `custom_report_${projectId}.pdf`;
+                if (contentDisposition) {
+                    const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
+                    if (filenameMatch.length === 2)
+                        filename = filenameMatch[1];
+                }
+
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                a.remove();
+            } else {
+                const err = await response.json();
+                alert('Failed to generate report: ' + (err.detail || 'Unknown error'));
+            }
+        } catch (error) {
+            console.error('Error generating report:', error);
+            alert('An error occurred while generating the report');
+        } finally {
+            btn.innerText = originalText;
+            btn.disabled = false;
+        }
     }
 </script>
 {% endblock %}

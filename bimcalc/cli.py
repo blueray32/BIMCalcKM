@@ -47,6 +47,10 @@ app.add_typer(web_cli, name="web")
 from bimcalc.agent.cli import agent_cli
 app.add_typer(agent_cli, name="agent")
 
+# Register Project CLI
+from bimcalc.cli_project import project_cli
+app.add_typer(project_cli, name="project")
+
 console = Console()
 
 

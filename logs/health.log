@@ -1050,3 +1050,163 @@ Mon Dec  1 20:00:00 GMT 2025
 💾 Backup Status
 ----------------
    Total backups: 2
+=========================================
+BIMCalc Health Check
+=========================================
+Tue Dec  2 00:00:01 GMT 2025
+
+🐳 Docker Containers
+-------------------
+./scripts/health_check.sh: line 30: docker: command not found
+./scripts/health_check.sh: line 37: docker: command not found
+
+💾 Database Health
+------------------
+
+🔄 Pipeline Status
+------------------
+   Last run: Never
+
+💾 Backup Status
+----------------
+   Total backups: 2
+=========================================
+BIMCalc Health Check
+=========================================
+Tue Dec  2 08:00:00 GMT 2025
+
+🐳 Docker Containers
+-------------------
+./scripts/health_check.sh: line 30: docker: command not found
+./scripts/health_check.sh: line 37: docker: command not found
+
+💾 Database Health
+------------------
+
+🔄 Pipeline Status
+------------------
+   Last run: Never
+
+💾 Backup Status
+----------------
+   Total backups: 2
+=========================================
+BIMCalc Health Check
+=========================================
+Tue Dec  2 12:00:01 GMT 2025
+
+🐳 Docker Containers
+-------------------
+./scripts/health_check.sh: line 30: docker: command not found
+./scripts/health_check.sh: line 37: docker: command not found
+
+💾 Database Health
+------------------
+
+🔄 Pipeline Status
+------------------
+   Last run: Never
+
+💾 Backup Status
+----------------
+   Total backups: 2
+=========================================
+BIMCalc Health Check
+=========================================
+Tue Dec  2 16:00:00 GMT 2025
+
+🐳 Docker Containers
+-------------------
+./scripts/health_check.sh: line 30: docker: command not found
+./scripts/health_check.sh: line 37: docker: command not found
+
+💾 Database Health
+------------------
+
+🔄 Pipeline Status
+------------------
+   Last run: Never
+
+💾 Backup Status
+----------------
+   Total backups: 2
+=========================================
+BIMCalc Health Check
+=========================================
+Tue Dec  2 20:00:00 GMT 2025
+
+🐳 Docker Containers
+-------------------
+./scripts/health_check.sh: line 30: docker: command not found
+./scripts/health_check.sh: line 37: docker: command not found
+
+💾 Database Health
+------------------
+
+🔄 Pipeline Status
+------------------
+   Last run: Never
+
+💾 Backup Status
+----------------
+   Total backups: 2
+=========================================
+BIMCalc Health Check
+=========================================
+Wed Dec  3 00:00:00 GMT 2025
+
+🐳 Docker Containers
+-------------------
+./scripts/health_check.sh: line 30: docker: command not found
+./scripts/health_check.sh: line 37: docker: command not found
+
+💾 Database Health
+------------------
+
+🔄 Pipeline Status
+------------------
+   Last run: Never
+
+💾 Backup Status
+----------------
+   Total backups: 2
+=========================================
+BIMCalc Health Check
+=========================================
+Wed Dec  3 04:00:00 GMT 2025
+
+🐳 Docker Containers
+-------------------
+./scripts/health_check.sh: line 30: docker: command not found
+./scripts/health_check.sh: line 37: docker: command not found
+
+💾 Database Health
+------------------
+
+🔄 Pipeline Status
+------------------
+   Last run: Never
+
+💾 Backup Status
+----------------
+   Total backups: 2
+=========================================
+BIMCalc Health Check
+=========================================
+Wed Dec  3 08:00:00 GMT 2025
+
+🐳 Docker Containers
+-------------------
+./scripts/health_check.sh: line 30: docker: command not found
+./scripts/health_check.sh: line 37: docker: command not found
+
+💾 Database Health
+------------------
+
+🔄 Pipeline Status
+------------------
+   Last run: Never
+
+💾 Backup Status
+----------------
+   Total backups: 2

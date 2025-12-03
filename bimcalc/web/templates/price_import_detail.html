@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+
+{% block title %}Import Details - BIMCalc{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width: 1000px; margin: 2rem auto; padding: 0 1rem;">
+    <div class="header"
+        style="margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center;">
+        <div>
+            <h1 style="font-size: 2rem; margin-bottom: 0.5rem;">📋 Import Run Details</h1>
+            <p style="color: #666;">
+                ID: <span style="font-family: monospace;">{{ run.id }}</span>
+            </p>
+        </div>
+        <a href="/crail4-config" style="color: #3182ce; text-decoration: none; font-weight: 600;">
+            ← Back to Configuration
+        </a>
+    </div>
+
+    <!-- Status Card -->
+    <div
+        style="background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 2rem; margin-bottom: 2rem;">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 2rem;">
+            <div>
+                <div style="color: #666; font-size: 0.875rem; margin-bottom: 0.25rem;">Status</div>
+                <div style="font-size: 1.25rem; font-weight: 600; text-transform: capitalize;">
+                    <span
+                        class="status-badge {{ 'status-completed' if run.status == 'completed' else 'status-failed' if run.status == 'failed' else 'status-pending' }}">
+                        {{ run.status }}
+                    </span>
+                </div>
+            </div>
+            <div>
+                <div style="color: #666; font-size: 0.875rem; margin-bottom: 0.25rem;">Source</div>
+                <div style="font-size: 1.25rem; font-weight: 600;">{{ run.source }}</div>
+            </div>
+            <div>
+                <div style="color: #666; font-size: 0.875rem; margin-bottom: 0.25rem;">Started At</div>
+                <div style="font-size: 1.25rem; font-weight: 600;">{{ run.started_at | replace("T", " ") | truncate(19,
+                    True, "") }}</div>
+            </div>
+            <div>
+                <div style="color: #666; font-size: 0.875rem; margin-bottom: 0.25rem;">Duration</div>
+                <div style="font-size: 1.25rem; font-weight: 600;">
+                    {% if run.completed_at %}
+                    {{ ((run.completed_at - run.started_at).total_seconds()) | round(1) }}s
+                    {% else %}
+                    -
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistics -->
+    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1.5rem; margin-bottom: 2rem;">
+        <div
+            style="background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 1.5rem; text-align: center;">
+            <div style="font-size: 2.5rem; font-weight: bold; color: #3182ce;">{{ run.items_fetched }}</div>
+            <div style="color: #666; font-weight: 600;">Items Fetched</div>
+        </div>
+        <div
+            style="background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 1.5rem; text-align: center;">
+            <div style="font-size: 2.5rem; font-weight: bold; color: #48bb78;">{{ run.items_loaded }}</div>
+            <div style="color: #666; font-weight: 600;">Items Loaded</div>
+        </div>
+        <div
+            style="background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 1.5rem; text-align: center;">
+            <div style="font-size: 2.5rem; font-weight: bold; color: #f56565;">{{ run.items_rejected }}</div>
+            <div style="color: #666; font-weight: 600;">Items Rejected</div>
+        </div>
+    </div>
+
+    <!-- Rejection Reasons -->
+    {% if run.rejection_reasons and run.items_rejected > 0 %}
+    <div
+        style="background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 2rem; margin-bottom: 2rem;">
+        <h2
+            style="font-size: 1.5rem; margin-bottom: 1.5rem; border-bottom: 2px solid #f56565; padding-bottom: 0.5rem; color: #c53030;">
+            ⚠️ Rejection Analysis
+        </h2>
+        <table style="width: 100%; border-collapse: collapse;">
+            <thead>
+                <tr style="background: #fff5f5; border-bottom: 2px solid #fed7d7;">
+                    <th style="padding: 0.75rem; text-align: left; color: #c53030;">Reason</th>
+                    <th style="padding: 0.75rem; text-align: right; color: #c53030;">Count</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for reason, count in run.rejection_reasons.items() %}
+                <tr style="border-bottom: 1px solid #edf2f7;">
+                    <td style="padding: 0.75rem;">{{ reason | replace("_", " ") | title }}</td>
+                    <td style="padding: 0.75rem; text-align: right; font-weight: 600;">{{ count }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+
+    <!-- Error Message -->
+    {% if run.error_message %}
+    <div
+        style="background: #fff5f5; border: 1px solid #feb2b2; border-radius: 12px; padding: 2rem; margin-bottom: 2rem;">
+        <h2 style="font-size: 1.25rem; margin-bottom: 1rem; color: #c53030;">❌ Error Details</h2>
+        <pre
+            style="background: #fff; padding: 1rem; border-radius: 6px; overflow-x: auto; font-family: monospace; color: #c53030;">{{ run.error_message }}</pre>
+    </div>
+    {% endif %}
+
+</div>
+
+<style>
+    .status-badge {
+        padding: 0.25rem 0.75rem;
+        border-radius: 9999px;
+        font-size: 0.875rem;
+        font-weight: 600;
+        display: inline-block;
+    }
+
+    .status-completed {
+        background: #def7ec;
+        color: #03543f;
+    }
+
+    .status-failed {
+        background: #fde8e8;
+        color: #9b1c1c;
+    }
+
+    .status-pending {
+        background: #feecdc;
+        color: #9c4221;
+    }
+</style>
+{% endblock %}

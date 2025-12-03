@@ -511,9 +511,10 @@ def test_router_has_correct_routes():
     assert "/review" in routes
     assert "/review/approve" in routes
     assert "/review/reject" in routes
+    assert "/api/matches/bulk-update" in routes
 
-    # Should have 3 routes total
-    assert len(review.router.routes) == 3
+    # Should have 4 routes total
+    assert len(review.router.routes) == 4
 
 
 def test_router_has_review_tag():

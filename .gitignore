@@ -5,7 +5,6 @@ __pycache__/
 .venv/
 .env
 .DS_Store
-.claude/
 examples/BIMCalc/
 *.db
 dist/
@@ -14,4 +13,9 @@ build/
 *.pyo
 *.sqlite
 
+
 examples/agentic-coding-course-main/
+logs/
+*.log
+*.pdf
+.claude/

@@ -340,9 +340,10 @@ def test_router_has_correct_routes():
     assert "/pipeline" in routes
     assert "/pipeline/run" in routes
     assert "/pipeline/sources" in routes
+    assert "/api/pipeline/status" in routes
 
-    # Should have 3 routes total
-    assert len(pipeline.router.routes) == 3
+    # Should have 4 routes total
+    assert len(pipeline.router.routes) == 4
 
 
 def test_router_has_pipeline_tag():

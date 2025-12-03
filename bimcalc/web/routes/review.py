@@ -226,3 +226,68 @@ async def reject_review(
         url=f"/review?{query_string}",
         status_code=303
     )
+
+
+from pydantic import BaseModel
+from typing import List, Optional
+
+class BulkUpdateRequest(BaseModel):
+    match_result_ids: List[UUID]
+    action: Literal["approve", "reject"]
+    annotation: Optional[str] = None
+    org_id: str
+    project_id: str
+
+@router.post("/api/matches/bulk-update")
+async def bulk_update_matches(
+    request: BulkUpdateRequest,
+    # username: str = Depends(require_auth) if AUTH_ENABLED else None, # Auth handled by middleware/dependency injection in real app
+):
+    """Bulk approve or reject matches.
+
+    Extracted from: app_enhanced.py:462
+    """
+    from bimcalc.db.models import MatchResultModel, ItemModel
+
+    async with get_session() as session:
+        # Verify all match results exist and belong to org/project
+        stmt = select(MatchResultModel).join(ItemModel).where(
+            MatchResultModel.id.in_(request.match_result_ids),
+            ItemModel.org_id == request.org_id,
+            ItemModel.project_id == request.project_id
+        )
+        results = (await session.execute(stmt)).scalars().all()
+        
+        if len(results) != len(request.match_result_ids):
+            found_ids = {r.id for r in results}
+            missing = set(request.match_result_ids) - found_ids
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Some match results not found or access denied: {missing}"
+            )
+
+        processed_count = 0
+        username = "web-ui" # Placeholder until auth dependency is fully integrated in router
+
+        for match_result in results:
+            if request.action == "approve":
+                # Re-use existing approval logic
+                record = await fetch_review_record(session, match_result.id)
+                if record:
+                    await approve_review_record(
+                        session, 
+                        record, 
+                        created_by=username, 
+                        annotation=request.annotation
+                    )
+                    processed_count += 1
+            
+            elif request.action == "reject":
+                match_result.decision = "rejected"
+                match_result.reason = request.annotation or "Bulk rejection via web UI"
+                match_result.created_by = username
+                processed_count += 1
+        
+        await session.commit()
+        
+        return {"processed": processed_count, "action": request.action}

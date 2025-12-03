@@ -1,0 +1,13 @@
+SECTION 05120 - STRUCTURAL STEEL
+
+PART 1 - GENERAL
+
+1.1 SUMMARY
+A. Section Includes:
+   1. Structural steel framing.
+   2. Grout.
+
+1.5 QUALITY ASSURANCE
+A. Fire Rating: All structural steel columns must have a fire rating of at least 120 minutes.
+B. Connections: All bolted connections shall use ASTM A325 high-strength bolts.
+C. Fabrication: Fabricator must be AISC Certified.

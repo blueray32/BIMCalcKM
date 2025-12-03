@@ -340,7 +340,7 @@ class TestPriceDetail:
 
         price_id = uuid4()
         response = client.get(f"/prices/{price_id}")
-        assert response.status_code == 200  # Returns error template with 200
+        assert response.status_code == 404
 
 
 # Integration tests

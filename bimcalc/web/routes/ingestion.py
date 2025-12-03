@@ -14,7 +14,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, Query
 from fastapi.responses import HTMLResponse, JSONResponse
 
 from bimcalc.db.connection import get_session
@@ -218,3 +218,67 @@ async def ingest_prices(
         "message": f"Imported {success_count} price items ({cmm_status})",
         "errors": errors[:5] if errors else [],
     }
+
+
+@router.get("/api/ingest/history")
+async def get_ingest_history(
+    org: str = Query(...),
+    project: str = Query(...),
+    limit: int = Query(default=10, ge=1, le=100),
+):
+    """Get ingest history with statistics.
+
+    Returns last N imports with:
+    - Timestamp and filename
+    - Items added/modified/unchanged/deleted
+    - Error and warning counts
+    - Processing time
+    - Status (completed, failed, running)
+
+    Extracted from: app_enhanced.py:347
+    """
+    from bimcalc.db.models import IngestLogModel
+    from sqlalchemy import select
+
+    async with get_session() as session:
+        query = (
+            select(IngestLogModel)
+            .where(
+                IngestLogModel.org_id == org,
+                IngestLogModel.project_id == project,
+            )
+            .order_by(IngestLogModel.started_at.desc())
+            .limit(limit)
+        )
+        results = (await session.execute(query)).scalars().all()
+
+        history = [
+            {
+                "id": str(log.id),
+                "timestamp": log.started_at.isoformat(),
+                "filename": log.filename,
+                "file_hash": log.file_hash,
+                "statistics": {
+                    "total": log.items_total,
+                    "added": log.items_added,
+                    "modified": log.items_modified,
+                    "unchanged": log.items_unchanged,
+                    "deleted": log.items_deleted,
+                },
+                "errors": log.errors,
+                "warnings": log.warnings,
+                "error_details": log.error_details if log.errors > 0 else None,
+                "processing_time_ms": log.processing_time_ms,
+                "status": log.status,
+                "completed_at": log.completed_at.isoformat() if log.completed_at else None,
+                "created_by": log.created_by,
+            }
+            for log in results
+        ]
+
+        return JSONResponse(content={
+            "org_id": org,
+            "project_id": project,
+            "total_imports": len(history),
+            "history": history,
+        })

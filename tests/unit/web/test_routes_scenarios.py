@@ -91,8 +91,8 @@ class TestCompareScenarios:
     """Tests for GET /api/scenarios/compare route."""
 
     @patch("bimcalc.web.routes.scenarios.get_session")
-    @patch("bimcalc.web.routes.scenarios.get_available_vendors")
-    @patch("bimcalc.web.routes.scenarios.compute_vendor_scenario")
+    @patch("bimcalc.reporting.scenario.get_available_vendors")
+    @patch("bimcalc.reporting.scenario.compute_vendor_scenario")
     def test_compare_scenarios_with_vendors(
         self,
         mock_compute_scenario,
@@ -118,8 +118,8 @@ class TestCompareScenarios:
         assert data["scenarios"][0]["total_cost"] == 10000.00
 
     @patch("bimcalc.web.routes.scenarios.get_session")
-    @patch("bimcalc.web.routes.scenarios.get_available_vendors")
-    @patch("bimcalc.web.routes.scenarios.compute_vendor_scenario")
+    @patch("bimcalc.reporting.scenario.get_available_vendors")
+    @patch("bimcalc.reporting.scenario.compute_vendor_scenario")
     def test_compare_scenarios_default_top_3(
         self,
         mock_compute_scenario,
@@ -143,8 +143,8 @@ class TestCompareScenarios:
         assert len(data["scenarios"]) == 3
 
     @patch("bimcalc.web.routes.scenarios.get_session")
-    @patch("bimcalc.web.routes.scenarios.get_available_vendors")
-    @patch("bimcalc.web.routes.scenarios.compute_vendor_scenario")
+    @patch("bimcalc.reporting.scenario.get_available_vendors")
+    @patch("bimcalc.reporting.scenario.compute_vendor_scenario")
     def test_compare_scenarios_empty_vendors(
         self,
         mock_compute_scenario,
@@ -169,9 +169,9 @@ class TestExportScenarios:
     """Tests for GET /api/scenarios/export route."""
 
     @patch("bimcalc.web.routes.scenarios.get_session")
-    @patch("bimcalc.web.routes.scenarios.get_available_vendors")
-    @patch("bimcalc.web.routes.scenarios.compute_vendor_scenario")
-    @patch("bimcalc.web.routes.scenarios.export_scenario_to_excel")
+    @patch("bimcalc.reporting.scenario.get_available_vendors")
+    @patch("bimcalc.reporting.scenario.compute_vendor_scenario")
+    @patch("bimcalc.reporting.export.export_scenario_to_excel")
     def test_export_scenarios_success(
         self,
         mock_export_excel,
@@ -209,9 +209,9 @@ class TestExportScenarios:
         assert "scenario_comparison_test-org_test-project" in response.headers["content-disposition"]
 
     @patch("bimcalc.web.routes.scenarios.get_session")
-    @patch("bimcalc.web.routes.scenarios.get_available_vendors")
-    @patch("bimcalc.web.routes.scenarios.compute_vendor_scenario")
-    @patch("bimcalc.web.routes.scenarios.export_scenario_to_excel")
+    @patch("bimcalc.reporting.scenario.get_available_vendors")
+    @patch("bimcalc.reporting.scenario.compute_vendor_scenario")
+    @patch("bimcalc.reporting.export.export_scenario_to_excel")
     def test_export_scenarios_default_top_3(
         self,
         mock_export_excel,
@@ -238,9 +238,9 @@ class TestExportScenarios:
         assert mock_compute_scenario.call_count == 3
 
     @patch("bimcalc.web.routes.scenarios.get_session")
-    @patch("bimcalc.web.routes.scenarios.get_available_vendors")
-    @patch("bimcalc.web.routes.scenarios.compute_vendor_scenario")
-    @patch("bimcalc.web.routes.scenarios.export_scenario_to_excel")
+    @patch("bimcalc.reporting.scenario.get_available_vendors")
+    @patch("bimcalc.reporting.scenario.compute_vendor_scenario")
+    @patch("bimcalc.reporting.export.export_scenario_to_excel")
     def test_export_scenarios_with_multiple_vendors(
         self,
         mock_export_excel,

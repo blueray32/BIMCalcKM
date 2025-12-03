@@ -393,9 +393,10 @@ def test_router_has_correct_routes():
     assert "/ingest" in routes
     assert "/ingest/schedules" in routes
     assert "/ingest/prices" in routes
+    assert "/api/ingest/history" in routes
 
-    # Should have 4 routes total
-    assert len(ingestion.router.routes) == 4
+    # Should have 5 routes total
+    assert len(ingestion.router.routes) == 5
 
 
 def test_router_has_ingestion_tag():
