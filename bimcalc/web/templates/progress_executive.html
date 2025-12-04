@@ -24,7 +24,7 @@
         font-size: 2.5rem;
         font-weight: 800;
         margin: 0 0 0.5rem 0;
-        text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     }
 
     .executive-header .subtitle {
@@ -52,8 +52,15 @@
     }
 
     @keyframes pulse {
-        0%, 100% { filter: drop-shadow(0 0 8px rgba(102, 126, 234, 0.6)); }
-        50% { filter: drop-shadow(0 0 20px rgba(102, 126, 234, 0.9)); }
+
+        0%,
+        100% {
+            filter: drop-shadow(0 0 8px rgba(102, 126, 234, 0.6));
+        }
+
+        50% {
+            filter: drop-shadow(0 0 20px rgba(102, 126, 234, 0.9));
+        }
     }
 
     .progress-value {
@@ -95,7 +102,7 @@
         background: white;
         border-radius: 1rem;
         padding: 1.5rem;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.05), 0 1px 3px rgba(0,0,0,0.1);
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05), 0 1px 3px rgba(0, 0, 0, 0.1);
         transition: all 0.3s ease;
         position: relative;
         overflow: hidden;
@@ -113,7 +120,7 @@
 
     .kpi-card:hover {
         transform: translateY(-4px);
-        box-shadow: 0 12px 24px rgba(0,0,0,0.1), 0 4px 8px rgba(0,0,0,0.06);
+        box-shadow: 0 12px 24px rgba(0, 0, 0, 0.1), 0 4px 8px rgba(0, 0, 0, 0.06);
     }
 
     .kpi-card .icon {
@@ -127,10 +134,21 @@
         margin-bottom: 1rem;
     }
 
-    .kpi-card.primary .icon { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
-    .kpi-card.success .icon { background: linear-gradient(135deg, #48bb78 0%, #38a169 100%); }
-    .kpi-card.warning .icon { background: linear-gradient(135deg, #ed8936 0%, #dd6b20 100%); }
-    .kpi-card.danger .icon { background: linear-gradient(135deg, #f56565 0%, #e53e3e 100%); }
+    .kpi-card.primary .icon {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+
+    .kpi-card.success .icon {
+        background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+    }
+
+    .kpi-card.warning .icon {
+        background: linear-gradient(135deg, #ed8936 0%, #dd6b20 100%);
+    }
+
+    .kpi-card.danger .icon {
+        background: linear-gradient(135deg, #f56565 0%, #e53e3e 100%);
+    }
 
     .kpi-card .value {
         font-size: 2.5rem;
@@ -157,16 +175,24 @@
         font-weight: 600;
     }
 
-    .trend.up { color: #48bb78; }
-    .trend.down { color: #f56565; }
-    .trend.stable { color: #718096; }
+    .trend.up {
+        color: #48bb78;
+    }
+
+    .trend.down {
+        color: #f56565;
+    }
+
+    .trend.stable {
+        color: #718096;
+    }
 
     /* Timeline Gantt Chart */
     .timeline-container {
         background: white;
         border-radius: 1rem;
         padding: 2rem;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
         margin: 2rem 0;
     }
 
@@ -240,6 +266,7 @@
             width: 0;
             opacity: 0;
         }
+
         to {
             opacity: 1;
         }
@@ -256,12 +283,12 @@
         background: white;
         border-radius: 1rem;
         padding: 2rem;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.05), 0 1px 3px rgba(0,0,0,0.1);
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05), 0 1px 3px rgba(0, 0, 0, 0.1);
         transition: all 0.3s ease;
     }
 
     .chart-card:hover {
-        box-shadow: 0 12px 24px rgba(0,0,0,0.1), 0 4px 8px rgba(0,0,0,0.06);
+        box-shadow: 0 12px 24px rgba(0, 0, 0, 0.1), 0 4px 8px rgba(0, 0, 0, 0.06);
     }
 
     .chart-header {
@@ -288,10 +315,21 @@
         box-shadow: 0 4px 12px rgba(72, 187, 120, 0.3);
     }
 
-    .health-score.excellent { background: linear-gradient(135deg, #48bb78 0%, #38a169 100%); }
-    .health-score.good { background: linear-gradient(135deg, #4299e1 0%, #3182ce 100%); }
-    .health-score.fair { background: linear-gradient(135deg, #ed8936 0%, #dd6b20 100%); }
-    .health-score.poor { background: linear-gradient(135deg, #f56565 0%, #e53e3e 100%); }
+    .health-score.excellent {
+        background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+    }
+
+    .health-score.good {
+        background: linear-gradient(135deg, #4299e1 0%, #3182ce 100%);
+    }
+
+    .health-score.fair {
+        background: linear-gradient(135deg, #ed8936 0%, #dd6b20 100%);
+    }
+
+    .health-score.poor {
+        background: linear-gradient(135deg, #f56565 0%, #e53e3e 100%);
+    }
 
     /* Action Buttons Enhanced */
     .action-grid {
@@ -311,13 +349,13 @@
         font-weight: 600;
         text-decoration: none;
         transition: all 0.3s ease;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         font-size: 0.9375rem;
     }
 
     .action-btn:hover {
         transform: translateY(-2px);
-        box-shadow: 0 8px 16px rgba(0,0,0,0.15);
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
     }
 
     .action-btn.primary {
@@ -343,7 +381,8 @@
             print-color-adjust: exact;
         }
 
-        .kpi-card, .chart-card {
+        .kpi-card,
+        .chart-card {
             page-break-inside: avoid;
             box-shadow: none !important;
             border: 1px solid #e2e8f0;
@@ -353,7 +392,8 @@
             display: none;
         }
 
-        nav, .project-selector {
+        nav,
+        .project-selector {
             display: none;
         }
     }
@@ -379,7 +419,7 @@
             </div>
         </div>
         <a href="/progress?org={{ org_id }}&project={{ project_id }}&view=standard"
-           style="background: rgba(255,255,255,0.2); color: white; padding: 0.75rem 1.5rem; border-radius: 0.5rem; text-decoration: none; font-weight: 600; display: inline-flex; align-items: center; gap: 0.5rem; backdrop-filter: blur(10px);">
+            style="background: rgba(255,255,255,0.2); color: white; padding: 0.75rem 1.5rem; border-radius: 0.5rem; text-decoration: none; font-weight: 600; display: inline-flex; align-items: center; gap: 0.5rem; backdrop-filter: blur(10px);">
             <span>←</span>
             <span>Standard View</span>
         </a>
@@ -392,20 +432,14 @@
 
 <!-- Overall Progress Section -->
 <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 2rem; margin-bottom: 2rem;">
-    <div style="background: white; border-radius: 1rem; padding: 2rem; box-shadow: 0 4px 6px rgba(0,0,0,0.05); text-align: center;">
+    <div
+        style="background: white; border-radius: 1rem; padding: 2rem; box-shadow: 0 4px 6px rgba(0,0,0,0.05); text-align: center;">
         <h3 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 1rem; color: #2d3748;">Overall Completion</h3>
 
         <div class="progress-ring-container">
             <svg class="progress-ring" width="280" height="280">
                 <!-- Background circle -->
-                <circle
-                    cx="140"
-                    cy="140"
-                    r="120"
-                    stroke="#f7fafc"
-                    stroke-width="20"
-                    fill="none"
-                />
+                <circle cx="140" cy="140" r="120" stroke="#f7fafc" stroke-width="20" fill="none" />
                 <!-- Gradient definition -->
                 <defs>
                     <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -414,18 +448,10 @@
                     </linearGradient>
                 </defs>
                 <!-- Progress circle -->
-                <circle
-                    class="progress-ring-circle"
-                    cx="140"
-                    cy="140"
-                    r="120"
-                    stroke="url(#progressGradient)"
-                    stroke-width="20"
-                    fill="none"
-                    stroke-dasharray="{{ 2 * 3.14159 * 120 }}"
+                <circle class="progress-ring-circle" cx="140" cy="140" r="120" stroke="url(#progressGradient)"
+                    stroke-width="20" fill="none" stroke-dasharray="{{ 2 * 3.14159 * 120 }}"
                     stroke-dashoffset="{{ 2 * 3.14159 * 120 * (1 - metrics.overall_completion / 100) }}"
-                    stroke-linecap="round"
-                />
+                    stroke-linecap="round" />
             </svg>
             <div class="progress-value">
                 <div class="number">{{ "%.0f"|format(metrics.overall_completion) }}%</div>
@@ -434,7 +460,8 @@
         </div>
 
         <div style="margin-top: 2rem;">
-            {% set health_score = 'excellent' if metrics.overall_completion >= 90 else 'good' if metrics.overall_completion >= 70 else 'fair' if metrics.overall_completion >= 50 else 'poor' %}
+            {% set health_score = 'excellent' if metrics.overall_completion >= 90 else 'good' if
+            metrics.overall_completion >= 70 else 'fair' if metrics.overall_completion >= 50 else 'poor' %}
             <span class="health-score {{ health_score }}">
                 {% if health_score == 'excellent' %}🌟 Excellent Progress
                 {% elif health_score == 'good' %}✅ On Track
@@ -463,7 +490,8 @@
             <div class="label">Items Matched</div>
             <div class="trend up">
                 <span>↑</span>
-                <span>{{ "%.0f"|format((metrics.matched_items / metrics.total_items * 100) if metrics.total_items > 0 else 0) }}% completion</span>
+                <span>{{ "%.0f"|format((metrics.matched_items / metrics.total_items * 100) if metrics.total_items > 0
+                    else 0) }}% completion</span>
             </div>
         </div>
 
@@ -473,7 +501,7 @@
             <div class="label">Pending Review</div>
             <div class="trend {{ 'down' if metrics.pending_review < metrics.total_items * 0.1 else 'stable' }}">
                 <span>{% if metrics.pending_review < metrics.total_items * 0.1 %}↓{% else %}→{% endif %}</span>
-                <span>Needs approval</span>
+                        <span>Needs approval</span>
             </div>
         </div>
 
@@ -506,18 +534,23 @@
         <div class="timeline-item">
             <div class="timeline-label">2. Classification</div>
             <div class="timeline-bar-container">
-                <div class="timeline-bar {{ 'completed' if metrics.stage_classification.status == 'completed' else 'in-progress' }}" style="width: {{ metrics.stage_classification.completion_percent }}%;">
-                    {% if metrics.stage_classification.status == 'completed' %}✓ Completed{% else %}⏳ In Progress{% endif %}
+                <div class="timeline-bar {{ 'completed' if metrics.stage_classification.status == 'completed' else 'in-progress' }}"
+                    style="width: {{ metrics.stage_classification.completion_percent }}%;">
+                    {% if metrics.stage_classification.status == 'completed' %}✓ Completed{% else %}⏳ In Progress{%
+                    endif %}
                 </div>
             </div>
-            <span class="timeline-percentage">{{ "%.0f"|format(metrics.stage_classification.completion_percent) }}%</span>
+            <span class="timeline-percentage">{{ "%.0f"|format(metrics.stage_classification.completion_percent)
+                }}%</span>
         </div>
 
         <div class="timeline-item">
             <div class="timeline-label">3. Price Matching</div>
             <div class="timeline-bar-container">
-                <div class="timeline-bar {{ 'completed' if metrics.stage_matching.status == 'completed' else 'in-progress' }}" style="width: {{ metrics.stage_matching.completion_percent }}%;">
-                    {% if metrics.stage_matching.status == 'completed' %}✓ Completed{% else %}⏳ {{ "%.0f"|format(metrics.stage_matching.completion_percent) }}%{% endif %}
+                <div class="timeline-bar {{ 'completed' if metrics.stage_matching.status == 'completed' else 'in-progress' }}"
+                    style="width: {{ metrics.stage_matching.completion_percent }}%;">
+                    {% if metrics.stage_matching.status == 'completed' %}✓ Completed{% else %}⏳ {{
+                    "%.0f"|format(metrics.stage_matching.completion_percent) }}%{% endif %}
                 </div>
             </div>
             <span class="timeline-percentage">{{ "%.0f"|format(metrics.stage_matching.completion_percent) }}%</span>
@@ -526,9 +559,11 @@
         <div class="timeline-item">
             <div class="timeline-label">4. Review & Approval</div>
             <div class="timeline-bar-container">
-                <div class="timeline-bar {{ 'completed' if metrics.stage_review.status == 'completed' else 'in-progress' if metrics.stage_review.status == 'in_progress' else 'not-started' }}" style="width: {{ metrics.stage_review.completion_percent }}%;">
+                <div class="timeline-bar {{ 'completed' if metrics.stage_review.status == 'completed' else 'in-progress' if metrics.stage_review.status == 'in_progress' else 'not-started' }}"
+                    style="width: {{ metrics.stage_review.completion_percent }}%;">
                     {% if metrics.stage_review.status == 'completed' %}✓ Completed
-                    {% elif metrics.stage_review.status == 'in_progress' %}⏳ {{ "%.0f"|format(metrics.stage_review.completion_percent) }}%
+                    {% elif metrics.stage_review.status == 'in_progress' %}⏳ {{
+                    "%.0f"|format(metrics.stage_review.completion_percent) }}%
                     {% else %}Not Started
                     {% endif %}
                 </div>
@@ -591,22 +626,22 @@
         </a>
         {% endif %}
 
-        {% if metrics.matched_items < metrics.total_items %}
-        <a href="/match?org={{ org_id }}&project={{ project_id }}" class="action-btn primary">
+        {% if metrics.matched_items < metrics.total_items %} <a href="/match?org={{ org_id }}&project={{ project_id }}"
+            class="action-btn primary">
             <span>🔍</span>
             <span>Continue Matching</span>
-        </a>
-        {% endif %}
+            </a>
+            {% endif %}
 
-        <a href="/reports?org={{ org_id }}&project={{ project_id }}" class="action-btn success">
-            <span>📊</span>
-            <span>Generate Cost Report</span>
-        </a>
+            <a href="/reports?org={{ org_id }}&project={{ project_id }}" class="action-btn success">
+                <span>📊</span>
+                <span>Generate Cost Report</span>
+            </a>
 
-        <a href="javascript:window.print()" class="action-btn" style="background: #e2e8f0; color: #2d3748;">
-            <span>🖨️</span>
-            <span>Print Executive Summary</span>
-        </a>
+            <a href="javascript:window.print()" class="action-btn" style="background: #e2e8f0; color: #2d3748;">
+                <span>🖨️</span>
+                <span>Print Executive Summary</span>
+            </a>
     </div>
 </div>
 
@@ -615,32 +650,33 @@
 {% block scripts %}
 <!-- Chart.js with Advanced Configs -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+<script
+    src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
 
 <script>
-// Global Chart Defaults
-Chart.defaults.font.family = "'Inter', sans-serif";
-Chart.defaults.plugins.legend.labels.usePointStyle = true;
-Chart.defaults.plugins.legend.labels.padding = 15;
+    // Global Chart Defaults
+    Chart.defaults.font.family = "'Inter', sans-serif";
+    Chart.defaults.plugins.legend.labels.usePointStyle = true;
+    Chart.defaults.plugins.legend.labels.padding = 15;
 
-// Confidence Distribution (Doughnut with Animation)
-const confidenceCtx = document.getElementById('confidenceChart');
-new Chart(confidenceCtx, {
-    type: 'doughnut',
-    data: {
-        labels: ['High Confidence (≥85%)', 'Medium (70-84%)', 'Low (<70%)'],
-        datasets: [{
-            data: [{{ metrics.confidence_high }}, {{ metrics.confidence_medium }}, {{ metrics.confidence_low }}],
-            backgroundColor: [
-                'rgba(72, 187, 120, 0.9)',
-                'rgba(66, 153, 225, 0.9)',
-                'rgba(245, 101, 101, 0.9)'
-            ],
-            borderWidth: 0,
-            hoverOffset: 15
+    // Confidence Distribution (Doughnut with Animation)
+    const confidenceCtx = document.getElementById('confidenceChart');
+    new Chart(confidenceCtx, {
+        type: 'doughnut',
+        data: {
+            labels: ['High Confidence (≥85%)', 'Medium (70-84%)', 'Low (<70%)'],
+            datasets: [{
+                data: [{{ metrics.confidence_high }}, {{ metrics.confidence_medium }}, {{ metrics.confidence_low }}],
+        backgroundColor: [
+        'rgba(72, 187, 120, 0.9)',
+        'rgba(66, 153, 225, 0.9)',
+        'rgba(245, 101, 101, 0.9)'
+    ],
+        borderWidth: 0,
+        hoverOffset: 15
         }]
     },
-    options: {
+        options: {
         responsive: true,
         maintainAspectRatio: false,
         cutout: '70%',
@@ -674,72 +710,72 @@ new Chart(confidenceCtx, {
                 borderColor: 'rgba(255, 255, 255, 0.1)',
                 borderWidth: 1,
                 callbacks: {
-                    label: function(context) {
+                    label: function (context) {
                         const total = {{ metrics.confidence_high + metrics.confidence_medium + metrics.confidence_low }};
-                        const percentage = total > 0 ? ((context.parsed / total) * 100).toFixed(1) : 0;
-                        return context.label + ': ' + context.parsed + ' items (' + percentage + '%)';
-                    }
-                }
+            const percentage = total > 0 ? ((context.parsed / total) * 100).toFixed(1) : 0;
+            return context.label + ': ' + context.parsed + ' items (' + percentage + '%)';
+        }
+    }
             }
         }
     }
 });
 
-{% if metrics.classification_coverage %}
-// Classification Coverage (Horizontal Bar)
-const classCtx = document.getElementById('classificationChart');
-new Chart(classCtx, {
-    type: 'bar',
-    data: {
-        labels: [{% for cls in metrics.classification_coverage %}'Code {{ cls.code }}'{% if not loop.last %}, {% endif %}{% endfor %}],
+    {% if metrics.classification_coverage %}
+    // Classification Coverage (Horizontal Bar)
+    const classCtx = document.getElementById('classificationChart');
+    new Chart(classCtx, {
+        type: 'bar',
+        data: {
+            labels: [{% for cls in metrics.classification_coverage %}'Code {{ cls.code }}'{% if not loop.last %}, {% endif %}{% endfor %}],
         datasets: [{
             label: 'Matched',
-            data: [{% for cls in metrics.classification_coverage %}{{ cls.matched }}{% if not loop.last %}, {% endif %}{% endfor %}],
-            backgroundColor: 'rgba(72, 187, 120, 0.9)',
-            borderRadius: 6,
+            data: [{% for cls in metrics.classification_coverage %}{{ cls.matched }}{% if not loop.last %}, {% endif %} {% endfor %}],
+    backgroundColor: 'rgba(72, 187, 120, 0.9)',
+        borderRadius: 6,
             borderSkipped: false
         }, {
-            label: 'Unmatched',
-            data: [{% for cls in metrics.classification_coverage %}{{ cls.total - cls.matched }}{% if not loop.last %}, {% endif %}{% endfor %}],
-            backgroundColor: 'rgba(226, 232, 240, 0.9)',
-            borderRadius: 6,
+        label: 'Unmatched',
+            data: [{% for cls in metrics.classification_coverage %} {{ cls.total - cls.matched }} {% if not loop.last %}, {% endif %} {% endfor %}],
+    backgroundColor: 'rgba(226, 232, 240, 0.9)',
+        borderRadius: 6,
             borderSkipped: false
         }]
     },
     options: {
         indexAxis: 'y',
-        responsive: true,
-        maintainAspectRatio: false,
-        animation: {
+            responsive: true,
+                maintainAspectRatio: false,
+                    animation: {
             duration: 1500,
-            easing: 'easeInOutQuart',
-            delay: (context) => {
-                return context.dataIndex * 100;
-            }
+                easing: 'easeInOutQuart',
+                    delay: (context) => {
+                        return context.dataIndex * 100;
+                    }
         },
         scales: {
             x: {
                 stacked: true,
-                beginAtZero: true,
-                grid: {
+                    beginAtZero: true,
+                        grid: {
                     display: false
                 },
                 ticks: {
                     font: {
                         size: 12,
-                        weight: '600'
+                            weight: '600'
                     }
                 }
             },
             y: {
                 stacked: true,
-                grid: {
+                    grid: {
                     display: false
                 },
                 ticks: {
                     font: {
                         size: 12,
-                        weight: '600'
+                            weight: '600'
                     }
                 }
             }
@@ -747,52 +783,47 @@ new Chart(classCtx, {
         plugins: {
             legend: {
                 position: 'bottom',
-                labels: {
+                    labels: {
                     font: {
                         size: 13,
-                        weight: '600'
+                            weight: '600'
                     },
                     padding: 20
                 }
             },
             tooltip: {
                 backgroundColor: 'rgba(26, 32, 44, 0.95)',
-                padding: 12,
-                borderColor: 'rgba(255, 255, 255, 0.1)',
-                borderWidth: 1,
-                callbacks: {
+                    padding: 12,
+                        borderColor: 'rgba(255, 255, 255, 0.1)',
+                            borderWidth: 1,
+                                callbacks: {
                     title: function(context) {
                         return 'Classification ' + context[0].label;
                     },
                     afterBody: function(context) {
                         const dataIndex = context[0].dataIndex;
-                        const coverage = [{% for cls in metrics.classification_coverage %}{{ cls.percent }}{% if not loop.last %}, {% endif %}{% endfor %}];
-                        return '\nCoverage: ' + coverage[dataIndex].toFixed(1) + '%';
-                    }
+                        const coverage = [{% for cls in metrics.classification_coverage %} {{ cls.percent }} {% if not loop.last %}, {% endif %} {% endfor %}];
+                    return '\nCoverage: ' + coverage[dataIndex].toFixed(1) + '%';
                 }
             }
         }
     }
+    }
 });
-{% endif %}
+    {% endif %}
 
-// Smooth scroll to sections
-document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-    anchor.addEventListener('click', function (e) {
-        e.preventDefault();
-        const target = document.querySelector(this.getAttribute('href'));
-        if (target) {
-            target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
+    // Smooth scroll to sections
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener('click', function (e) {
+            e.preventDefault();
+            const target = document.querySelector(this.getAttribute('href'));
+            if (target) {
+                target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        });
     });
-});
 </script>
 
-<!-- Export to Excel -->
-{% set export_type = 'progress' %}
-{% include 'executive_export_button.html' %}
 
-<!-- Print/PDF Export -->
-{% include 'executive_print.html' %}
 
 {% endblock %}

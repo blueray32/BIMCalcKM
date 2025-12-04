@@ -56,10 +56,21 @@
         margin-top: 1rem;
     }
 
-    .compliance-status.excellent { color: #48bb78; }
-    .compliance-status.good { color: #4299e1; }
-    .compliance-status.fair { color: #ed8936; }
-    .compliance-status.poor { color: #f56565; }
+    .compliance-status.excellent {
+        color: #48bb78;
+    }
+
+    .compliance-status.good {
+        color: #4299e1;
+    }
+
+    .compliance-status.fair {
+        color: #ed8936;
+    }
+
+    .compliance-status.poor {
+        color: #f56565;
+    }
 
     .metrics-grid {
         display: grid;
@@ -130,9 +141,17 @@
         margin-top: 0.5rem;
     }
 
-    .metric-trend.up { color: #48bb78; }
-    .metric-trend.down { color: #f56565; }
-    .metric-trend.neutral { color: #a0aec0; }
+    .metric-trend.up {
+        color: #48bb78;
+    }
+
+    .metric-trend.down {
+        color: #f56565;
+    }
+
+    .metric-trend.neutral {
+        color: #a0aec0;
+    }
 
     .chart-container {
         position: relative;
@@ -172,9 +191,20 @@
         font-weight: 600;
     }
 
-    .badge.high { background: #c6f6d5; color: #22543d; }
-    .badge.medium { background: #feebc8; color: #7c2d12; }
-    .badge.low { background: #fed7d7; color: #742a2a; }
+    .badge.high {
+        background: #c6f6d5;
+        color: #22543d;
+    }
+
+    .badge.medium {
+        background: #feebc8;
+        color: #7c2d12;
+    }
+
+    .badge.low {
+        background: #fed7d7;
+        color: #742a2a;
+    }
 </style>
 {% endblock %}
 
@@ -188,7 +218,7 @@
         </div>
         <div>
             <a href="/audit?org={{ org_id }}&project={{ project_id }}"
-               style="background: rgba(255,255,255,0.2); color: white; padding: 0.75rem 1.5rem; border-radius: 0.5rem; text-decoration: none; font-weight: 600; display: inline-flex; align-items: center; gap: 0.5rem; backdrop-filter: blur(10px);">
+                style="background: rgba(255,255,255,0.2); color: white; padding: 0.75rem 1.5rem; border-radius: 0.5rem; text-decoration: none; font-weight: 600; display: inline-flex; align-items: center; gap: 0.5rem; backdrop-filter: blur(10px);">
                 <span>←</span>
                 <span>Detailed Trail</span>
             </a>
@@ -206,16 +236,10 @@
         <div class="compliance-ring-container">
             <svg class="compliance-ring" width="240" height="240">
                 <circle cx="120" cy="120" r="100" fill="none" stroke="#e2e8f0" stroke-width="20"></circle>
-                <circle
-                    cx="120"
-                    cy="120"
-                    r="100"
-                    fill="none"
+                <circle cx="120" cy="120" r="100" fill="none"
                     stroke="{% if metrics.compliance_score >= 85 %}#48bb78{% elif metrics.compliance_score >= 70 %}#4299e1{% elif metrics.compliance_score >= 50 %}#ed8936{% else %}#f56565{% endif %}"
-                    stroke-width="20"
-                    stroke-dasharray="628"
-                    stroke-dashoffset="{{ 628 - (628 * (metrics.compliance_score / 100)) }}"
-                    stroke-linecap="round"
+                    stroke-width="20" stroke-dasharray="628"
+                    stroke-dashoffset="{{ 628 - (628 * (metrics.compliance_score / 100)) }}" stroke-linecap="round"
                     style="transition: stroke-dashoffset 1.5s cubic-bezier(0.4, 0, 0.2, 1);"></circle>
             </svg>
             <div class="compliance-value">
@@ -255,7 +279,8 @@
     <div class="metric-card quality">
         <div class="metric-icon">⭐</div>
         <div class="metric-label">Decision Quality</div>
-        <div class="metric-value">{% if metrics.avg_confidence %}{{ "%.1f"|format(metrics.avg_confidence) }}%{% else %}—{% endif %}</div>
+        <div class="metric-value">{% if metrics.avg_confidence %}{{ "%.1f"|format(metrics.avg_confidence) }}%{% else
+            %}—{% endif %}</div>
         <div class="metric-subtitle">Average confidence score</div>
         <div class="metric-trend {% if high_conf_ratio > 0.7 %}up{% else %}neutral{% endif %}">
             <span>✨</span>
@@ -330,22 +355,26 @@
                 <tr>
                     <td><span style="color: #48bb78; font-weight: 600;">✓ Auto-Approved</span></td>
                     <td style="text-align: center;">{{ metrics.auto_approved_count }}</td>
-                    <td style="text-align: center;">{{ "%.1f"|format((metrics.auto_approved_count / metrics.total_decisions * 100) if metrics.total_decisions > 0 else 0) }}%</td>
+                    <td style="text-align: center;">{{ "%.1f"|format((metrics.auto_approved_count /
+                        metrics.total_decisions * 100) if metrics.total_decisions > 0 else 0) }}%</td>
                 </tr>
                 <tr>
                     <td><span style="color: #4299e1; font-weight: 600;">👤 User Approved</span></td>
                     <td style="text-align: center;">{{ metrics.user_approved_count }}</td>
-                    <td style="text-align: center;">{{ "%.1f"|format((metrics.user_approved_count / metrics.total_decisions * 100) if metrics.total_decisions > 0 else 0) }}%</td>
+                    <td style="text-align: center;">{{ "%.1f"|format((metrics.user_approved_count /
+                        metrics.total_decisions * 100) if metrics.total_decisions > 0 else 0) }}%</td>
                 </tr>
                 <tr>
                     <td><span style="color: #ed8936; font-weight: 600;">⏳ Pending Review</span></td>
                     <td style="text-align: center;">{{ metrics.manual_review_count }}</td>
-                    <td style="text-align: center;">{{ "%.1f"|format((metrics.manual_review_count / metrics.total_decisions * 100) if metrics.total_decisions > 0 else 0) }}%</td>
+                    <td style="text-align: center;">{{ "%.1f"|format((metrics.manual_review_count /
+                        metrics.total_decisions * 100) if metrics.total_decisions > 0 else 0) }}%</td>
                 </tr>
                 <tr>
                     <td><span style="color: #f56565; font-weight: 600;">✗ Rejected</span></td>
                     <td style="text-align: center;">{{ metrics.rejected_count }}</td>
-                    <td style="text-align: center;">{{ "%.1f"|format((metrics.rejected_count / metrics.total_decisions * 100) if metrics.total_decisions > 0 else 0) }}%</td>
+                    <td style="text-align: center;">{{ "%.1f"|format((metrics.rejected_count / metrics.total_decisions *
+                        100) if metrics.total_decisions > 0 else 0) }}%</td>
                 </tr>
             </tbody>
         </table>
@@ -416,9 +445,12 @@
         <p>The compliance score (0-100) measures audit trail quality and governance:</p>
         <ul style="margin-left: 1.5rem; margin-top: 0.5rem;">
             <li><strong>40%</strong> - Audit Trail Completeness (decisions logged for all items)</li>
-            <li><strong>30%</strong> - Decision Quality ({{ "%.1f"|format(high_conf_ratio * 100) }}% high confidence)</li>
-            <li><strong>20%</strong> - System Automation ({{ "%.1f"|format(metrics.system_percentage) }}% auto-approved)</li>
-            <li><strong>10%</strong> - Decision Velocity ({{ "%.1f"|format(metrics.avg_decisions_per_day) }} decisions/day)</li>
+            <li><strong>30%</strong> - Decision Quality ({{ "%.1f"|format(high_conf_ratio * 100) }}% high confidence)
+            </li>
+            <li><strong>20%</strong> - System Automation ({{ "%.1f"|format(metrics.system_percentage) }}% auto-approved)
+            </li>
+            <li><strong>10%</strong> - Decision Velocity ({{ "%.1f"|format(metrics.avg_decisions_per_day) }}
+                decisions/day)</li>
         </ul>
         <p style="margin-top: 1rem;"><strong>Bonuses:</strong></p>
         <ul style="margin-left: 1.5rem; margin-top: 0.5rem;">
@@ -426,7 +458,8 @@
         </ul>
         <p style="margin-top: 1rem;"><strong>Score Ranges:</strong></p>
         <ul style="margin-left: 1.5rem; margin-top: 0.5rem;">
-            <li><span class="compliance-status excellent">85-100:</span> Excellent - Robust governance and compliance</li>
+            <li><span class="compliance-status excellent">85-100:</span> Excellent - Robust governance and compliance
+            </li>
             <li><span class="compliance-status good">70-84:</span> Good - Solid audit trail with minor gaps</li>
             <li><span class="compliance-status fair">50-69:</span> Fair - Audit improvements recommended</li>
             <li><span class="compliance-status poor">0-49:</span> Poor - Compliance issues need immediate attention</li>
@@ -445,54 +478,54 @@
         type: 'bar',
         data: {
             labels: [{% for day in metrics.daily_timeline %}'{{ day.date }}'{% if not loop.last %}, {% endif %}{% endfor %}].reverse(),
-            datasets: [{
-                label: 'Decisions',
-                data: [{% for day in metrics.daily_timeline %}{{ day.count }}{% if not loop.last %}, {% endif %}{% endfor %}].reverse(),
+        datasets: [{
+            label: 'Decisions',
+            data: [{% for day in metrics.daily_timeline %}{{ day.count }}{% if not loop.last %}, {% endif %} {% endfor %}].reverse(),
                 backgroundColor: 'rgba(237, 137, 54, 0.8)',
-                borderColor: 'rgba(237, 137, 54, 1)',
-                borderWidth: 2,
-                borderRadius: 4
+                    borderColor: 'rgba(237, 137, 54, 1)',
+                        borderWidth: 2,
+                            borderRadius: 4
             }]
         },
-        options: {
-            responsive: true,
+    options: {
+        responsive: true,
             maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    display: false
-                },
-                tooltip: {
-                    backgroundColor: 'rgba(26, 32, 44, 0.95)',
-                    padding: 12,
-                    callbacks: {
-                        afterLabel: function(context) {
-                            const idx = context.dataIndex;
-                            const avgConf = [{% for day in metrics.daily_timeline %}{{ day.avg_confidence }}{% if not loop.last %}, {% endif %}{% endfor %}].reverse()[idx];
-                            return 'Avg Confidence: ' + avgConf.toFixed(1) + '%';
-                        }
-                    }
-                }
+                plugins: {
+            legend: {
+                display: false
             },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    ticks: {
-                        precision: 0,
-                        font: { size: 11, weight: '600' }
-                    },
-                    grid: {
-                        color: 'rgba(0, 0, 0, 0.05)'
-                    }
-                },
-                x: {
-                    ticks: {
-                        font: { size: 10, weight: '600' }
-                    },
-                    grid: {
-                        display: false
-                    }
+            tooltip: {
+                backgroundColor: 'rgba(26, 32, 44, 0.95)',
+                    padding: 12,
+                        callbacks: {
+                    afterLabel: function(context) {
+                        const idx = context.dataIndex;
+                        const avgConf = [{% for day in metrics.daily_timeline %} {{ day.avg_confidence }} {% if not loop.last %}, {% endif %} {% endfor %}].reverse()[idx];
+                    return 'Avg Confidence: ' + avgConf.toFixed(1) + '%';
                 }
             }
+        }
+    },
+    scales: {
+        y: {
+            beginAtZero: true,
+                ticks: {
+                precision: 0,
+                    font: { size: 11, weight: '600' }
+            },
+            grid: {
+                color: 'rgba(0, 0, 0, 0.05)'
+            }
+        },
+        x: {
+            ticks: {
+                font: { size: 10, weight: '600' }
+            },
+            grid: {
+                display: false
+            }
+        }
+    }
         }
     });
 
@@ -505,50 +538,45 @@
             datasets: [{
                 data: [
                     {{ metrics.high_confidence_count }},
-                    {{ metrics.medium_confidence_count }},
+            {{ metrics.medium_confidence_count }},
                     {{ metrics.low_confidence_count }}
                 ],
-                backgroundColor: [
-                    'rgba(72, 187, 120, 0.9)',
-                    'rgba(237, 137, 54, 0.9)',
-                    'rgba(245, 101, 101, 0.9)'
-                ],
-                borderWidth: 0,
-                hoverOffset: 8
+        backgroundColor: [
+        'rgba(72, 187, 120, 0.9)',
+        'rgba(237, 137, 54, 0.9)',
+        'rgba(245, 101, 101, 0.9)'
+    ],
+        borderWidth: 0,
+        hoverOffset: 8
             }]
         },
         options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    position: 'bottom',
-                    labels: {
-                        font: { size: 12, weight: '600' },
-                        padding: 15
-                    }
-                },
-                tooltip: {
-                    backgroundColor: 'rgba(26, 32, 44, 0.95)',
-                    padding: 12,
-                    callbacks: {
-                        label: function(context) {
-                            const total = {{ metrics.total_decisions }};
-                            const percentage = total > 0 ? ((context.parsed / total) * 100).toFixed(1) : 0;
-                            return context.label + ': ' + context.parsed + ' (' + percentage + '%)';
-                        }
-                    }
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                position: 'bottom',
+                labels: {
+                    font: { size: 12, weight: '600' },
+                    padding: 15
+                }
+            },
+            tooltip: {
+                backgroundColor: 'rgba(26, 32, 44, 0.95)',
+                padding: 12,
+                callbacks: {
+                    label: function (context) {
+                        const total = {{ metrics.total_decisions }};
+            const percentage = total > 0 ? ((context.parsed / total) * 100).toFixed(1) : 0;
+            return context.label + ': ' + context.parsed + ' (' + percentage + '%)';
+        }
+    }
                 }
             }
         }
     });
 </script>
 
-<!-- Export to Excel -->
-{% set export_type = 'audit' %}
-{% include 'executive_export_button.html' %}
 
-<!-- Print/PDF Export -->
-{% include 'executive_print.html' %}
 
 {% endblock %}

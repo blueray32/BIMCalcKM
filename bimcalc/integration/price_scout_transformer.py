@@ -1,4 +1,4 @@
-"""Data transformation logic for Crail4 → BIMCalc ETL pipeline."""
+"""Data transformation logic for Price Scout → BIMCalc ETL pipeline."""
 
 from __future__ import annotations
 
@@ -11,15 +11,15 @@ from bimcalc.integration.classification_mapper import ClassificationMapper
 logger = logging.getLogger(__name__)
 
 
-class Crail4Transformer:
-    """Transforms raw Crail4 data into BIMCalc-compatible format."""
+class PriceScoutTransformer:
+    """Transforms raw Price Scout data into BIMCalc-compatible format."""
 
     def __init__(self, mapper: ClassificationMapper, target_scheme: str = "UniClass2015"):
         self.mapper = mapper
         self.target_scheme = target_scheme
 
     async def transform_item(self, raw_item: dict) -> dict | None:
-        """Transform a single Crail4 item."""
+        """Transform a single Price Scout item."""
         try:
             source_snapshot = raw_item.get("source_data") if isinstance(raw_item, dict) else None
             source_snapshot = source_snapshot or raw_item

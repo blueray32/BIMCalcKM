@@ -24,7 +24,7 @@
         font-size: 2.5rem;
         font-weight: 800;
         margin: 0 0 0.5rem 0;
-        text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     }
 
     .executive-header .subtitle {
@@ -85,7 +85,7 @@
         background: white;
         border-radius: 1rem;
         padding: 1.5rem;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.05), 0 1px 3px rgba(0,0,0,0.1);
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05), 0 1px 3px rgba(0, 0, 0, 0.1);
         transition: all 0.3s ease;
         position: relative;
         overflow: hidden;
@@ -93,7 +93,7 @@
 
     .kpi-card:hover {
         transform: translateY(-4px);
-        box-shadow: 0 12px 24px rgba(0,0,0,0.1), 0 4px 8px rgba(0,0,0,0.06);
+        box-shadow: 0 12px 24px rgba(0, 0, 0, 0.1), 0 4px 8px rgba(0, 0, 0, 0.06);
     }
 
     .kpi-card::before {
@@ -148,7 +148,7 @@
         background: white;
         border-radius: 0.75rem;
         padding: 1.5rem;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
         text-align: center;
         border-left: 4px solid;
     }
@@ -197,12 +197,12 @@
         background: white;
         border-radius: 1rem;
         padding: 2rem;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.05), 0 1px 3px rgba(0,0,0,0.1);
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05), 0 1px 3px rgba(0, 0, 0, 0.1);
         transition: all 0.3s ease;
     }
 
     .chart-card:hover {
-        box-shadow: 0 12px 24px rgba(0,0,0,0.1), 0 4px 8px rgba(0,0,0,0.06);
+        box-shadow: 0 12px 24px rgba(0, 0, 0, 0.1), 0 4px 8px rgba(0, 0, 0, 0.06);
     }
 
     .chart-header {
@@ -232,7 +232,7 @@
         text-decoration: none;
         font-weight: 600;
         transition: all 0.3s ease;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
     }
 
     .action-btn span:first-child {
@@ -256,7 +256,7 @@
 
     .action-btn:hover {
         transform: translateY(-2px);
-        box-shadow: 0 8px 16px rgba(0,0,0,0.15);
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
     }
 
     /* Risk Badge */
@@ -306,7 +306,7 @@
             <div class="subtitle">Cost breakdown for {{ project_id }}</div>
         </div>
         <a href="/reports?org={{ org_id }}&project={{ project_id }}"
-           style="background: rgba(255,255,255,0.2); color: white; padding: 0.75rem 1.5rem; border-radius: 0.5rem; text-decoration: none; font-weight: 600; display: inline-flex; align-items: center; gap: 0.5rem; backdrop-filter: blur(10px);">
+            style="background: rgba(255,255,255,0.2); color: white; padding: 0.75rem 1.5rem; border-radius: 0.5rem; text-decoration: none; font-weight: 600; display: inline-flex; align-items: center; gap: 0.5rem; backdrop-filter: blur(10px);">
             <span>←</span>
             <span>Generate Report</span>
         </a>
@@ -325,18 +325,11 @@
             <div class="cost-ring-container">
                 <svg class="cost-ring" width="280" height="280">
                     <circle cx="140" cy="140" r="120" fill="none" stroke="#e2e8f0" stroke-width="24"></circle>
-                    <circle
-                        id="costCircle"
-                        cx="140"
-                        cy="140"
-                        r="120"
-                        fill="none"
-                        stroke="#48bb78"
-                        stroke-width="24"
+                    <circle id="costCircle" cx="140" cy="140" r="120" fill="none" stroke="#48bb78" stroke-width="24"
                         stroke-dasharray="754"
                         stroke-dashoffset="{% if metrics.total_items > 0 %}{{ 754 - (754 * (metrics.matched_items / metrics.total_items)) }}{% else %}754{% endif %}"
-                        stroke-linecap="round"
-                        style="transition: stroke-dashoffset 1.5s cubic-bezier(0.4, 0, 0.2, 1);"></circle>
+                        stroke-linecap="round" style="transition: stroke-dashoffset 1.5s cubic-bezier(0.4, 0, 0.2, 1);">
+                    </circle>
                 </svg>
                 <div class="cost-value">
                     <div class="number">€{{ "%.0f"|format(metrics.total_cost_net / 1000) }}K</div>
@@ -347,21 +340,25 @@
 
         <!-- Cost Breakdown -->
         <div>
-            <h2 style="font-size: 1.5rem; font-weight: 700; margin-bottom: 1.5rem; color: #2d3748;">Cost by Confidence Level</h2>
+            <h2 style="font-size: 1.5rem; font-weight: 700; margin-bottom: 1.5rem; color: #2d3748;">Cost by Confidence
+                Level</h2>
             <div class="confidence-breakdown">
                 <div class="confidence-item high">
                     <div class="confidence-item-label">💎 High Confidence</div>
-                    <div class="confidence-item-value cost">€{{ "%.0f"|format(metrics.high_confidence_cost / 1000) }}K</div>
+                    <div class="confidence-item-value cost">€{{ "%.0f"|format(metrics.high_confidence_cost / 1000) }}K
+                    </div>
                     <div style="font-size: 0.75rem; color: #718096; margin-top: 0.5rem;">≥85% confidence</div>
                 </div>
                 <div class="confidence-item medium">
                     <div class="confidence-item-label">⚖️ Medium Confidence</div>
-                    <div class="confidence-item-value cost">€{{ "%.0f"|format(metrics.medium_confidence_cost / 1000) }}K</div>
+                    <div class="confidence-item-value cost">€{{ "%.0f"|format(metrics.medium_confidence_cost / 1000) }}K
+                    </div>
                     <div style="font-size: 0.75rem; color: #718096; margin-top: 0.5rem;">70-84% confidence</div>
                 </div>
                 <div class="confidence-item low">
                     <div class="confidence-item-label">⚠️ Low Confidence</div>
-                    <div class="confidence-item-value cost">€{{ "%.0f"|format(metrics.low_confidence_cost / 1000) }}K</div>
+                    <div class="confidence-item-value cost">€{{ "%.0f"|format(metrics.low_confidence_cost / 1000) }}K
+                    </div>
                     <div style="font-size: 0.75rem; color: #718096; margin-top: 0.5rem;">&lt;70% confidence</div>
                 </div>
             </div>
@@ -386,7 +383,8 @@
         <div class="kpi-subtitle">Including VAT (23%)</div>
     </div>
 
-    <div class="kpi-card {% if metrics.match_percentage >= 90 %}{% elif metrics.match_percentage >= 70 %}warning{% else %}danger{% endif %}">
+    <div
+        class="kpi-card {% if metrics.match_percentage >= 90 %}{% elif metrics.match_percentage >= 70 %}warning{% else %}danger{% endif %}">
         <div class="kpi-label">Match Coverage</div>
         <div class="kpi-value">{{ "%.1f"|format(metrics.match_percentage) }}%</div>
         <div class="kpi-subtitle">{{ metrics.matched_items }}/{{ metrics.total_items }} items</div>
@@ -477,9 +475,11 @@
                     </td>
                     <td style="padding: 0.75rem;">{{ "%.0f"|format(item.quantity) }}</td>
                     <td style="padding: 0.75rem;" class="cost">€{{ "{:,.2f}".format(item.unit_price) }}</td>
-                    <td style="padding: 0.75rem; font-weight: 700;" class="cost">€{{ "{:,.0f}".format(item.total_cost) }}</td>
+                    <td style="padding: 0.75rem; font-weight: 700;" class="cost">€{{ "{:,.0f}".format(item.total_cost)
+                        }}</td>
                     <td style="padding: 0.75rem;">
-                        <span style="padding: 0.25rem 0.75rem; border-radius: 1rem; font-size: 0.875rem; font-weight: 600; background: {% if item.confidence >= 70 %}#bee3f8{% else %}#fed7d7{% endif %}; color: {% if item.confidence >= 70 %}#2c5282{% else %}#9b2c2c{% endif %};">
+                        <span
+                            style="padding: 0.25rem 0.75rem; border-radius: 1rem; font-size: 0.875rem; font-weight: 600; background: {% if item.confidence >= 70 %}#bee3f8{% else %}#fed7d7{% endif %}; color: {% if item.confidence >= 70 %}#2c5282{% else %}#9b2c2c{% endif %};">
                             {{ "%.1f"|format(item.confidence) }}%
                         </span>
                     </td>
@@ -521,78 +521,78 @@
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
-// Cost Distribution by Classification (Doughnut)
-{% if metrics.cost_by_classification %}
-const distCtx = document.getElementById('costDistributionChart');
-new Chart(distCtx, {
-    type: 'doughnut',
-    data: {
-        labels: [{% for cls in metrics.cost_by_classification %}'Code {{ cls.code }}'{% if not loop.last %}, {% endif %}{% endfor %}],
+    // Cost Distribution by Classification (Doughnut)
+    {% if metrics.cost_by_classification %}
+    const distCtx = document.getElementById('costDistributionChart');
+    new Chart(distCtx, {
+        type: 'doughnut',
+        data: {
+            labels: [{% for cls in metrics.cost_by_classification %}'Code {{ cls.code }}'{% if not loop.last %}, {% endif %}{% endfor %}],
         datasets: [{
-            data: [{% for cls in metrics.cost_by_classification %}{{ cls.total_cost }}{% if not loop.last %}, {% endif %}{% endfor %}],
-            backgroundColor: [
-                'rgba(72, 187, 120, 0.9)',
-                'rgba(66, 153, 225, 0.9)',
-                'rgba(159, 122, 234, 0.9)',
-                'rgba(237, 137, 54, 0.9)',
-                'rgba(245, 101, 101, 0.9)'
-            ],
-            borderWidth: 0,
+            data: [{% for cls in metrics.cost_by_classification %}{{ cls.total_cost }}{% if not loop.last %}, {% endif %} {% endfor %}],
+    backgroundColor: [
+        'rgba(72, 187, 120, 0.9)',
+        'rgba(66, 153, 225, 0.9)',
+        'rgba(159, 122, 234, 0.9)',
+        'rgba(237, 137, 54, 0.9)',
+        'rgba(245, 101, 101, 0.9)'
+    ],
+        borderWidth: 0,
             hoverOffset: 8
         }]
     },
     options: {
         responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
+            maintainAspectRatio: false,
+                plugins: {
             legend: {
                 position: 'bottom',
-                labels: {
+                    labels: {
                     font: {
                         size: 12,
-                        weight: '600'
+                            weight: '600'
                     },
                     padding: 15
                 }
             },
             tooltip: {
                 backgroundColor: 'rgba(26, 32, 44, 0.95)',
-                padding: 12,
-                callbacks: {
+                    padding: 12,
+                        callbacks: {
                     label: function(context) {
                         const total = {{ metrics.total_cost_net }};
-                        const percentage = total > 0 ? ((context.parsed / total) * 100).toFixed(1) : 0;
-                        return context.label + ': €' + context.parsed.toLocaleString('en-US', {maximumFractionDigits: 0}) + ' (' + percentage + '%)';
-                    }
+                    const percentage = total > 0 ? ((context.parsed / total) * 100).toFixed(1) : 0;
+                    return context.label + ': €' + context.parsed.toLocaleString('en-US', { maximumFractionDigits: 0 }) + ' (' + percentage + '%)';
                 }
             }
         }
     }
+    }
 });
-{% endif %}
+    {% endif %}
 
-// Top Expensive Items (Horizontal Bar)
-{% if metrics.top_10_expensive %}
-const expCtx = document.getElementById('expensiveItemsChart');
-new Chart(expCtx, {
-    type: 'bar',
-    data: {
-        labels: [{% for item in metrics.top_10_expensive[:5] %}'{{ item.family[:20] }}'{% if not loop.last %}, {% endif %}{% endfor %}],
-        datasets: [{
-            label: 'Total Cost (€)',
-            data: [{% for item in metrics.top_10_expensive[:5] %}{{ item.total_cost }}{% if not loop.last %}, {% endif %}{% endfor %}],
-            backgroundColor: [{% for item in metrics.top_10_expensive[:5] %}{% if item.confidence >= 85 %}'rgba(72, 187, 120, 0.9)'{% elif item.confidence >= 70 %}'rgba(66, 153, 225, 0.9)'{% else %}'rgba(245, 101, 101, 0.9)'{% endif %}{% if not loop.last %}, {% endif %}{% endfor %}],
-            borderRadius: 6
+    // Top Expensive Items (Horizontal Bar)
+    {% if metrics.top_10_expensive %}
+    const expCtx = document.getElementById('expensiveItemsChart');
+    new Chart(expCtx, {
+        type: 'bar',
+        data: {
+            labels: [{% for item in metrics.top_10_expensive[: 5] %}'{{ item.family[:20] }}'{% if not loop.last %}, {% endif %} {% endfor %}],
+    datasets: [{
+        label: 'Total Cost (€)',
+        data: [{% for item in metrics.top_10_expensive[: 5] %}{{ item.total_cost }} {% if not loop.last %}, {% endif %} {% endfor %}],
+    backgroundColor: [{% for item in metrics.top_10_expensive[: 5] %}{% if item.confidence >= 85 %} 'rgba(72, 187, 120, 0.9)'{% elif item.confidence >= 70 %} 'rgba(66, 153, 225, 0.9)'{% else %} 'rgba(245, 101, 101, 0.9)'{% endif %} {% if not loop.last %}, {% endif %} {% endfor %}],
+    borderRadius: 6
         }]
     },
     options: {
         indexAxis: 'y',
-        responsive: true,
-        maintainAspectRatio: false,
-        scales: {
+            responsive: true,
+                maintainAspectRatio: false,
+                    scales: {
             x: {
                 beginAtZero: true,
-                ticks: {
+                    ticks: {
                     callback: function(value) {
                         return '€' + (value / 1000).toFixed(0) + 'K';
                     }
@@ -605,24 +605,19 @@ new Chart(expCtx, {
             },
             tooltip: {
                 backgroundColor: 'rgba(26, 32, 44, 0.95)',
-                padding: 12,
-                callbacks: {
+                    padding: 12,
+                        callbacks: {
                     label: function(context) {
-                        return 'Cost: €' + context.parsed.x.toLocaleString('en-US', {maximumFractionDigits: 0});
+                        return 'Cost: €' + context.parsed.x.toLocaleString('en-US', { maximumFractionDigits: 0 });
                     }
                 }
             }
         }
     }
 });
-{% endif %}
+    {% endif %}
 </script>
 
-<!-- Export to Excel -->
-{% set export_type = 'reports' %}
-{% include 'executive_export_button.html' %}
 
-<!-- Print/PDF Export -->
-{% include 'executive_print.html' %}
 
 {% endblock %}

@@ -19,22 +19,23 @@ from bimcalc.core.logging import configure_logging
 from bimcalc.intelligence.routes import router as intelligence_router
 
 # Import modular routers
+from bimcalc.ingestion import routes as ingestion_routes
+from bimcalc.reporting import routes as reporting_routes
 from bimcalc.web.routes import (
     auth,
     compliance,
     dashboard,
-    ingestion,
     matching,
     review,
     items,
     mappings,
-    reports,
     audit,
     pipeline,
     prices,
     projects,
     scenarios,
-    crail4,
+    price_scout,
+    price_sources,
     revisions,
     integrations,
     documents,
@@ -47,7 +48,11 @@ from bimcalc.web.routes import (
 configure_logging()
 logger = structlog.get_logger()
 
-templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
+templates = Jinja2Templates(directory=[
+    str(Path(__file__).parent / "templates"),
+    str(Path(__file__).parent.parent / "ingestion" / "templates"),
+    str(Path(__file__).parent.parent / "reporting" / "templates"),
+])
 
 app = FastAPI(
     title="BIMCalc Management Console",
@@ -108,24 +113,31 @@ async def http_exception_handler(request: Request, exc: HTTPException):
 app.include_router(auth.router)
 app.include_router(compliance.router)
 app.include_router(dashboard.router)
-app.include_router(ingestion.router)
+app.include_router(ingestion_routes.router)
 app.include_router(matching.router)
 app.include_router(review.router)
 app.include_router(items.router)
 app.include_router(mappings.router)
-app.include_router(reports.router)
+app.include_router(reporting_routes.router)
 app.include_router(audit.router)
 app.include_router(pipeline.router)
 app.include_router(prices.router)
 app.include_router(projects.router)
 app.include_router(scenarios.router)
-app.include_router(crail4.router)
+app.include_router(price_scout.router)
+app.include_router(price_sources.router)
 app.include_router(revisions.router)
 app.include_router(integrations.router)
 app.include_router(documents.router)
 app.include_router(classifications.router)
 app.include_router(analytics.router)
 app.include_router(risk_dashboard.router)
+
+# Legacy Redirects
+@app.get("/crail4-config")
+async def redirect_crail4_config():
+    """Redirect legacy Crail4 config route to new Price Scout route."""
+    return RedirectResponse(url="/price-scout")
 
 # Intelligence Features (Conditional)
 config = get_config()

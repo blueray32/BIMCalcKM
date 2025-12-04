@@ -301,3 +301,37 @@ async def delete_project(project_id: str):
         await session.commit()
         
     return {"success": True}
+
+
+from fastapi.responses import StreamingResponse
+from bimcalc.reporting.csv_export import export_items_csv
+
+@router.get("/api/projects/{project_id}/export/csv/items")
+async def export_project_items_csv(
+    project_id: str,
+    org_id: str = Query(..., alias="org"),
+    category: str | None = None,
+):
+    """Export project items to CSV."""
+    async with get_session() as session:
+        # Lookup project by business ID (project_id column)
+        stmt = select(ProjectModel).where(
+            ProjectModel.org_id == org_id,
+            ProjectModel.project_id == project_id
+        )
+        result = await session.execute(stmt)
+        project = result.scalar_one_or_none()
+        
+        if not project:
+             raise HTTPException(status_code=404, detail="Project not found")
+
+        # Use the export function
+        stream = export_items_csv(session, org_id, project_id, category)
+        
+        filename = f"items_{org_id}_{project_id}.csv"
+        
+        return StreamingResponse(
+            stream,
+            media_type="text/csv",
+            headers={"Content-Disposition": f"attachment; filename={filename}"}
+        )

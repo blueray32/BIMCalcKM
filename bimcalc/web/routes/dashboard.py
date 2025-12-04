@@ -17,11 +17,11 @@ from io import BytesIO
 
 import pandas as pd
 from fastapi import APIRouter, Depends, Query, Request, Response
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy import func, select, text
 
 from bimcalc.db.connection import get_session
-from bimcalc.db.models import ItemMappingModel, ItemModel, PriceItemModel
+from bimcalc.db.models import ItemMappingModel, ItemModel, PriceItemModel, ProjectModel
 from bimcalc.web.auth import require_auth
 from bimcalc.web.dependencies import get_org_project, get_templates
 
@@ -55,6 +55,22 @@ async def dashboard(
 
     Extracted from: app_enhanced.py:202
     """
+    # Auto-redirect: If no project specified, redirect to most recent project
+    if project is None:
+        async with get_session() as session:
+            # Find most recent project
+            stmt = select(ProjectModel).order_by(ProjectModel.created_at.desc()).limit(1)
+            result = await session.execute(stmt)
+            latest_project = result.scalar_one_or_none()
+            
+            if latest_project:
+                # Redirect to same URL but with org/project params
+                # Preserve view param if present
+                url = f"/?org={latest_project.org_id}&project={latest_project.project_id}"
+                if view:
+                    url += f"&view={view}"
+                return RedirectResponse(url=url)
+
     org_id, project_id = get_org_project(request, org, project)
 
     # Analytics view

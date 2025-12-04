@@ -211,6 +211,60 @@ class PriceImportRunModel(Base):
     )
 
 
+class PriceSourceModel(Base):
+    """Configuration for supplier price data sources.
+
+    Supports multi-source price intelligence by storing URLs and scraping
+    configuration for each supplier. Used by MultiSourceOrchestrator for
+    parallel price fetching and comparison.
+    """
+
+    __tablename__ = "price_sources"
+
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    org_id: Mapped[str] = mapped_column(Text, nullable=False, index=True)
+
+    # Source identification
+    name: Mapped[str] = mapped_column(Text, nullable=False)  # "TLC Direct", "Rexel UK"
+    url: Mapped[str] = mapped_column(Text, nullable=False)  # Base catalog URL
+    domain: Mapped[str] = mapped_column(Text, nullable=False, index=True)  # For rate limiting
+
+    # Configuration
+    enabled: Mapped[bool] = mapped_column(nullable=False, default=True, index=True)
+    cache_ttl_seconds: Mapped[int] = mapped_column(Integer, nullable=False, default=86400)  # 24hrs
+    rate_limit_seconds: Mapped[float] = mapped_column(Float, nullable=False, default=2.0)
+
+    # Operational metadata
+    last_sync_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_sync_status: Mapped[str | None] = mapped_column(Text)  # "success", "failed", "partial"
+    last_sync_items_count: Mapped[int | None] = mapped_column(Integer)
+    last_sync_error: Mapped[str | None] = mapped_column(Text)
+
+    # Audit
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+    created_by: Mapped[str | None] = mapped_column(Text)
+
+    # Additional metadata
+    notes: Mapped[str | None] = mapped_column(Text)
+    tags: Mapped[list[str] | None] = mapped_column(JSON)  # JSON for cross-DB compatibility
+
+    __table_args__ = (
+        # Prevent duplicate sources per org
+        UniqueConstraint("org_id", "domain", name="uq_price_source_domain"),
+
+        # Index for enabled sources (most common query)
+        Index("idx_price_sources_enabled", "org_id", "enabled"),
+
+        # Index for last sync tracking
+        Index("idx_price_sources_last_sync", "org_id", "last_sync_at"),
+    )
+
+
 class ClassificationMappingModel(Base):
     """Crosswalk table for translating classification schemes."""
 

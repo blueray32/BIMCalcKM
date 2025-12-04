@@ -595,7 +595,7 @@
                 <!-- Data Management Dropdown -->
                 <li class="nav-dropdown">
                     <a href="#"
-                        class="dropdown-toggle {% if request.url.path in ['/ingest', '/pipeline', '/audit', '/crail4-config'] %}active{% endif %}">
+                        class="dropdown-toggle {% if request.url.path in ['/ingest', '/pipeline', '/audit', '/price-scout'] %}active{% endif %}">
                         Data Management ▾
                     </a>
                     <ul class="dropdown-menu">
@@ -604,7 +604,7 @@
                         <li><a href="/revisions?org={{ org_id }}&project={{ project_id }}">Revisions</a></li>
                         <li><a href="/pipeline?org={{ org_id }}&project={{ project_id }}">Pipeline</a></li>
                         <li><a href="/audit?org={{ org_id }}&project={{ project_id }}">Audit</a></li>
-                        <li><a href="/crail4-config?org={{ org_id }}">Crail4 Sync</a></li>
+                        <li><a href="/price-scout?org={{ org_id }}">Smart Price Scout</a></li>
                     </ul>
                 </li>
 

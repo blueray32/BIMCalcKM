@@ -281,16 +281,7 @@
             </p>
         </div>
         <div style="display: flex; gap: 0.5rem;">
-            <button onclick="exportToExcel()" class="btn btn-primary"
-                style="display: inline-flex; align-items: center; gap: 0.5rem;">
-                <span>📥</span>
-                <span>Export Excel</span>
-            </button>
-            <button onclick="exportToPdf()" class="btn"
-                style="display: inline-flex; align-items: center; gap: 0.5rem; background: #e53e3e; color: white; margin-left: 0.5rem;">
-                <span>📄</span>
-                <span>Export PDF</span>
-            </button>
+
             <button onclick="location.reload()"
                 style="background: rgba(255,255,255,0.2); color: white; padding: 0.75rem 1.5rem; border-radius: 0.5rem; border: none; font-weight: 600; display: inline-flex; align-items: center; gap: 0.5rem; backdrop-filter: blur(10px); cursor: pointer;">
                 <span>🔄</span>
@@ -322,50 +313,7 @@
         const elapsed = Math.floor((new Date() - execStartTime) / 1000);
         const minutes = Math.floor(elapsed / 60);
         const seconds = elapsed % 60;
-        async function exportToPdf() {
-            const btn = event.currentTarget;
-            const originalContent = btn.innerHTML;
 
-            try {
-                btn.innerHTML = `
-                <div class="spinner" style="width: 16px; height: 16px; border: 2px solid #ffffff; border-top-color: transparent; border-radius: 50%; animation: spin 1s linear infinite;"></div>
-                <span>Generating...</span>
-            `;
-                btn.disabled = true;
-
-                const response = await fetch(`/api/projects/${projectId}/export/pdf`);
-
-                if (!response.ok) throw new Error('Export failed');
-
-                const blob = await response.blob();
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-
-                // Get filename from header or default
-                const contentDisposition = response.headers.get('Content-Disposition');
-                let filename = 'project_report.pdf';
-                if (contentDisposition) {
-                    const matches = /filename="([^"]*)"/.exec(contentDisposition);
-                    if (matches != null && matches[1]) {
-                        filename = matches[1];
-                    }
-                }
-
-                a.download = filename;
-                document.body.appendChild(a);
-                a.click();
-                window.URL.revokeObjectURL(url);
-                document.body.removeChild(a);
-
-            } catch (error) {
-                console.error('Export failed:', error);
-                alert('Failed to generate PDF report. Please try again.');
-            } finally {
-                btn.innerHTML = originalContent;
-                btn.disabled = false;
-            }
-        }
         let timeStr = 'just now';
         if (minutes > 0) {
             timeStr = `${minutes} minute${minutes > 1 ? 's' : ''} ago`;
@@ -376,55 +324,7 @@
         document.getElementById('exec-last-updated').textContent = `Last updated: ${timeStr}`;
     }, 1000);
 
-    async function exportToExcel() {
-        const btn = document.querySelector('button[onclick="exportToExcel()"]');
-        const originalText = btn.innerHTML;
 
-        try {
-            btn.innerHTML = '<span>⏳</span><span>Exporting...</span>';
-            btn.disabled = true;
-
-            // Get project ID from URL or template context
-            const urlParams = new URLSearchParams(window.location.search);
-            const projectId = "{{ project_id }}"; // Use template variable directly
-
-            // Fetch the file
-            const response = await fetch(`/api/projects/${projectId}/export/excel`);
-
-            if (!response.ok) {
-                throw new Error('Export failed');
-            }
-
-            // Create blob and download
-            const blob = await response.blob();
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-
-            // Get filename from header or default
-            const contentDisposition = response.headers.get('Content-Disposition');
-            let filename = 'project_costs.xlsx';
-            if (contentDisposition) {
-                const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
-                if (filenameMatch) {
-                    filename = filenameMatch[1];
-                }
-            }
-
-            a.download = filename;
-            document.body.appendChild(a);
-            a.click();
-            window.URL.revokeObjectURL(url);
-            document.body.removeChild(a);
-
-        } catch (error) {
-            console.error('Export error:', error);
-            alert('Failed to export Excel file. Please try again.');
-        } finally {
-            btn.innerHTML = originalText;
-            btn.disabled = false;
-        }
-    }
 </script>
 
 <!-- Executive Navigation -->
@@ -1475,11 +1375,6 @@
         {% endif %}
 
 
-        <!-- Export to Excel -->
-        {% set export_type = 'dashboard' %}
-        {% include 'executive_export_button.html' %}
 
-        <!-- Print/PDF Export -->
-        {% include 'executive_print.html' %}
 
         {% endblock %}

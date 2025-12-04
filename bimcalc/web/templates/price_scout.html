@@ -1,0 +1,505 @@
+{% extends "base.html" %}
+
+{% block title %}Smart Price Scout - BIMCalc{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width: 1200px; margin: 2rem auto; padding: 0 1rem;">
+    <div class="page-header">
+        <h1>Smart Price Scout</h1>
+        <p>AI-Powered Price Discovery Agent</p>
+    </div>
+
+    <!-- Status Banner -->
+    {% if connection_status == 'connected' %}
+    <div
+        style="background: #d4edda; border: 1px solid #c3e6cb; border-radius: 8px; padding: 1rem; margin-bottom: 2rem; color: #155724;">
+        ✅ <strong>Connected</strong> - API key valid and service accessible
+    </div>
+    {% elif connection_status == 'error' %}
+    <div
+        style="background: #f8d7da; border: 1px solid #f5c6cb; border-radius: 8px; padding: 1rem; margin-bottom: 2rem; color: #721c24;">
+        ❌ <strong>Error</strong> - {{ connection_error }}
+    </div>
+    {% else %}
+    <div
+        style="background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 8px; padding: 1rem; margin-bottom: 2rem; color: #856404;">
+        ⚠️ <strong>Not Configured</strong> - Set API key and source URL below
+    </div>
+    {% endif %}
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem;">
+
+        <!-- Configuration Panel -->
+        <div style="background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 2rem;">
+            <h2
+                style="font-size: 1.5rem; margin-bottom: 1.5rem; border-bottom: 2px solid #3182ce; padding-bottom: 0.5rem;">
+                ⚙️ Configuration
+            </h2>
+
+            <form method="POST" action="/price-scout/save">
+                <div style="margin-bottom: 1.5rem;">
+                    <div class="form-group">
+                        <label>OpenAI API Key</label>
+                        <input type="password" name="api_key" value="{{ config.api_key or '' }}" placeholder="sk-..."
+                            required
+                            style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 6px; font-family: monospace;">
+                        <small class="text-muted" style="color: #666; display: block; margin-top: 0.25rem;">Used for
+                            GPT-4 analysis of product pages</small>
+                    </div>
+                </div>
+
+                <div style="margin-bottom: 1.5rem;">
+                    <label style="display: block; font-weight: 600; margin-bottom: 0.5rem;">
+                        Default Target for Scheduled Syncs
+                    </label>
+                    <input type="url" name="source_url" value="{{ config.source_url or '' }}"
+                        placeholder="https://www.supplier.com/electrical-products"
+                        style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 6px;">
+                    <small style="color: #666; display: block; margin-top: 0.25rem;">
+                        The main catalog page used when running a full scheduled sync.
+                    </small>
+                </div>
+
+
+
+                <div style="margin-bottom: 1.5rem;">
+                    <label style="display: block; font-weight: 600; margin-bottom: 0.5rem;">
+                        Target Classification Scheme
+                    </label>
+                    <select name="target_scheme"
+                        style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 6px;">
+                        <option value="UniClass2015" {% if config.target_scheme=='UniClass2015' %}selected{% endif %}>
+                            UniClass 2015</option>
+                        <option value="OmniClass" {% if config.target_scheme=='OmniClass' %}selected{% endif %}>
+                            OmniClass</option>
+                        <option value="MasterFormat" {% if config.target_scheme=='MasterFormat' %}selected{% endif %}>
+                            MasterFormat</option>
+                    </select>
+                </div>
+
+                <button type="submit"
+                    style="background: #3182ce; color: white; padding: 0.75rem 1.5rem; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; width: 100%;">
+                    💾 Save Configuration
+                </button>
+            </form>
+
+            <hr style="margin: 2rem 0; border: none; border-top: 1px solid #e0e0e0;">
+
+            <!-- Test Connection -->
+            <form method="POST" action="/price-scout/test">
+                <button type="submit"
+                    style="background: #48bb78; color: white; padding: 0.75rem 1.5rem; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; width: 100%; margin-bottom: 1rem;">
+                    🔌 Test Connection
+                </button>
+            </form>
+
+            <!-- Quick Scout Card -->
+            <div class="card"
+                style="margin-bottom: 2rem; border: 1px solid #e2e8f0; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                <div class="card-header"
+                    style="background: #f8fafc; padding: 1rem; border-bottom: 1px solid #e2e8f0; font-weight: 600; display: flex; align-items: center; gap: 0.5rem;">
+                    <span>⚡ Quick Scout</span>
+                </div>
+                <div class="card-body" style="padding: 1.5rem;">
+                    <p style="margin-bottom: 1rem; color: #64748b;">
+                        Instantly extract price data from any supplier product page using AI.
+                    </p>
+
+                    <form hx-post="/price-scout/scout" hx-target="#scout-result" hx-indicator="#scout-loading">
+                        <div style="display: flex; gap: 1rem; margin-bottom: 1rem;">
+                            <input type="url" name="url"
+                                placeholder="Paste product URL here (e.g. https://www.tlc-direct.co.uk/...)" required
+                                style="flex: 1; padding: 0.75rem; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 1rem;">
+                            <button type="submit" class="btn btn-primary"
+                                style="white-space: nowrap; display: flex; align-items: center; gap: 0.5rem;">
+                                <span>🔍 Scout Now</span>
+                            </button>
+                        </div>
+                    </form>
+
+                    <!-- Loading State -->
+                    <div id="scout-loading" class="htmx-indicator"
+                        style="display: none; padding: 1rem; background: #f1f5f9; border-radius: 6px; text-align: center; color: #475569;">
+                        <div
+                            style="display: inline-block; width: 1.5rem; height: 1.5rem; border: 3px solid #cbd5e1; border-top-color: #3b82f6; border-radius: 50%; animation: spin 1s linear infinite; margin-right: 0.5rem; vertical-align: middle;">
+                        </div>
+                        Analyzing page with GPT-4...
+                    </div>
+
+                    <!-- Result Container -->
+                    <div id="scout-result"></div>
+                </div>
+            </div>
+
+            <!-- Bulk Import Card -->
+            <div class="card"
+                style="margin-bottom: 2rem; border: 1px solid #e2e8f0; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                <div class="card-header"
+                    style="background: #f8fafc; padding: 1rem; border-bottom: 1px solid #e2e8f0; font-weight: 600; display: flex; align-items: center; gap: 0.5rem;">
+                    <span>📦 Bulk Import</span>
+                </div>
+                <div class="card-body" style="padding: 1.5rem;">
+                    <p style="margin-bottom: 1rem; color: #64748b;">
+                        Upload a CSV file with a list of URLs to scout in the background.
+                        <br>
+                        <small>Format: One column named <code>url</code>.</small>
+                    </p>
+
+                    <form hx-post="/price-scout/bulk-import" hx-encoding="multipart/form-data" hx-target="#bulk-result"
+                        hx-indicator="#bulk-loading">
+                        <div style="display: flex; gap: 1rem; margin-bottom: 1rem; align-items: center;">
+                            <input type="file" name="file" accept=".csv" required
+                                style="flex: 1; padding: 0.5rem; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 1rem;">
+                            <button type="submit" class="btn btn-primary"
+                                style="white-space: nowrap; display: flex; align-items: center; gap: 0.5rem; background: #ed8936; border-color: #ed8936;">
+                                <span>🚀 Start Import</span>
+                            </button>
+                        </div>
+                    </form>
+
+                    <!-- Loading State -->
+                    <div id="bulk-loading" class="htmx-indicator"
+                        style="display: none; padding: 1rem; background: #f1f5f9; border-radius: 6px; text-align: center; color: #475569;">
+                        <div
+                            style="display: inline-block; width: 1.5rem; height: 1.5rem; border: 3px solid #cbd5e1; border-top-color: #ed8936; border-radius: 50%; animation: spin 1s linear infinite; margin-right: 0.5rem; vertical-align: middle;">
+                        </div>
+                        Uploading and starting background job...
+                    </div>
+
+                    <!-- Result Container -->
+                    <div id="bulk-result"></div>
+                </div>
+            </div>
+
+            <!-- Scheduled Sync Card -->
+            <div class="card">
+                <div class="card-header">Scheduled Sync Settings</div>
+                <div class="card-body">
+                    <div id="sync-container">
+                        <form hx-post="/price-scout/sync" hx-target="#sync-status" hx-swap="innerHTML">
+                            <div style="margin-bottom: 1rem;">
+                                <label style="display: block; font-weight: 600; margin-bottom: 0.5rem;">
+                                    Target Classifications
+                                </label>
+                                <input type="text" name="classifications" placeholder="e.g. 62,63,64 (Optional)"
+                                    style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 6px; margin-bottom: 1rem;">
+
+                                <div
+                                    style="display: flex; align-items: center; justify-content: space-between; padding: 0.75rem; border: 1px solid #ddd; border-radius: 6px; background: #f8fafc;">
+                                    <div>
+                                        <div style="font-weight: 600;">Full Sync</div>
+                                        <div style="font-size: 0.8rem; color: #64748b;">Re-fetch all items, ignoring
+                                            cache</div>
+                                    </div>
+                                    <label class="switch">
+                                        <input type="checkbox" name="full_sync">
+                                        <span class="slider round"></span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <button type="submit"
+                                style="background: #805ad5; color: white; padding: 0.75rem 1.5rem; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; width: 100%; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
+                                <span>🔄 Trigger Scheduled Sync</span>
+                            </button>
+                        </form>
+                        <div id="sync-status" style="margin-top: 1rem;"></div>
+                    </div>
+                </div>
+
+                <!-- Statistics Panel -->
+                <div
+                    style="background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 2rem;">
+                    <h2
+                        style="font-size: 1.5rem; margin-bottom: 1.5rem; border-bottom: 2px solid #3182ce; padding-bottom: 0.5rem;">
+                        📊 Statistics
+                    </h2>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 2rem;">
+                        <div style="background: #ebf8ff; border-radius: 8px; padding: 1rem; text-align: center;">
+                            <div style="font-size: 2rem; font-weight: bold; color: #3182ce;">{{ stats.total_runs }}
+                            </div>
+                            <div style="color: #666; font-size: 0.875rem;">Total Syncs</div>
+                        </div>
+                        <div style="background: #f0fff4; border-radius: 8px; padding: 1rem; text-align: center;">
+                            <div style="font-size: 2rem; font-weight: bold; color: #48bb78;">{{ stats.total_items_loaded
+                                }}
+                            </div>
+                            <div style="color: #666; font-size: 0.875rem;">Items Imported</div>
+                        </div>
+                        <div style="background: #fffaf0; border-radius: 8px; padding: 1rem; text-align: center;">
+                            <div style="font-size: 2rem; font-weight: bold; color: #ed8936;">{{
+                                stats.total_items_rejected }}
+                            </div>
+                            <div style="color: #666; font-size: 0.875rem;">Items Rejected</div>
+                        </div>
+                        <div style="background: #faf5ff; border-radius: 8px; padding: 1rem; text-align: center;">
+                            <div style="font-size: 2rem; font-weight: bold; color: #805ad5;">{{
+                                stats.classification_mappings }}
+                            </div>
+                            <div style="color: #666; font-size: 0.875rem;">Mappings</div>
+                        </div>
+                    </div>
+
+                    {% if stats.last_sync %}
+                    <div style="background: #f7fafc; border-radius: 8px; padding: 1rem; margin-bottom: 1rem;">
+                        <div style="font-weight: 600; margin-bottom: 0.5rem;">Last Sync</div>
+                        <div style="color: #666; font-size: 0.875rem;">{{ stats.last_sync.started_at }}</div>
+                        <div style="margin-top: 0.5rem;">
+                            <span
+                                class="status-badge {{ 'status-completed' if stats.last_sync.status == 'completed' else 'status-failed' if stats.last_sync.status == 'failed' else 'status-pending' }}">
+                                {{ stats.last_sync.status }}
+                            </span>
+                            <span style="margin-left: 0.5rem; color: #666; font-size: 0.875rem;">
+                                {{ stats.last_sync.items_loaded }}/{{ stats.last_sync.items_fetched }} loaded
+                            </span>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <a href="#sync-history"
+                        style="display: block; text-align: center; color: #3182ce; text-decoration: none; font-weight: 600; padding: 0.75rem; border: 2px solid #3182ce; border-radius: 6px;">
+                        📜 View Full Sync History
+                    </a>
+                </div>
+            </div>
+
+            <!-- Alternative Import Method Notice -->
+            <div
+                style="background: #f0f9ff; border-left: 4px solid #3b82f6; padding: 1.5rem; margin-bottom: 2rem; border-radius: 8px;">
+                <h3 style="margin-bottom: 0.5rem; color: #1e40af;">💡 Alternative: Manual CSV/Excel Import</h3>
+                <p style="color: #1e3a8a; margin-bottom: 0.5rem;">
+                    If the supplier website doesn't work with AI web scraping, you can upload price lists
+                    directly.
+                </p>
+                <a href="/ingest?org={{ org_id }}&project={{ project_id }}"
+                    style="display: inline-block; background: #3b82f6; color: white; padding: 0.5rem 1rem; border-radius: 6px; text-decoration: none; font-weight: 600; margin-top: 0.5rem;">
+                    📥 Go to Ingest Page
+                </a>
+                <p style="color: #64748b; font-size: 0.875rem; margin-top: 0.5rem;">
+                    The Ingest page has flexible CSV import that auto-detects columns and extracts classifications.
+                </p>
+            </div>
+
+            <!-- Sync History -->
+            <div id="sync-history"
+                style="background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 2rem; margin-bottom: 2rem;">
+                <h2
+                    style="font-size: 1.5rem; margin-bottom: 1.5rem; border-bottom: 2px solid #3182ce; padding-bottom: 0.5rem;">
+                    📜 Sync History
+                </h2>
+
+                {% if import_runs %}
+                <div style="overflow-x: auto;">
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <thead>
+                            <tr style="background: #f7fafc; border-bottom: 2px solid #e2e8f0;">
+                                <th style="padding: 0.75rem; text-align: left;">Started</th>
+                                <th style="padding: 0.75rem; text-align: left;">Source</th>
+                                <th style="padding: 0.75rem; text-align: center;">Status</th>
+                                <th style="padding: 0.75rem; text-align: right;">Fetched</th>
+                                <th style="padding: 0.75rem; text-align: right;">Loaded</th>
+                                <th style="padding: 0.75rem; text-align: right;">Rejected</th>
+                                <th style="padding: 0.75rem; text-align: center;">Duration</th>
+                                <th style="padding: 0.75rem; text-align: center;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for run in import_runs %}
+                            <tr style="border-bottom: 1px solid #e2e8f0;">
+                                <td style="padding: 0.75rem; font-size: 0.875rem;">{{ run.started_at.strftime('%Y-%m-%d
+                                    %H:%M')
+                                    }}</td>
+                                <td style="padding: 0.75rem;">
+                                    <span
+                                        style="background: #edf2f7; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem;">
+                                        {{ run.source }}
+                                    </span>
+                                </td>
+                                <td style="padding: 0.75rem; text-align: center;">
+                                    <span
+                                        class="status-badge {{ 'status-completed' if run.status == 'completed' else 'status-failed' if run.status == 'failed' else 'status-pending' }}">
+                                        {{ run.status }}
+                                    </span>
+                                </td>
+                                <td style="padding: 0.75rem; text-align: right; font-weight: 600;">{{ run.items_fetched
+                                    }}</td>
+                                <td style="padding: 0.75rem; text-align: right; color: #48bb78; font-weight: 600;">{{
+                                    run.items_loaded }}</td>
+                                <td style="padding: 0.75rem; text-align: right; color: #f56565; font-weight: 600;">{{
+                                    run.items_rejected }}</td>
+                                <td style="padding: 0.75rem; text-align: center; font-size: 0.875rem;">
+                                    {% if run.completed_at %}
+                                    {{ ((run.completed_at - run.started_at).total_seconds()) | round(1) }}s
+                                    {% else %}
+                                    -
+                                    {% endif %}
+                                </td>
+                                <td style="padding: 0.75rem; text-align: center;">
+                                    <a href="/price-imports/{{ run.id }}" target="_blank"
+                                        style="color: #3182ce; text-decoration: none; font-size: 0.875rem;">
+                                        View Details
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div style="text-align: center; padding: 3rem; color: #999;">
+                    <div style="font-size: 3rem; margin-bottom: 1rem;">📋</div>
+                    <p>No sync history yet. Trigger your first sync above!</p>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Classification Mappings -->
+            <div style="background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 2rem;">
+                <div
+                    style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; border-bottom: 2px solid #3182ce; padding-bottom: 0.5rem;">
+                    <h2 style="font-size: 1.5rem; margin: 0;">
+                        🗺️ Classification Mappings
+                    </h2>
+                    <a href="/price-scout/mappings/add"
+                        style="background: #3182ce; color: white; padding: 0.5rem 1rem; border-radius: 6px; text-decoration: none; font-size: 0.875rem;">
+                        + Add Mapping
+                    </a>
+                </div>
+
+                {% if mappings %}
+                <div style="overflow-x: auto;">
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <thead>
+                            <tr style="background: #f7fafc; border-bottom: 2px solid #e2e8f0;">
+                                <th style="padding: 0.75rem; text-align: left;">Source Scheme</th>
+                                <th style="padding: 0.75rem; text-align: left;">Source Code</th>
+                                <th style="padding: 0.75rem; text-align: center;">→</th>
+                                <th style="padding: 0.75rem; text-align: left;">Target Scheme</th>
+                                <th style="padding: 0.75rem; text-align: left;">Target Code</th>
+                                <th style="padding: 0.75rem; text-align: center;">Confidence</th>
+                                <th style="padding: 0.75rem; text-align: left;">Source</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for mapping in mappings %}
+                            <tr style="border-bottom: 1px solid #e2e8f0;">
+                                <td style="padding: 0.75rem;">{{ mapping.source_scheme }}</td>
+                                <td style="padding: 0.75rem; font-family: monospace; font-weight: 600;">{{
+                                    mapping.source_code
+                                    }}</td>
+                                <td style="padding: 0.75rem; text-align: center; color: #3182ce;">→</td>
+                                <td style="padding: 0.75rem;">{{ mapping.target_scheme }}</td>
+                                <td style="padding: 0.75rem; font-family: monospace; font-weight: 600; color: #3182ce;">
+                                    {{
+                                    mapping.target_code }}</td>
+                                <td style="padding: 0.75rem; text-align: center;">
+                                    <div
+                                        style="background: #edf2f7; padding: 0.25rem 0.5rem; border-radius: 4px; display: inline-block;">
+                                        {{ (mapping.confidence * 100) | round(0) }}%
+                                    </div>
+                                </td>
+                                <td style="padding: 0.75rem;">
+                                    <span
+                                        style="background: #faf5ff; color: #805ad5; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem;">
+                                        {{ mapping.mapping_source }}
+                                    </span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div style="text-align: center; padding: 3rem; color: #999;">
+                    <div style="font-size: 3rem; margin-bottom: 1rem;">🗺️</div>
+                    <p>No classification mappings yet. <a href="/price-scout/mappings/seed" style="color: #3182ce;">Seed
+                            default mappings</a></p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <style>
+            input:focus,
+            select:focus,
+            button:focus {
+                outline: 2px solid #3182ce;
+                outline-offset: 2px;
+            }
+
+            button:hover {
+                opacity: 0.9;
+                transform: translateY(-1px);
+                transition: all 0.2s;
+            }
+
+            button:active {
+                transform: translateY(0);
+            }
+
+            a:hover {
+                opacity: 0.8;
+            }
+
+            table tr:hover {
+                background: #f7fafc;
+            }
+
+            /* Toggle Switch */
+            .switch {
+                position: relative;
+                display: inline-block;
+                width: 40px;
+                height: 24px;
+            }
+
+            .switch input {
+                opacity: 0;
+                width: 0;
+                height: 0;
+            }
+
+            .slider {
+                position: absolute;
+                cursor: pointer;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background-color: #ccc;
+                transition: .4s;
+            }
+
+            .slider:before {
+                position: absolute;
+                content: "";
+                height: 16px;
+                width: 16px;
+                left: 4px;
+                bottom: 4px;
+                background-color: white;
+                transition: .4s;
+            }
+
+            input:checked+.slider {
+                background-color: #805ad5;
+            }
+
+            input:focus+.slider {
+                box-shadow: 0 0 1px #805ad5;
+            }
+
+            input:checked+.slider:before {
+                transform: translateX(16px);
+            }
+
+            .slider.round {
+                border-radius: 24px;
+            }
+
+            .slider.round:before {
+                border-radius: 50%;
+            }
+        </style>
+        {% endblock %}

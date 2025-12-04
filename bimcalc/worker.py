@@ -5,7 +5,7 @@ from arq.connections import RedisSettings
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
-from bimcalc.integration.crail4_sync import sync_crail4_prices
+from bimcalc.integration.price_scout_sync import sync_price_scout_prices
 
 # Database setup for worker
 DATABASE_URL = os.environ.get("DATABASE_URL")
@@ -25,21 +25,21 @@ async def shutdown(ctx: dict[str, Any]) -> None:
     await engine.dispose()
     print("Worker stopped. Database connection closed.")
 
-async def run_crail4_sync(ctx: dict[str, Any], org_id: str, full_sync: bool = False) -> dict[str, Any]:
-    """Wrapper for sync_crail4_prices to run as a background job."""
-    print(f"Starting Crail4 sync job for org_id={org_id}, full_sync={full_sync}")
+async def run_price_scout_sync(ctx: dict[str, Any], org_id: str, full_sync: bool = False) -> dict[str, Any]:
+    """Wrapper for sync_price_scout_prices to run as a background job."""
+    print(f"Starting Price Scout sync job for org_id={org_id}, full_sync={full_sync}")
     
-    # sync_crail4_prices manages its own session and HTTP client
+    # sync_price_scout_prices manages its own session and HTTP client
     delta_days = None if full_sync else 7
     
-    result = await sync_crail4_prices(
+    result = await sync_price_scout_prices(
         org_id=org_id, 
         delta_days=delta_days,
         classification_filter=None,
         region=None
     )
         
-    print(f"Crail4 sync job completed: {result}")
+    print(f"Price Scout sync job completed: {result}")
     return result
 
 
@@ -258,7 +258,7 @@ async def send_scheduled_report_job(ctx, project_id: str, recipient_emails: list
 
 
 class WorkerSettings:
-    functions = [run_crail4_sync, send_daily_digest, batch_generate_checklists_job, process_document_job, send_scheduled_report_job]
+    functions = [run_price_scout_sync, send_daily_digest, batch_generate_checklists_job, process_document_job, send_scheduled_report_job]
     on_startup = startup
     on_shutdown = shutdown
     redis_settings = RedisSettings.from_dsn(

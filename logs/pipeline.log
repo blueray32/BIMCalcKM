@@ -18,3 +18,5 @@ Pipeline log initialized
 /bin/sh: python: command not found
 /bin/sh: python: command not found
 /bin/sh: docker: command not found
+/bin/sh: docker: command not found
+/bin/sh: python: command not found

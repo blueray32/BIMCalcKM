@@ -41,6 +41,7 @@ dependencies = [
     "aiohttp>=3.9",          # Slack integration
     "pdfplumber>=0.10.0",    # PDF text extraction
     "aiofiles>=23.0",        # Async file I/O
+    "tenacity>=8.2.0",       # Retry logic with exponential backoff
 ]
 
 [tool.setuptools.packages.find]

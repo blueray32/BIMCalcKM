@@ -91,6 +91,35 @@ class GraphConfig:
 
 
 @dataclass
+class PriceScoutConfig:
+    """Price Scout web scraping configuration."""
+
+    # Compliance
+    respect_robots_txt: bool = True
+    user_agent: str = "BIMCalc PriceScout/1.0 (Contact: support@bimcalc.com)"
+
+    # Rate Limiting
+    default_rate_limit_seconds: float = 2.0
+    max_parallel_sources: int = 5
+
+    # Retry Logic
+    retry_attempts: int = 3
+    retry_backoff_base: int = 2
+
+    # Browser Settings
+    browser_cdp_url: str | None = None
+    browser_timeout_ms: int = 60000
+
+    # Price Validation
+    min_price_threshold: Decimal = Decimal("0.01")
+    max_price_threshold: Decimal = Decimal("100000.00")
+
+    # Caching (future)
+    cache_enabled: bool = False
+    cache_ttl_seconds: int = 86400  # 24 hours
+
+
+@dataclass
 class AppConfig:
     """Root application configuration.
 
@@ -112,6 +141,7 @@ class AppConfig:
     llm: LLMConfig = field(default_factory=LLMConfig)
     vector: VectorConfig = field(default_factory=VectorConfig)
     graph: GraphConfig = field(default_factory=GraphConfig)
+    price_scout: PriceScoutConfig = field(default_factory=PriceScoutConfig)
 
     @classmethod
     def from_env(cls) -> AppConfig:
@@ -182,6 +212,30 @@ class AppConfig:
                 user=os.getenv("NEO4J_USER", "neo4j"),
                 password=os.getenv("NEO4J_PASSWORD", "changeme"),
                 database=os.getenv("NEO4J_DATABASE", "neo4j"),
+            ),
+            price_scout=PriceScoutConfig(
+                respect_robots_txt=os.getenv("PRICE_SCOUT_RESPECT_ROBOTS", "true").lower()
+                == "true",
+                user_agent=os.getenv(
+                    "PRICE_SCOUT_USER_AGENT",
+                    "BIMCalc PriceScout/1.0 (Contact: support@bimcalc.com)",
+                ),
+                default_rate_limit_seconds=float(
+                    os.getenv("PRICE_SCOUT_RATE_LIMIT", "2.0")
+                ),
+                max_parallel_sources=int(os.getenv("PRICE_SCOUT_MAX_SOURCES", "5")),
+                retry_attempts=int(os.getenv("PRICE_SCOUT_RETRY_ATTEMPTS", "3")),
+                browser_cdp_url=os.getenv("PLAYWRIGHT_CDP_URL"),
+                browser_timeout_ms=int(os.getenv("PRICE_SCOUT_TIMEOUT_MS", "60000")),
+                min_price_threshold=Decimal(
+                    os.getenv("PRICE_SCOUT_MIN_PRICE", "0.01")
+                ),
+                max_price_threshold=Decimal(
+                    os.getenv("PRICE_SCOUT_MAX_PRICE", "100000.00")
+                ),
+                cache_enabled=os.getenv("PRICE_SCOUT_CACHE_ENABLED", "false").lower()
+                == "true",
+                cache_ttl_seconds=int(os.getenv("PRICE_SCOUT_CACHE_TTL", "86400")),
             ),
         )
 
