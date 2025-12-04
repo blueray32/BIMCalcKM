@@ -1,0 +1,51 @@
+/Users/ciarancox/.pyenv/versions/3.11.1/lib/python3.11/site-packages/pytest_asyncio/plugin.py:252: PytestDeprecationWarning: The configuration option "asyncio_default_fixture_loop_scope" is unset.
+The event loop scope for asynchronous fixtures will default to the fixture caching scope. Future versions of pytest-asyncio will default the loop scope for asynchronous fixtures to function scope. Set the default fixture loop scope explicitly in order to avoid unexpected behavior in the future. Valid fixture loop scopes are: "function", "class", "module", "package", "session"
+
+  warnings.warn(PytestDeprecationWarning(_DEFAULT_FIXTURE_LOOP_SCOPE_UNSET))
+
+==================================== ERRORS ====================================
+____________ ERROR collecting tests/unit/web/test_routes_crail4.py _____________
+ImportError while importing test module '/Users/ciarancox/BIMCalcKM/tests/unit/web/test_routes_crail4.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+../.pyenv/versions/3.11.1/lib/python3.11/importlib/__init__.py:126: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+tests/unit/web/test_routes_crail4.py:11: in <module>
+    from bimcalc.web.routes import crail4
+E   ImportError: cannot import name 'crail4' from 'bimcalc.web.routes' (/Users/ciarancox/BIMCalcKM/bimcalc/web/routes/__init__.py)
+___________ ERROR collecting tests/unit/web/test_routes_ingestion.py ___________
+ImportError while importing test module '/Users/ciarancox/BIMCalcKM/tests/unit/web/test_routes_ingestion.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+../.pyenv/versions/3.11.1/lib/python3.11/importlib/__init__.py:126: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+tests/unit/web/test_routes_ingestion.py:12: in <module>
+    from bimcalc.web.routes import ingestion
+E   ImportError: cannot import name 'ingestion' from 'bimcalc.web.routes' (/Users/ciarancox/BIMCalcKM/bimcalc/web/routes/__init__.py)
+____________ ERROR collecting tests/unit/web/test_routes_reports.py ____________
+ImportError while importing test module '/Users/ciarancox/BIMCalcKM/tests/unit/web/test_routes_reports.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+../.pyenv/versions/3.11.1/lib/python3.11/importlib/__init__.py:126: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+tests/unit/web/test_routes_reports.py:13: in <module>
+    from bimcalc.web.routes import reports
+E   ImportError: cannot import name 'reports' from 'bimcalc.web.routes' (/Users/ciarancox/BIMCalcKM/bimcalc/web/routes/__init__.py)
+=============================== warnings summary ===============================
+../.pyenv/versions/3.11.1/lib/python3.11/site-packages/pydantic/_internal/_config.py:323
+../.pyenv/versions/3.11.1/lib/python3.11/site-packages/pydantic/_internal/_config.py:323
+../.pyenv/versions/3.11.1/lib/python3.11/site-packages/pydantic/_internal/_config.py:323
+../.pyenv/versions/3.11.1/lib/python3.11/site-packages/pydantic/_internal/_config.py:323
+../.pyenv/versions/3.11.1/lib/python3.11/site-packages/pydantic/_internal/_config.py:323
+../.pyenv/versions/3.11.1/lib/python3.11/site-packages/pydantic/_internal/_config.py:323
+../.pyenv/versions/3.11.1/lib/python3.11/site-packages/pydantic/_internal/_config.py:323
+  /Users/ciarancox/.pyenv/versions/3.11.1/lib/python3.11/site-packages/pydantic/_internal/_config.py:323: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.11/migration/
+    warnings.warn(DEPRECATION_MESSAGE, DeprecationWarning)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+ERROR tests/unit/web/test_routes_crail4.py
+ERROR tests/unit/web/test_routes_ingestion.py
+ERROR tests/unit/web/test_routes_reports.py
+!!!!!!!!!!!!!!!!!!! Interrupted: 3 errors during collection !!!!!!!!!!!!!!!!!!!!
+7 warnings, 3 errors in 1.35s

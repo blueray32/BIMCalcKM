@@ -95,6 +95,13 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
 
 app.add_middleware(RequestLoggingMiddleware)
 
+# CSRF Protection (must be after logging middleware)
+# Note: CSRF is optional - only enabled in production via env var
+import os
+if os.environ.get("BIMCALC_CSRF_ENABLED", "false").lower() == "true":
+    from bimcalc.web.csrf import CSRFMiddleware
+    app.add_middleware(CSRFMiddleware)
+
 # Prometheus Metrics
 Instrumentator().instrument(app).expose(app)
 

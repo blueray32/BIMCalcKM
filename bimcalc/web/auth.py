@@ -6,15 +6,17 @@ For production, integrate with proper identity provider (OAuth, SAML, etc.).
 
 from __future__ import annotations
 
-import hashlib
 import json
+import logging
 import os
 import secrets
 from datetime import datetime, timedelta
 
+import bcrypt
 import redis
 from fastapi import Cookie, HTTPException, Request
 
+logger = logging.getLogger(__name__)
 
 # Redis connection for session storage
 def get_redis_client() -> redis.Redis:
@@ -30,29 +32,47 @@ SESSION_EXPIRY_SECONDS = SESSION_EXPIRY_HOURS * 3600
 # In-memory fallback for development when Redis is missing
 _memory_sessions = {}
 
+# Cache for bcrypt password hash (expensive to compute)
+_password_hash_cache: bytes | None = None
 
-def get_credentials() -> tuple[str, str]:
-    """Get username and password from environment variables.
+
+def _get_password_hash() -> bytes:
+    """Get or create bcrypt password hash from environment.
+    
+    Returns:
+        bytes: bcrypt hash of the password
+    """
+    global _password_hash_cache
+    
+    if _password_hash_cache is not None:
+        return _password_hash_cache
+    
+    password = os.environ.get("BIMCALC_PASSWORD")
+    
+    if not password:
+        # For demo/development only - MUST set in production
+        password = "changeme"
+        logger.warning(
+            "Using default password 'changeme'. Set BIMCALC_PASSWORD environment variable!"
+        )
+    
+    # Generate bcrypt hash (includes salt automatically)
+    _password_hash_cache = bcrypt.hashpw(password.encode(), bcrypt.gensalt(rounds=12))
+    return _password_hash_cache
+
+
+def get_credentials() -> tuple[str, bytes]:
+    """Get username and password hash from environment variables.
 
     Returns:
-        tuple: (username, password_hash)
+        tuple: (username, bcrypt_password_hash)
 
     Raises:
         RuntimeError: If credentials not configured
     """
     username = os.environ.get("BIMCALC_USERNAME", "admin")
-    password = os.environ.get("BIMCALC_PASSWORD")
-
-    if not password:
-        # For demo/development only - MUST set in production
-        password = "changeme"
-        print(
-            "⚠️  WARNING: Using default password 'changeme'. Set BIMCALC_PASSWORD environment variable!"
-        )
-
-    # Hash the password for comparison
-    password_hash = hashlib.sha256(password.encode()).hexdigest()
-
+    password_hash = _get_password_hash()
+    
     return username, password_hash
 
 
@@ -167,7 +187,7 @@ def require_auth(request: Request, session: str | None = Cookie(default=None)) -
 
 
 def verify_credentials(username: str, password: str) -> bool:
-    """Verify username and password.
+    """Verify username and password using bcrypt.
 
     Args:
         username: Provided username
@@ -177,9 +197,11 @@ def verify_credentials(username: str, password: str) -> bool:
         bool: True if credentials valid
     """
     valid_username, valid_password_hash = get_credentials()
-    password_hash = hashlib.sha256(password.encode()).hexdigest()
-
-    return username == valid_username and password_hash == valid_password_hash
+    
+    # Use bcrypt's secure comparison (constant-time to prevent timing attacks)
+    password_matches = bcrypt.checkpw(password.encode(), valid_password_hash)
+    
+    return username == valid_username and password_matches
 
 
 def logout(session_token: str | None) -> None:

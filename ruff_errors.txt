@@ -1,0 +1,257 @@
+B905 `zip()` without an explicit `strict=` parameter
+   --> bimcalc/agent/rag.py:107:53
+    |
+105 |                 if v1 is None or v2 is None or len(v1) == 0 or len(v2) == 0:
+106 |                     return 0.0
+107 |                 dot_product = sum(a * b for a, b in zip(v1, v2))
+    |                                                     ^^^^^^^^^^^
+108 |                 norm_a = sum(a * a for a in v1) ** 0.5
+109 |                 norm_b = sum(b * b for b in v2) ** 0.5
+    |
+help: Add explicit value for parameter `strict=`
+
+E722 Do not use bare `except`
+   --> bimcalc/agent/rag.py:122:21
+    |
+120 |                     try:
+121 |                         embedding = json.loads(embedding)
+122 |                     except:
+    |                     ^^^^^^
+123 |                         embedding = []
+    |
+
+F821 Undefined name `pgvector`
+   --> bimcalc/db/migrations/versions/1553cad23ea9_add_region_to_projects.py:112:23
+    |
+110 |         "documents",
+111 |         "embedding",
+112 |         existing_type=pgvector.sqlalchemy.vector.VECTOR(dim=1536),
+    |                       ^^^^^^^^
+113 |         type_=sa.NUMERIC(precision=1536),
+114 |         existing_nullable=False,
+    |
+
+E722 Do not use bare `except`
+   --> bimcalc/intelligence/document_processor.py:211:9
+    |
+209 |             float(s.replace("$", "").replace(",", ""))
+210 |             return True
+211 |         except:
+    |         ^^^^^^
+212 |             return False
+    |
+
+E722 Do not use bare `except`
+   --> bimcalc/intelligence/document_processor.py:217:9
+    |
+215 |         try:
+216 |             return float(s.replace("$", "").replace(",", ""))
+217 |         except:
+    |         ^^^^^^
+218 |             return None
+    |
+
+B905 `zip()` without an explicit `strict=` parameter
+   --> bimcalc/intelligence/exports.py:241:46
+    |
+239 |         values = data.get("values", [])
+240 |
+241 |         for idx, (label, value) in enumerate(zip(labels, values), start=2):
+    |                                              ^^^^^^^^^^^^^^^^^^^
+242 |             ws[f"A{idx}"] = label
+243 |             ws[f"B{idx}"] = value
+    |
+help: Add explicit value for parameter `strict=`
+
+B905 `zip()` without an explicit `strict=` parameter
+   --> bimcalc/intelligence/exports.py:267:43
+    |
+265 |         percentages = data.get("percentages", [])
+266 |
+267 |         for idx, (date, pct) in enumerate(zip(dates, percentages), start=2):
+    |                                           ^^^^^^^^^^^^^^^^^^^^^^^
+268 |             ws[f"A{idx}"] = date
+269 |             ws[f"B{idx}"] = pct
+    |
+help: Add explicit value for parameter `strict=`
+
+B905 `zip()` without an explicit `strict=` parameter
+   --> bimcalc/intelligence/exports.py:294:46
+    |
+292 |         values = data.get("values", [])
+293 |
+294 |         for idx, (label, value) in enumerate(zip(labels, values), start=2):
+    |                                              ^^^^^^^^^^^^^^^^^^^
+295 |             ws[f"A{idx}"] = label
+296 |             ws[f"B{idx}"] = value
+    |
+help: Add explicit value for parameter `strict=`
+
+B905 `zip()` without an explicit `strict=` parameter
+   --> bimcalc/intelligence/exports.py:323:13
+    |
+321 |         # Row headers (document types) + data
+322 |         for row_idx, (row_label, row_data) in enumerate(
+323 |             zip(row_labels, matrix), start=2
+    |             ^^^^^^^^^^^^^^^^^^^^^^^
+324 |         ):
+325 |             ws.cell(row_idx, 1, row_label)
+    |
+help: Add explicit value for parameter `strict=`
+
+B905 `zip()` without an explicit `strict=` parameter
+   --> bimcalc/reporting/analytics.py:250:40
+    |
+248 |         sum_x = sum(x)
+249 |         sum_y = sum(y)
+250 |         sum_xy = sum(i * j for i, j in zip(x, y))
+    |                                        ^^^^^^^^^
+251 |         sum_xx = sum(i * i for i in x)
+    |
+help: Add explicit value for parameter `strict=`
+
+B905 `zip()` without an explicit `strict=` parameter
+   --> bimcalc/reporting/routes.py:293:33
+    |
+292 |                 # Zip labels and data, take last 10
+293 |                 combined = list(zip(labels, data_points))[-10:]
+    |                                 ^^^^^^^^^^^^^^^^^^^^^^^^
+294 |
+295 |                 # Format trends for table
+    |
+help: Add explicit value for parameter `strict=`
+
+B905 `zip()` without an explicit `strict=` parameter
+   --> bimcalc/reporting/routes.py:325:40
+    |
+323 |                         ),
+324 |                     }
+325 |                     for label, cost in zip(labels, data_points)
+    |                                        ^^^^^^^^^^^^^^^^^^^^^^^^
+326 |                 ]
+327 |                 exporter.add_section("Category Breakdown", cat_data)
+    |
+help: Add explicit value for parameter `strict=`
+
+B905 `zip()` without an explicit `strict=` parameter
+   --> bimcalc/reporting/routes.py:352:41
+    |
+350 |                         ),
+351 |                     }
+352 |                     for label, count in zip(labels, data_points)
+    |                                         ^^^^^^^^^^^^^^^^^^^^^^^^
+353 |                 ]
+354 |                 exporter.add_section("Resource Utilization", res_data)
+    |
+help: Add explicit value for parameter `strict=`
+
+F821 Undefined name `compute_progress_metrics`
+   --> bimcalc/web/routes/pipeline.py:219:25
+    |
+217 |     async with get_session() as session:
+218 |         # Get progress metrics
+219 |         metrics = await compute_progress_metrics(session, org, project)
+    |                         ^^^^^^^^^^^^^^^^^^^^^^^^
+220 |
+221 |         # Get last ingest from ingest_logs table
+    |
+
+F821 Undefined name `IngestLogModel`
+   --> bimcalc/web/routes/pipeline.py:223:20
+    |
+221 |         # Get last ingest from ingest_logs table
+222 |         last_ingest_query = (
+223 |             select(IngestLogModel)
+    |                    ^^^^^^^^^^^^^^
+224 |             .where(
+225 |                 IngestLogModel.org_id == org,
+    |
+
+F821 Undefined name `IngestLogModel`
+   --> bimcalc/web/routes/pipeline.py:225:17
+    |
+223 |             select(IngestLogModel)
+224 |             .where(
+225 |                 IngestLogModel.org_id == org,
+    |                 ^^^^^^^^^^^^^^
+226 |                 IngestLogModel.project_id == project,
+227 |                 IngestLogModel.status == "completed",
+    |
+
+F821 Undefined name `IngestLogModel`
+   --> bimcalc/web/routes/pipeline.py:226:17
+    |
+224 |             .where(
+225 |                 IngestLogModel.org_id == org,
+226 |                 IngestLogModel.project_id == project,
+    |                 ^^^^^^^^^^^^^^
+227 |                 IngestLogModel.status == "completed",
+228 |             )
+    |
+
+F821 Undefined name `IngestLogModel`
+   --> bimcalc/web/routes/pipeline.py:227:17
+    |
+225 |                 IngestLogModel.org_id == org,
+226 |                 IngestLogModel.project_id == project,
+227 |                 IngestLogModel.status == "completed",
+    |                 ^^^^^^^^^^^^^^
+228 |             )
+229 |             .order_by(IngestLogModel.started_at.desc())
+    |
+
+F821 Undefined name `IngestLogModel`
+   --> bimcalc/web/routes/pipeline.py:229:23
+    |
+227 |                 IngestLogModel.status == "completed",
+228 |             )
+229 |             .order_by(IngestLogModel.started_at.desc())
+    |                       ^^^^^^^^^^^^^^
+230 |             .limit(1)
+231 |         )
+    |
+
+F821 Undefined name `full_sync`
+   --> bimcalc/web/routes/price_scout.py:402:62
+    |
+400 |         redis = await get_queue()
+401 |         job = await redis.enqueue_job(
+402 |             "run_price_scout_sync", org_id=org_id, full_sync=full_sync
+    |                                                              ^^^^^^^^^
+403 |         )
+404 |         print(f"Enqueued Price Scout sync job: {job.job_id} for org {org_id}")
+    |
+
+F821 Undefined name `get_session`
+   --> bimcalc/worker.py:259:20
+    |
+258 |     try:
+259 |         async with get_session() as session:
+    |                    ^^^^^^^^^^^
+260 |             # Fetch project metrics
+261 |             metrics = await compute_dashboard_metrics(session, "default", project_id)
+    |
+
+E741 Ambiguous variable name: `l`
+  --> scripts/utils/fix_compose.py:29:42
+   |
+27 |         # But only add it once
+28 |         if not any(
+29 |             "tail -f /dev/null" in l for l in new_lines[-5:]
+   |                                          ^
+30 |         ):  # Check if we just added it
+31 |             # Preserve indentation
+   |
+
+B025 try-except block with duplicate exception `Exception`
+   --> uat_automation.py:111:16
+    |
+109 |             print(f"   ❌ Item verification failed: {e}")
+110 |
+111 |         except Exception as e:
+    |                ^^^^^^^^^
+112 |             print(f"   ❌ Item verification failed: {e}")
+    |
+
+Found 23 errors.
+No fixes available (9 hidden fixes can be enabled with the `--unsafe-fixes` option).

@@ -1,3 +1,4 @@
+import logging
 import os
 from typing import Any
 
@@ -7,6 +8,8 @@ from sqlalchemy.orm import sessionmaker
 
 from bimcalc.db.connection import get_session
 from bimcalc.integration.price_scout_sync import sync_price_scout_prices
+
+logger = logging.getLogger(__name__)
 
 # Database setup for worker
 DATABASE_URL = os.environ.get("DATABASE_URL")
@@ -20,20 +23,20 @@ async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False
 async def startup(ctx: dict[str, Any]) -> None:
     """Initialize resources when worker starts."""
     ctx["session_maker"] = async_session
-    print("Worker started. Database connection initialized.")
+    logger.info("Worker started. Database connection initialized.")
 
 
 async def shutdown(ctx: dict[str, Any]) -> None:
     """Cleanup resources when worker stops."""
     await engine.dispose()
-    print("Worker stopped. Database connection closed.")
+    logger.info("Worker stopped. Database connection closed.")
 
 
 async def run_price_scout_sync(
     ctx: dict[str, Any], org_id: str, full_sync: bool = False
 ) -> dict[str, Any]:
     """Wrapper for sync_price_scout_prices to run as a background job."""
-    print(f"Starting Price Scout sync job for org_id={org_id}, full_sync={full_sync}")
+    logger.info(f"Starting Price Scout sync job for org_id={org_id}, full_sync={full_sync}")
 
     # sync_price_scout_prices manages its own session and HTTP client
     delta_days = None if full_sync else 7
@@ -42,7 +45,7 @@ async def run_price_scout_sync(
         org_id=org_id, delta_days=delta_days, classification_filter=None, region=None
     )
 
-    print(f"Price Scout sync job completed: {result}")
+    logger.info(f"Price Scout sync job completed: {result}")
     return result
 
 
@@ -56,7 +59,7 @@ async def send_daily_digest(
     from sqlalchemy import select, func
     from datetime import datetime, timedelta
 
-    print(f"Starting daily digest for {org_id}/{project_id}")
+    logger.info(f"Starting daily digest for {org_id}/{project_id}")
 
     session_maker = ctx["session_maker"]
     async with session_maker() as session:
@@ -153,7 +156,7 @@ async def send_daily_digest(
         notifier = get_email_notifier()
         await notifier.send_daily_digest(recipients, digest_data)
 
-        print(f"Daily digest sent to {len(recipients)} recipients")
+        logger.info(f"Daily digest sent to {len(recipients)} recipients")
         return {"sent": True, "recipients": len(recipients), "stats": digest_data}
 
 
@@ -173,13 +176,13 @@ async def batch_generate_checklists_job(
     """
     from bimcalc.intelligence.bulk_operations import batch_generate_checklists
 
-    print(f"Starting batch checklist generation: {len(item_ids)} items")
+    logger.info(f"Starting batch checklist generation: {len(item_ids)} items")
 
     session_maker = ctx["session_maker"]
     async with session_maker() as session:
         # Progress callback
         def report_progress(current, total):
-            print(f"Progress: {current}/{total} ({current / total * 100:.1f}%)")
+            logger.debug(f"Progress: {current}/{total} ({current / total * 100:.1f}%)")
 
         results = await batch_generate_checklists(
             session, item_ids, progress_callback=report_progress
@@ -200,7 +203,7 @@ async def process_document_job(ctx: dict[str, Any], document_id: str) -> dict[st
     from bimcalc.db.models_documents import ProjectDocumentModel
     from sqlalchemy import select
 
-    print(f"Starting document processing job for {document_id}")
+    logger.info(f"Starting document processing job for {document_id}")
 
     session_maker = ctx["session_maker"]
     async with session_maker() as session:
@@ -211,7 +214,7 @@ async def process_document_job(ctx: dict[str, Any], document_id: str) -> dict[st
         document = result.scalars().first()
 
         if not document:
-            print(f"Document {document_id} not found")
+            logger.warning(f"Document {document_id} not found")
             return {"status": "failed", "error": "Document not found"}
 
         # Update status to processing
@@ -228,11 +231,11 @@ async def process_document_job(ctx: dict[str, Any], document_id: str) -> dict[st
 
             await processor.process_document(UUID(document_id))
 
-            print(f"Document {document_id} processing completed successfully")
+            logger.info(f"Document {document_id} processing completed successfully")
             return {"status": "completed"}
 
         except Exception as e:
-            print(f"Document {document_id} processing failed: {str(e)}")
+            logger.error(f"Document {document_id} processing failed: {str(e)}")
             # Update status to failed
             document.status = "failed"
             document.error_message = str(e)
@@ -254,7 +257,7 @@ async def send_scheduled_report_job(
     from bimcalc.notifications.email import EmailService
     from bimcalc.reporting.dashboard_metrics import compute_dashboard_metrics
 
-    print(f"Starting scheduled {report_type} report for project {project_id}")
+    logger.info(f"Starting scheduled {report_type} report for project {project_id}")
 
     try:
         async with get_session() as session:
@@ -270,14 +273,14 @@ async def send_scheduled_report_job(
             )
 
             if success:
-                print(f"Successfully sent {report_type} report to {recipient_emails}")
+                logger.info(f"Successfully sent {report_type} report to {recipient_emails}")
                 return {"status": "sent", "recipients": recipient_emails}
             else:
-                print(f"Failed to send {report_type} report (SMTP not configured)")
+                logger.warning(f"Failed to send {report_type} report (SMTP not configured)")
                 return {"status": "skipped", "reason": "SMTP not configured"}
 
     except Exception as e:
-        print(f"Report generation/sending failed: {str(e)}")
+        logger.error(f"Report generation/sending failed: {str(e)}")
         return {"status": "failed", "error": str(e)}
 
 

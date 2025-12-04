@@ -1,0 +1,89 @@
+/Users/ciarancox/.pyenv/versions/3.11.1/lib/python3.11/site-packages/pytest_asyncio/plugin.py:252: PytestDeprecationWarning: The configuration option "asyncio_default_fixture_loop_scope" is unset.
+The event loop scope for asynchronous fixtures will default to the fixture caching scope. Future versions of pytest-asyncio will default the loop scope for asynchronous fixtures to function scope. Set the default fixture loop scope explicitly in order to avoid unexpected behavior in the future. Valid fixture loop scopes are: "function", "class", "module", "package", "session"
+
+  warnings.warn(PytestDeprecationWarning(_DEFAULT_FIXTURE_LOOP_SCOPE_UNSET))
+F                                                                        [100%]
+=================================== FAILURES ===================================
+______________ TestMultiSourceOrchestrator.test_fetch_all_success ______________
+
+self = <test_multi_source_orchestrator.TestMultiSourceOrchestrator object at 0x10aae2590>
+mock_session = <AsyncMock id='4474429456'>
+sample_sources = [<bimcalc.db.models.PriceSourceModel object at 0x10ab90710>, <bimcalc.db.models.PriceSourceModel object at 0x10aad5090>, <bimcalc.db.models.PriceSourceModel object at 0x10ac344d0>]
+
+    @pytest.mark.asyncio
+    async def test_fetch_all_success(self, mock_session, sample_sources):
+        """Test fetch_all orchestrates parallel fetching successfully."""
+        orchestrator = MultiSourceOrchestrator(org_id="test-org", session=mock_session)
+    
+        # Mock get_enabled_sources to return 2 sources
+        orchestrator.get_enabled_sources = AsyncMock(
+            return_value=[sample_sources[0], sample_sources[1]]
+        )
+    
+        # Mock fetch_from_source for each source
+        async def mock_fetch(source):
+            if source.name == "Supplier A":
+                return {
+                    "success": True,
+                    "source_id": source.id,
+                    "source_name": source.name,
+                    "products": [
+                        {
+                            "vendor_code": "A123",
+                            "unit_price": 10.0,
+                            "_source_name": source.name,
+                            "_source_url": source.url,
+                        }
+                    ],
+                    "duration_ms": 100,
+                }
+            else:  # Supplier B
+                return {
+                    "success": True,
+                    "source_id": source.id,
+                    "source_name": source.name,
+                    "products": [
+                        {
+                            "vendor_code": "B456",
+                            "unit_price": 20.0,
+                            "_source_name": source.name,
+                            "_source_url": source.url,
+                        }
+                    ],
+                    "duration_ms": 150,
+                }
+    
+        orchestrator.fetch_from_source = mock_fetch
+    
+>       result = await orchestrator.fetch_all()
+
+tests/unit/test_multi_source_orchestrator.py:375: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+bimcalc/intelligence/multi_source_orchestrator.py:244: in fetch_all
+    fetch_tasks = [
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+.0 = <list_iterator object at 0x10ac0ee30>
+
+    fetch_tasks = [
+>       self.fetch_from_source(source, force_refresh=force_refresh)
+        for source in sources
+    ]
+E   TypeError: TestMultiSourceOrchestrator.test_fetch_all_success.<locals>.mock_fetch() got an unexpected keyword argument 'force_refresh'
+
+bimcalc/intelligence/multi_source_orchestrator.py:245: TypeError
+=============================== warnings summary ===============================
+../.pyenv/versions/3.11.1/lib/python3.11/site-packages/pydantic/_internal/_config.py:323
+../.pyenv/versions/3.11.1/lib/python3.11/site-packages/pydantic/_internal/_config.py:323
+../.pyenv/versions/3.11.1/lib/python3.11/site-packages/pydantic/_internal/_config.py:323
+../.pyenv/versions/3.11.1/lib/python3.11/site-packages/pydantic/_internal/_config.py:323
+../.pyenv/versions/3.11.1/lib/python3.11/site-packages/pydantic/_internal/_config.py:323
+../.pyenv/versions/3.11.1/lib/python3.11/site-packages/pydantic/_internal/_config.py:323
+../.pyenv/versions/3.11.1/lib/python3.11/site-packages/pydantic/_internal/_config.py:323
+  /Users/ciarancox/.pyenv/versions/3.11.1/lib/python3.11/site-packages/pydantic/_internal/_config.py:323: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.11/migration/
+    warnings.warn(DEPRECATION_MESSAGE, DeprecationWarning)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/unit/test_multi_source_orchestrator.py::TestMultiSourceOrchestrator::test_fetch_all_success
+1 failed, 7 warnings in 0.70s
