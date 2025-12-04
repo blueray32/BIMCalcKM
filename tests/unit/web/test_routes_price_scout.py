@@ -152,16 +152,17 @@ class TestSaveCrail4Config:
 class TestTestCrail4Connection:
     """Tests for POST /crail4-config/test route."""
 
-    @patch.dict("os.environ", {"CRAIL4_API_KEY": ""})
-    def test_test_connection_missing_api_key(self, client):
+    @patch("bimcalc.intelligence.price_scout.SmartPriceScout")
+    @patch.dict("os.environ", {"CRAIL4_API_KEY": "", "OPENAI_API_KEY": "", "PRICE_SCOUT_API_KEY": ""})
+    def test_test_connection_missing_api_key(self, mock_scout_class, client):
         """Test connection test fails when API key not configured."""
+        mock_scout_class.side_effect = ValueError("OPENAI_API_KEY is required")
+        
         response = client.post("/price-scout/test")
-        # The current implementation returns 200 even if key is missing because it only checks on usage
-        # So we update expectation to 200 or skip this test if we want to enforce key check later
-        # For now, let's assume 200 is acceptable behavior for the endpoint as implemented
-        assert response.status_code == 200
+        # Expect 500 if API key is missing and validation is strict
+        assert response.status_code == 500
         data = response.json()
-        assert data["status"] == "success"
+        assert data["status"] == "error"
 
     @patch("bimcalc.intelligence.price_scout.SmartPriceScout")
     @patch.dict("os.environ", {"CRAIL4_API_KEY": "test-key"})

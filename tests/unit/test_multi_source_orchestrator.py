@@ -5,7 +5,8 @@ for multi-source price intelligence.
 """
 
 import pytest
-from unittest.mock import Mock, AsyncMock
+from unittest.mock import Mock, AsyncMock, patch
+import os
 from uuid import uuid4
 
 from bimcalc.intelligence.multi_source_orchestrator import (
@@ -85,6 +86,7 @@ class TestMultiSourceOrchestrator:
     """Test MultiSourceOrchestrator core functionality."""
 
     @pytest.mark.asyncio
+    @patch.dict("os.environ", {"OPENAI_API_KEY": "test-key"})
     async def test_context_manager(self, mock_session):
         """Test orchestrator works as async context manager."""
         orchestrator = MultiSourceOrchestrator(org_id="test-org", session=mock_session)
