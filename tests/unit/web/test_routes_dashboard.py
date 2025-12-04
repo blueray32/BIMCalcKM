@@ -57,7 +57,9 @@ class TestDashboard:
 
     @patch("bimcalc.web.routes.dashboard.get_session")
     @patch("bimcalc.web.dependencies.get_config")
-    def test_dashboard_default_view(self, mock_get_config, mock_get_session, client, mock_config, mock_db_session):
+    def test_dashboard_default_view(
+        self, mock_get_config, mock_get_session, client, mock_config, mock_db_session
+    ):
         """Test default dashboard view renders with statistics."""
         mock_get_config.return_value = mock_config
         mock_get_session.return_value = mock_db_session
@@ -66,25 +68,35 @@ class TestDashboard:
         assert response.status_code == 200
         assert "text/html" in response.headers["content-type"]
 
+    @patch("bimcalc.web.routes.dashboard.get_session")
     @patch("bimcalc.web.dependencies.get_config")
-    def test_dashboard_analytics_view(self, mock_get_config, client, mock_config):
+    def test_dashboard_analytics_view(
+        self, mock_get_config, mock_get_session, client, mock_config, mock_db_session
+    ):
         """Test analytics view renders."""
         mock_get_config.return_value = mock_config
+        mock_get_session.return_value = mock_db_session
 
         response = client.get("/?view=analytics")
         assert response.status_code == 200
         assert "text/html" in response.headers["content-type"]
 
+    @patch("bimcalc.web.routes.dashboard.get_session")
     @patch("bimcalc.web.dependencies.get_config")
-    def test_dashboard_reports_view(self, mock_get_config, client, mock_config):
+    def test_dashboard_reports_view(
+        self, mock_get_config, mock_get_session, client, mock_config, mock_db_session
+    ):
         """Test reports view renders."""
         mock_get_config.return_value = mock_config
+        mock_get_session.return_value = mock_db_session
 
         response = client.get("/?view=reports")
         assert response.status_code == 200
         assert "text/html" in response.headers["content-type"]
 
-    @pytest.mark.skip(reason="Executive view requires complex metrics object with many attributes - better tested in integration")
+    @pytest.mark.skip(
+        reason="Executive view requires complex metrics object with many attributes - better tested in integration"
+    )
     @patch("bimcalc.reporting.dashboard_metrics.compute_dashboard_metrics")
     @patch("bimcalc.web.routes.dashboard.get_session")
     @patch("bimcalc.web.dependencies.get_config")
@@ -95,7 +107,7 @@ class TestDashboard:
         mock_compute_metrics,
         client,
         mock_config,
-        mock_db_session
+        mock_db_session,
     ):
         """Test executive view calls compute_dashboard_metrics.
 
@@ -117,12 +129,7 @@ class TestDashboard:
     @patch("bimcalc.web.routes.dashboard.get_session")
     @patch("bimcalc.web.dependencies.get_config")
     def test_dashboard_with_org_project_params(
-        self,
-        mock_get_config,
-        mock_get_session,
-        client,
-        mock_config,
-        mock_db_session
+        self, mock_get_config, mock_get_session, client, mock_config, mock_db_session
     ):
         """Test dashboard accepts org and project query parameters."""
         mock_get_config.return_value = mock_config
@@ -134,12 +141,7 @@ class TestDashboard:
     @patch("bimcalc.web.routes.dashboard.get_session")
     @patch("bimcalc.web.dependencies.get_config")
     def test_dashboard_statistics_query(
-        self,
-        mock_get_config,
-        mock_get_session,
-        client,
-        mock_config,
-        mock_db_session
+        self, mock_get_config, mock_get_session, client, mock_config, mock_db_session
     ):
         """Test that dashboard queries database for statistics."""
         mock_get_config.return_value = mock_config
@@ -167,7 +169,7 @@ class TestProgressDashboard:
         mock_compute_metrics,
         client,
         mock_config,
-        mock_db_session
+        mock_db_session,
     ):
         """Test progress dashboard standard view."""
         mock_get_config.return_value = mock_config
@@ -175,6 +177,7 @@ class TestProgressDashboard:
 
         # Mock progress metrics with all required fields for template
         from datetime import datetime
+
         mock_metrics = SimpleNamespace(
             overall_completion=65.0,
             total_items=1000,
@@ -184,11 +187,21 @@ class TestProgressDashboard:
             computed_at=datetime.now(),
             classification_coverage=[],
             # Stage attributes for progress template (multiple naming variations)
-            stage_import=SimpleNamespace(status="complete", count=1000, completion_percent=100.0),
-            stage_classification=SimpleNamespace(status="complete", count=1000, completion_percent=100.0),
-            stage_match=SimpleNamespace(status="complete", count=650, completion_percent=65.0),
-            stage_matching=SimpleNamespace(status="complete", count=650, completion_percent=65.0),  # Alias
-            stage_review=SimpleNamespace(status="in_progress", count=0, completion_percent=0.0)
+            stage_import=SimpleNamespace(
+                status="complete", count=1000, completion_percent=100.0
+            ),
+            stage_classification=SimpleNamespace(
+                status="complete", count=1000, completion_percent=100.0
+            ),
+            stage_match=SimpleNamespace(
+                status="complete", count=650, completion_percent=65.0
+            ),
+            stage_matching=SimpleNamespace(
+                status="complete", count=650, completion_percent=65.0
+            ),  # Alias
+            stage_review=SimpleNamespace(
+                status="in_progress", count=0, completion_percent=0.0
+            ),
         )
         mock_compute_metrics.return_value = mock_metrics
 
@@ -199,7 +212,9 @@ class TestProgressDashboard:
         # Verify metrics were computed
         mock_compute_metrics.assert_called_once()
 
-    @pytest.mark.skip(reason="Executive progress view requires complex metrics with confidence attributes")
+    @pytest.mark.skip(
+        reason="Executive progress view requires complex metrics with confidence attributes"
+    )
     @patch("bimcalc.reporting.progress.compute_progress_metrics")
     @patch("bimcalc.web.routes.dashboard.get_session")
     @patch("bimcalc.web.dependencies.get_config")
@@ -210,7 +225,7 @@ class TestProgressDashboard:
         mock_compute_metrics,
         client,
         mock_config,
-        mock_db_session
+        mock_db_session,
     ):
         """Test progress dashboard executive view.
 
@@ -220,6 +235,7 @@ class TestProgressDashboard:
         mock_get_session.return_value = mock_db_session
 
         from datetime import datetime
+
         mock_metrics = SimpleNamespace(
             overall_completion=70.0,
             total_items=1000,
@@ -229,11 +245,21 @@ class TestProgressDashboard:
             computed_at=datetime.now(),
             classification_coverage=[],
             # Stage attributes for progress template
-            stage_import=SimpleNamespace(status="complete", count=1000, completion_percent=100.0),
-            stage_classification=SimpleNamespace(status="complete", count=1000, completion_percent=100.0),
-            stage_match=SimpleNamespace(status="complete", count=700, completion_percent=70.0),
-            stage_matching=SimpleNamespace(status="complete", count=700, completion_percent=70.0),  # Alias
-            stage_review=SimpleNamespace(status="complete", count=0, completion_percent=0.0)
+            stage_import=SimpleNamespace(
+                status="complete", count=1000, completion_percent=100.0
+            ),
+            stage_classification=SimpleNamespace(
+                status="complete", count=1000, completion_percent=100.0
+            ),
+            stage_match=SimpleNamespace(
+                status="complete", count=700, completion_percent=70.0
+            ),
+            stage_matching=SimpleNamespace(
+                status="complete", count=700, completion_percent=70.0
+            ),  # Alias
+            stage_review=SimpleNamespace(
+                status="complete", count=0, completion_percent=0.0
+            ),
         )
         mock_compute_metrics.return_value = mock_metrics
 
@@ -251,13 +277,14 @@ class TestProgressDashboard:
         mock_compute_metrics,
         client,
         mock_config,
-        mock_db_session
+        mock_db_session,
     ):
         """Test progress accepts org and project parameters."""
         mock_get_config.return_value = mock_config
         mock_get_session.return_value = mock_db_session
 
         from datetime import datetime
+
         mock_metrics = SimpleNamespace(
             overall_completion=50.0,
             total_items=1000,
@@ -267,11 +294,21 @@ class TestProgressDashboard:
             computed_at=datetime.now(),
             classification_coverage=[],
             # Stage attributes for progress template
-            stage_import=SimpleNamespace(status="complete", count=1000, completion_percent=100.0),
-            stage_classification=SimpleNamespace(status="complete", count=1000, completion_percent=100.0),
-            stage_match=SimpleNamespace(status="in_progress", count=500, completion_percent=50.0),
-            stage_matching=SimpleNamespace(status="in_progress", count=500, completion_percent=50.0),  # Alias
-            stage_review=SimpleNamespace(status="pending", count=0, completion_percent=0.0)
+            stage_import=SimpleNamespace(
+                status="complete", count=1000, completion_percent=100.0
+            ),
+            stage_classification=SimpleNamespace(
+                status="complete", count=1000, completion_percent=100.0
+            ),
+            stage_match=SimpleNamespace(
+                status="in_progress", count=500, completion_percent=50.0
+            ),
+            stage_matching=SimpleNamespace(
+                status="in_progress", count=500, completion_percent=50.0
+            ),  # Alias
+            stage_review=SimpleNamespace(
+                status="pending", count=0, completion_percent=0.0
+            ),
         )
         mock_compute_metrics.return_value = mock_metrics
 
@@ -292,7 +329,7 @@ class TestProgressExport:
         mock_compute_metrics,
         client,
         mock_config,
-        mock_db_session
+        mock_db_session,
     ):
         """Test progress export creates Excel file."""
         mock_get_config.return_value = mock_config
@@ -308,7 +345,7 @@ class TestProgressExport:
             classification_coverage=[
                 SimpleNamespace(code="ABC", total=100, matched=75, percent=75.0),
                 SimpleNamespace(code="XYZ", total=200, matched=150, percent=75.0),
-            ]
+            ],
         )
         mock_compute_metrics.return_value = mock_metrics
 
@@ -316,7 +353,10 @@ class TestProgressExport:
         assert response.status_code == 200
 
         # Verify Excel MIME type
-        assert response.headers["content-type"] == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        assert (
+            response.headers["content-type"]
+            == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
 
         # Verify Content-Disposition header for download
         assert "attachment" in response.headers["content-disposition"]
@@ -336,7 +376,7 @@ class TestProgressExport:
         mock_compute_metrics,
         client,
         mock_config,
-        mock_db_session
+        mock_db_session,
     ):
         """Test progress export filename includes org, project, and date."""
         mock_get_config.return_value = mock_config
@@ -348,7 +388,7 @@ class TestProgressExport:
             matched_items=80,
             pending_review=5,
             flagged_critical=2,
-            classification_coverage=None
+            classification_coverage=None,
         )
         mock_compute_metrics.return_value = mock_metrics
 
@@ -370,7 +410,7 @@ class TestProgressExport:
         mock_compute_metrics,
         client,
         mock_config,
-        mock_db_session
+        mock_db_session,
     ):
         """Test progress export handles missing classification coverage."""
         mock_get_config.return_value = mock_config
@@ -383,7 +423,7 @@ class TestProgressExport:
             matched_items=120,
             pending_review=20,
             flagged_critical=5,
-            classification_coverage=None  # No coverage data
+            classification_coverage=None,  # No coverage data
         )
         mock_compute_metrics.return_value = mock_metrics
 

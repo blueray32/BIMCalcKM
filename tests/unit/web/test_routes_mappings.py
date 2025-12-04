@@ -79,7 +79,9 @@ def mock_price_item():
 class TestMappingsList:
     """Tests for GET /mappings route."""
 
-    @pytest.mark.skip(reason="Template requires complex mappings object - better tested in integration")
+    @pytest.mark.skip(
+        reason="Template requires complex mappings object - better tested in integration"
+    )
     @patch("bimcalc.web.routes.mappings.get_session")
     @patch("bimcalc.web.dependencies.get_config")
     def test_mappings_list_default(

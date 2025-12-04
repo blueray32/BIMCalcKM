@@ -4,8 +4,9 @@ Tests price validation logic, threshold checking, and data quality enforcement.
 """
 
 import pytest
+import logging
 from decimal import Decimal
-from unittest.mock import Mock, patch, AsyncMock
+from unittest.mock import Mock, patch
 from bimcalc.intelligence.price_scout import SmartPriceScout
 from bimcalc.config import PriceScoutConfig, AppConfig
 
@@ -43,9 +44,21 @@ class TestPriceValidation:
         data = {
             "page_type": "product_list",
             "products": [
-                {"vendor_code": "A123", "unit_price": 10.50, "description": "Product A"},
-                {"vendor_code": "B456", "unit_price": 99.99, "description": "Product B"},
-                {"vendor_code": "C789", "unit_price": 1000.00, "description": "Product C"},
+                {
+                    "vendor_code": "A123",
+                    "unit_price": 10.50,
+                    "description": "Product A",
+                },
+                {
+                    "vendor_code": "B456",
+                    "unit_price": 99.99,
+                    "description": "Product B",
+                },
+                {
+                    "vendor_code": "C789",
+                    "unit_price": 1000.00,
+                    "description": "Product C",
+                },
             ],
         }
 
@@ -62,7 +75,11 @@ class TestPriceValidation:
         data = {
             "page_type": "product_detail",
             "products": [
-                {"vendor_code": "A123", "unit_price": 0.001, "description": "Suspiciously cheap"},
+                {
+                    "vendor_code": "A123",
+                    "unit_price": 0.001,
+                    "description": "Suspiciously cheap",
+                },
             ],
         }
 
@@ -94,7 +111,11 @@ class TestPriceValidation:
         data = {
             "page_type": "product_detail",
             "products": [
-                {"vendor_code": "A123", "unit_price": -10.00, "description": "Negative price"},
+                {
+                    "vendor_code": "A123",
+                    "unit_price": -10.00,
+                    "description": "Negative price",
+                },
             ],
         }
 
@@ -123,7 +144,11 @@ class TestPriceValidation:
         data = {
             "page_type": "product_detail",
             "products": [
-                {"vendor_code": "A123", "unit_price": "invalid", "description": "Bad format"},
+                {
+                    "vendor_code": "A123",
+                    "unit_price": "invalid",
+                    "description": "Bad format",
+                },
             ],
         }
 
@@ -138,7 +163,11 @@ class TestPriceValidation:
         data = {
             "page_type": "product_detail",
             "products": [
-                {"vendor_code": "A123", "unit_price": 0.00, "description": "Zero price"},
+                {
+                    "vendor_code": "A123",
+                    "unit_price": 0.00,
+                    "description": "Zero price",
+                },
             ],
         }
 
@@ -154,7 +183,11 @@ class TestPriceValidation:
             "products": [
                 {"vendor_code": "A", "unit_price": 10.00, "description": "Valid"},
                 {"vendor_code": "B", "unit_price": -5.00, "description": "Negative"},
-                {"vendor_code": "C", "unit_price": "bad", "description": "Invalid format"},
+                {
+                    "vendor_code": "C",
+                    "unit_price": "bad",
+                    "description": "Invalid format",
+                },
                 {"vendor_code": "D", "unit_price": 50.00, "description": "Valid"},
                 {"vendor_code": "E", "description": "Missing price"},
             ],
@@ -190,6 +223,7 @@ class TestPriceValidation:
             ],
         }
 
+        caplog.set_level(logging.INFO)
         price_scout._validate_extraction(data)
 
         # Should log summary
@@ -200,12 +234,14 @@ class TestPriceValidation:
 class TestPriceValidationThresholds:
     """Tests for configurable price thresholds."""
 
-    def test_custom_min_threshold(self, mock_config):
+    def test_custom_min_threshold(self, mock_config, caplog):
         """Test custom minimum price threshold is respected."""
         # Set custom min threshold
         mock_config.price_scout.min_price_threshold = Decimal("1.00")
 
-        with patch("bimcalc.intelligence.price_scout.get_config", return_value=mock_config):
+        with patch(
+            "bimcalc.intelligence.price_scout.get_config", return_value=mock_config
+        ):
             with patch.dict("os.environ", {"OPENAI_API_KEY": "test-key"}):
                 scout = SmartPriceScout()
 
@@ -215,18 +251,20 @@ class TestPriceValidationThresholds:
             ]
         }
 
-        with pytest.LogCaptureFixture.at_level("WARNING"):
+        with caplog.at_level(logging.WARNING):
             scout._validate_extraction(data)
 
         # Should warn because 0.50 < 1.00
         # (check happens via logger, validated in other tests)
 
-    def test_custom_max_threshold(self, mock_config):
+    def test_custom_max_threshold(self, mock_config, caplog):
         """Test custom maximum price threshold is respected."""
         # Set custom max threshold
         mock_config.price_scout.max_price_threshold = Decimal("100.00")
 
-        with patch("bimcalc.intelligence.price_scout.get_config", return_value=mock_config):
+        with patch(
+            "bimcalc.intelligence.price_scout.get_config", return_value=mock_config
+        ):
             with patch.dict("os.environ", {"OPENAI_API_KEY": "test-key"}):
                 scout = SmartPriceScout()
 
@@ -236,7 +274,7 @@ class TestPriceValidationThresholds:
             ]
         }
 
-        with pytest.LogCaptureFixture.at_level("WARNING"):
+        with caplog.at_level(logging.WARNING):
             scout._validate_extraction(data)
 
         # Should warn because 200.00 > 100.00
@@ -246,8 +284,16 @@ class TestPriceValidationThresholds:
         """Test validation handles decimal precision correctly."""
         data = {
             "products": [
-                {"vendor_code": "A", "unit_price": 10.999, "description": "High precision"},
-                {"vendor_code": "B", "unit_price": 10.5, "description": "Normal precision"},
+                {
+                    "vendor_code": "A",
+                    "unit_price": 10.999,
+                    "description": "High precision",
+                },
+                {
+                    "vendor_code": "B",
+                    "unit_price": 10.5,
+                    "description": "Normal precision",
+                },
             ]
         }
 
@@ -285,7 +331,11 @@ class TestPriceValidationEdgeCases:
         """Test validation handles string numbers (should work via Decimal)."""
         data = {
             "products": [
-                {"vendor_code": "A", "unit_price": "10.50", "description": "String price"},
+                {
+                    "vendor_code": "A",
+                    "unit_price": "10.50",
+                    "description": "String price",
+                },
             ]
         }
 
@@ -299,7 +349,11 @@ class TestPriceValidationEdgeCases:
         """Test validation handles special float values."""
         data = {
             "products": [
-                {"vendor_code": "A", "unit_price": float("inf"), "description": "Infinity"},
+                {
+                    "vendor_code": "A",
+                    "unit_price": float("inf"),
+                    "description": "Infinity",
+                },
             ]
         }
 

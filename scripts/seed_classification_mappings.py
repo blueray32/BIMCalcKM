@@ -15,6 +15,7 @@ async def main():
     async with get_session() as session:
         # Check if mapping already exists
         from sqlalchemy import select
+
         existing = await session.execute(
             select(ProjectClassificationMappingModel).where(
                 ProjectClassificationMappingModel.org_id == "demo-org",
@@ -22,11 +23,11 @@ async def main():
                 ProjectClassificationMappingModel.local_code == "61",
             )
         )
-        
+
         if existing.scalar_one_or_none():
             print("Mapping already exists!")
             return
-        
+
         mapping = ProjectClassificationMappingModel(
             org_id="demo-org",
             project_id="tritex24-229",
@@ -35,10 +36,10 @@ async def main():
             description="Electrical Distribution - Tritex project-specific code",
             created_by="seed-script",
         )
-        
+
         session.add(mapping)
         await session.commit()
-        
+
         print("✓ Created mapping: 61 → 2601 (Electrical Distribution)")
 
 

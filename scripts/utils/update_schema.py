@@ -3,6 +3,7 @@ import os
 
 DB_FILE = "bimcalc.db"
 
+
 def update_schema():
     if not os.path.exists(DB_FILE):
         print(f"Database file {DB_FILE} not found.")
@@ -65,6 +66,7 @@ def update_schema():
     conn.commit()
     conn.close()
     print("Schema update complete.")
+
 
 if __name__ == "__main__":
     update_schema()

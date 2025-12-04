@@ -98,9 +98,7 @@ class AutoRouter:
 
         # Check for Advisory flags
         advisory_flags = [
-            f
-            for f in flags
-            if f in ["StalePrice", "CurrencyMismatch", "VATUnclear"]
+            f for f in flags if f in ["StalePrice", "CurrencyMismatch", "VATUnclear"]
         ]
         if advisory_flags and not self.allow_auto_with_advisory:
             return (

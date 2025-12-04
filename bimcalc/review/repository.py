@@ -9,7 +9,12 @@ from uuid import UUID
 from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from bimcalc.db.models import ItemModel, MatchFlagModel, MatchResultModel, PriceItemModel
+from bimcalc.db.models import (
+    ItemModel,
+    MatchFlagModel,
+    MatchResultModel,
+    PriceItemModel,
+)
 from bimcalc.models import FlagSeverity
 from bimcalc.review.models import ReviewFlag, ReviewItem, ReviewPrice, ReviewRecord
 
@@ -88,7 +93,9 @@ async def fetch_pending_reviews(
             flags=flags,
         )
 
-        if not _matches_filters(record, flag_types, severity_filter, unmapped_only, classification_filter):
+        if not _matches_filters(
+            record, flag_types, severity_filter, unmapped_only, classification_filter
+        ):
             continue
 
         review_records.append(record)
@@ -116,14 +123,11 @@ async def fetch_available_classifications(
     }
 
     stmt = (
-        select(
-            ItemModel.classification_code,
-            func.count(ItemModel.id).label("count")
-        )
+        select(ItemModel.classification_code, func.count(ItemModel.id).label("count"))
         .where(
             ItemModel.org_id == org_id,
             ItemModel.project_id == project_id,
-            ItemModel.classification_code.isnot(None)
+            ItemModel.classification_code.isnot(None),
         )
         .group_by(ItemModel.classification_code)
         .order_by(ItemModel.classification_code)
@@ -135,11 +139,7 @@ async def fetch_available_classifications(
     for row in rows.all():
         code = row.classification_code
         name = CLASSIFICATION_NAMES.get(code, f"Class {code}")
-        classifications.append({
-            "code": code,
-            "name": name,
-            "count": row.count
-        })
+        classifications.append({"code": code, "name": name, "count": row.count})
 
     return classifications
 
@@ -181,7 +181,9 @@ async def _load_flags(
     if not match_result_ids:
         return {}
 
-    flags_stmt = select(MatchFlagModel).where(MatchFlagModel.match_result_id.in_(match_result_ids))
+    flags_stmt = select(MatchFlagModel).where(
+        MatchFlagModel.match_result_id.in_(match_result_ids)
+    )
     rows = await session.execute(flags_stmt)
     flags_by_match: dict[UUID, list[ReviewFlag]] = defaultdict(list)
 
@@ -210,7 +212,10 @@ def _matches_filters(
         return False
 
     # Filter by classification code
-    if classification_filter and record.item.classification_code != classification_filter:
+    if (
+        classification_filter
+        and record.item.classification_code != classification_filter
+    ):
         return False
 
     if flag_types:

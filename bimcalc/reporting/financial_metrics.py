@@ -33,7 +33,9 @@ class FinancialMetrics:
     high_risk_total_cost: float  # Total EUR at risk from low confidence matches
 
     # Classification breakdown
-    cost_by_classification: list[dict]  # [{code, total_cost, item_count, avg_confidence}]
+    cost_by_classification: list[
+        dict
+    ]  # [{code, total_cost, item_count, avg_confidence}]
 
     # Top expensive items
     top_10_expensive: list[dict]  # [{family, type, cost, confidence, unit_price}]
@@ -151,21 +153,31 @@ async def compute_financial_metrics(
         FROM item_costs
     """)
 
-    result = (await session.execute(
-        financial_query, {"org_id": org_id, "project_id": project_id}
-    )).first()
+    result = (
+        await session.execute(
+            financial_query, {"org_id": org_id, "project_id": project_id}
+        )
+    ).first()
 
     total_cost_net = float(result.total_cost_net) if result.total_cost_net else 0.0
-    total_cost_gross = float(result.total_cost_gross) if result.total_cost_gross else 0.0
-    high_confidence_cost = float(result.high_confidence_cost) if result.high_confidence_cost else 0.0
-    medium_confidence_cost = float(result.medium_confidence_cost) if result.medium_confidence_cost else 0.0
-    low_confidence_cost = float(result.low_confidence_cost) if result.low_confidence_cost else 0.0
+    total_cost_gross = (
+        float(result.total_cost_gross) if result.total_cost_gross else 0.0
+    )
+    high_confidence_cost = (
+        float(result.high_confidence_cost) if result.high_confidence_cost else 0.0
+    )
+    medium_confidence_cost = (
+        float(result.medium_confidence_cost) if result.medium_confidence_cost else 0.0
+    )
+    low_confidence_cost = (
+        float(result.low_confidence_cost) if result.low_confidence_cost else 0.0
+    )
     total_items = result.total_items or 0
     matched_items = result.matched_items or 0
     unmatched_items = result.unmatched_items or 0
     avg_unit_price = float(result.avg_unit_price) if result.avg_unit_price else None
     avg_confidence = float(result.avg_confidence) if result.avg_confidence else None
-    currency = result.currency or 'EUR'
+    currency = result.currency or "EUR"
 
     match_percentage = (matched_items / total_items * 100) if total_items > 0 else 0.0
 
@@ -210,9 +222,11 @@ async def compute_financial_metrics(
         LIMIT 10
     """)
 
-    risk_results = (await session.execute(
-        high_risk_query, {"org_id": org_id, "project_id": project_id}
-    )).fetchall()
+    risk_results = (
+        await session.execute(
+            high_risk_query, {"org_id": org_id, "project_id": project_id}
+        )
+    ).fetchall()
 
     high_risk_items = [
         {
@@ -270,9 +284,11 @@ async def compute_financial_metrics(
         LIMIT 5
     """)
 
-    class_results = (await session.execute(
-        classification_query, {"org_id": org_id, "project_id": project_id}
-    )).fetchall()
+    class_results = (
+        await session.execute(
+            classification_query, {"org_id": org_id, "project_id": project_id}
+        )
+    ).fetchall()
 
     cost_by_classification = [
         {
@@ -323,9 +339,11 @@ async def compute_financial_metrics(
         LIMIT 10
     """)
 
-    expensive_results = (await session.execute(
-        top_expensive_query, {"org_id": org_id, "project_id": project_id}
-    )).fetchall()
+    expensive_results = (
+        await session.execute(
+            top_expensive_query, {"org_id": org_id, "project_id": project_id}
+        )
+    ).fetchall()
 
     top_10_expensive = [
         {

@@ -8,7 +8,7 @@ pdf.cell(200, 10, txt="Date: 2023-10-27", ln=1, align="L")
 pdf.ln(10)
 
 # Table Header
-pdf.set_font("Arial", 'B', 12)
+pdf.set_font("Arial", "B", 12)
 pdf.cell(80, 10, "Description", 1)
 pdf.cell(30, 10, "Quantity", 1)
 pdf.cell(30, 10, "Unit Price", 1)

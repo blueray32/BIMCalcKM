@@ -3,13 +3,16 @@ import os
 from jinja2 import Environment, FileSystemLoader
 from dataclasses import dataclass, field
 
+
 # Mock the DashboardMetrics dataclass structure
 @dataclass
 class MockMetrics:
     avg_confidence: float = 85.0
     high_confidence_percentage: float = 90.0
     avg_risk_score: float = 12.5
-    risk_distribution: dict = field(default_factory=lambda: {"High": 5, "Medium": 10, "Low": 85})
+    risk_distribution: dict = field(
+        default_factory=lambda: {"High": 5, "Medium": 10, "Low": 85}
+    )
     classification_distribution: list = field(default_factory=list)
     total_cost_net: float = 1000.0
     total_cost_gross: float = 1200.0
@@ -41,13 +44,14 @@ class MockMetrics:
             print("Error: Run this script from the project root.")
             sys.exit(1)
 
+
 def test_render():
     env = Environment(loader=FileSystemLoader("bimcalc/web/templates"))
-    
+
     # Add 'format' filter if it's used in the template (it is: "%.0f"|format(...))
     # Jinja2 has a built-in 'format' filter, but sometimes it's used as a method on strings.
     # The template uses "%.0f"|format(val), which is standard Jinja2.
-    
+
     try:
         template = env.get_template("dashboard_executive.html")
         metrics = MockMetrics()
@@ -56,7 +60,7 @@ def test_render():
         class MockRequest:
             def url_for(self, endpoint, **values):
                 return f"/{endpoint}"
-            
+
             @property
             def path(self):
                 return "/dashboard"
@@ -67,23 +71,27 @@ def test_render():
 
         output = template.render(metrics=metrics, request=MockRequest())
         print("✅ Successfully rendered dashboard_executive.html")
-        
+
         # Verify the specific fix
-        expected_snippet = 'style="--risk-high: 5; flex: var(--risk-high); background: #f56565;"'
+        expected_snippet = (
+            'style="--risk-high: 5; flex: var(--risk-high); background: #f56565;"'
+        )
         if expected_snippet in output:
-             print("✅ Verified: CSS variables are correctly rendered in the output.")
+            print("✅ Verified: CSS variables are correctly rendered in the output.")
         else:
-             print("⚠️ Warning: Expected CSS variable pattern not found in output.")
-             # Print the relevant section for debugging
-             start_idx = output.find("Risk Profile")
-             if start_idx != -1:
-                 print("Context snippet:")
-                 print(output[start_idx:start_idx+1000])
-             
+            print("⚠️ Warning: Expected CSS variable pattern not found in output.")
+            # Print the relevant section for debugging
+            start_idx = output.find("Risk Profile")
+            if start_idx != -1:
+                print("Context snippet:")
+                print(output[start_idx : start_idx + 1000])
+
     except Exception:
         import traceback
+
         traceback.print_exc()
         sys.exit(1)
+
 
 if __name__ == "__main__":
     test_render()

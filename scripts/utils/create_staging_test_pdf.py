@@ -22,7 +22,7 @@ items = [
     "Concrete Mix | 15 | 125.00 | 1875.00",
     "Steel Beams | 25 | 85.00 | 2125.00",
     "Electrical Wire | 100 | 12.50 | 1250.00",
-    "Labor Hours | 40 | 65.00 | 2600.00"
+    "Labor Hours | 40 | 65.00 | 2600.00",
 ]
 
 y = 670

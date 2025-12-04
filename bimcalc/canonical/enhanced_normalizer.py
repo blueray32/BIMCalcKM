@@ -145,9 +145,7 @@ class SynonymExpander:
             self.materials.items(), key=lambda x: len(x[0]), reverse=True
         ):
             if synonym in text_lower:
-                text = re.sub(
-                    re.escape(synonym), canonical, text, flags=re.IGNORECASE
-                )
+                text = re.sub(re.escape(synonym), canonical, text, flags=re.IGNORECASE)
         return text
 
     def expand_manufacturer(self, text: str) -> str:
@@ -164,9 +162,7 @@ class SynonymExpander:
             self.manufacturers.items(), key=lambda x: len(x[0]), reverse=True
         ):
             if variant in text_lower:
-                text = re.sub(
-                    re.escape(variant), canonical, text, flags=re.IGNORECASE
-                )
+                text = re.sub(re.escape(variant), canonical, text, flags=re.IGNORECASE)
         return text
 
     def expand_unit(self, text: str) -> str:

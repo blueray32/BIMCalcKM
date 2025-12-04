@@ -13,9 +13,10 @@ BASE_URL = "https://157.230.149.106"
 ORG_ID = "staging-test-org"
 PROJECT_ID = "staging-test-proj"
 
+
 def verify_staging():
     print(f"🧪 Verifying Staging Compliance API at {BASE_URL}...")
-    
+
     # 1. Check Dashboard Page Load
     print("   1. Checking Dashboard HTML...")
     try:
@@ -32,16 +33,16 @@ def verify_staging():
     # 2. Upload Spec
     print("   2. Testing Spec Upload...")
     spec_content = "All fire doors must have a fire rating of at least 30 minutes."
-    files = {'file': ('staging_spec.txt', spec_content, 'text/plain')}
-    data = {'org_id': ORG_ID, 'project_id': PROJECT_ID}
-    
+    files = {"file": ("staging_spec.txt", spec_content, "text/plain")}
+    data = {"org_id": ORG_ID, "project_id": PROJECT_ID}
+
     try:
         resp = requests.post(
-            f"{BASE_URL}/api/compliance/upload", 
-            files=files, 
-            data=data, 
+            f"{BASE_URL}/api/compliance/upload",
+            files=files,
+            data=data,
             verify=False,
-            timeout=10
+            timeout=10,
         )
         if resp.status_code == 200:
             data = resp.json()
@@ -57,13 +58,13 @@ def verify_staging():
     print("   3. Fetching Rules...")
     try:
         resp = requests.get(
-            f"{BASE_URL}/api/compliance/rules", 
-            params={'org': ORG_ID, 'project': PROJECT_ID}, 
+            f"{BASE_URL}/api/compliance/rules",
+            params={"org": ORG_ID, "project": PROJECT_ID},
             verify=False,
-            timeout=10
+            timeout=10,
         )
         if resp.status_code == 200:
-            rules = resp.json().get('rules', [])
+            rules = resp.json().get("rules", [])
             print(f"   ✅ Retrieved {len(rules)} rules.")
         else:
             print(f"   ❌ Get Rules failed: {resp.status_code}")
@@ -74,13 +75,13 @@ def verify_staging():
     print("   4. Running Compliance Check...")
     try:
         resp = requests.post(
-            f"{BASE_URL}/api/compliance/check", 
-            params={'org': ORG_ID, 'project': PROJECT_ID}, 
+            f"{BASE_URL}/api/compliance/check",
+            params={"org": ORG_ID, "project": PROJECT_ID},
             verify=False,
-            timeout=10
+            timeout=10,
         )
         if resp.status_code == 200:
-            stats = resp.json().get('stats')
+            stats = resp.json().get("stats")
             print(f"   ✅ Check run successfully. Stats: {stats}")
         else:
             print(f"   ❌ Check run failed: {resp.status_code} - {resp.text}")
@@ -88,6 +89,7 @@ def verify_staging():
         print(f"   ❌ Check run error: {e}")
 
     print("✅ Staging Verification Complete!")
+
 
 if __name__ == "__main__":
     verify_staging()

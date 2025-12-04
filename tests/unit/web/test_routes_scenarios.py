@@ -57,7 +57,9 @@ def mock_db_session():
 class TestScenarioPage:
     """Tests for GET /scenarios route."""
 
-    @pytest.mark.skip(reason="Scenario template requires complex context - better in integration")
+    @pytest.mark.skip(
+        reason="Scenario template requires complex context - better in integration"
+    )
     @patch("bimcalc.web.routes.scenarios.get_org_project")
     def test_scenario_page_renders(
         self,
@@ -107,7 +109,9 @@ class TestCompareScenarios:
         mock_get_vendors.return_value = ["VENDOR1", "VENDOR2", "VENDOR3"]
         mock_compute_scenario.return_value = mock_scenario_result
 
-        response = client.get("/api/scenarios/compare?org=test-org&project=test-project&vendors=VENDOR1&vendors=VENDOR2")
+        response = client.get(
+            "/api/scenarios/compare?org=test-org&project=test-project&vendors=VENDOR1&vendors=VENDOR2"
+        )
         assert response.status_code == 200
 
         data = response.json()
@@ -134,7 +138,9 @@ class TestCompareScenarios:
         mock_get_vendors.return_value = ["VENDOR1", "VENDOR2", "VENDOR3", "VENDOR4"]
         mock_compute_scenario.return_value = mock_scenario_result
 
-        response = client.get("/api/scenarios/compare?org=test-org&project=test-project")
+        response = client.get(
+            "/api/scenarios/compare?org=test-org&project=test-project"
+        )
         assert response.status_code == 200
 
         data = response.json()
@@ -157,7 +163,9 @@ class TestCompareScenarios:
         mock_get_session.return_value = mock_db_session
         mock_get_vendors.return_value = []
 
-        response = client.get("/api/scenarios/compare?org=test-org&project=test-project")
+        response = client.get(
+            "/api/scenarios/compare?org=test-org&project=test-project"
+        )
         assert response.status_code == 200
 
         data = response.json()
@@ -202,11 +210,19 @@ class TestExportScenarios:
         excel_buffer = BytesIO(b"fake excel data")
         mock_export_excel.return_value = excel_buffer
 
-        response = client.get("/api/scenarios/export?org=test-org&project=test-project&vendors=VENDOR1")
+        response = client.get(
+            "/api/scenarios/export?org=test-org&project=test-project&vendors=VENDOR1"
+        )
         assert response.status_code == 200
-        assert "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" in response.headers["content-type"]
+        assert (
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            in response.headers["content-type"]
+        )
         assert "attachment" in response.headers["content-disposition"]
-        assert "scenario_comparison_test-org_test-project" in response.headers["content-disposition"]
+        assert (
+            "scenario_comparison_test-org_test-project"
+            in response.headers["content-disposition"]
+        )
 
     @patch("bimcalc.web.routes.scenarios.get_session")
     @patch("bimcalc.reporting.scenario.get_available_vendors")
@@ -260,7 +276,9 @@ class TestExportScenarios:
         excel_buffer = BytesIO(b"fake excel data")
         mock_export_excel.return_value = excel_buffer
 
-        response = client.get("/api/scenarios/export?org=test-org&project=test-project&vendors=V1&vendors=V2&vendors=V3")
+        response = client.get(
+            "/api/scenarios/export?org=test-org&project=test-project&vendors=V1&vendors=V2&vendors=V3"
+        )
         assert response.status_code == 200
 
         # Verify compute_vendor_scenario called for each vendor

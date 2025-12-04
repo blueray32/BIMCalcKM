@@ -173,7 +173,9 @@ async def run_migration(session: AsyncSession, dry_run: bool = False) -> None:
             console.print("[bold red]✗[/bold red] data_sync_log table not found")
 
         # Count updated records
-        result = await session.execute(text("SELECT COUNT(*) FROM price_items WHERE is_current = true"))
+        result = await session.execute(
+            text("SELECT COUNT(*) FROM price_items WHERE is_current = true")
+        )
         active_count = result.scalar()
         console.print(f"[bold green]✓[/bold green] {active_count} active price records")
 
@@ -213,8 +215,12 @@ async def run_rollback(session: AsyncSession, dry_run: bool = False) -> None:
 
 @app.command()
 def migrate(
-    execute: bool = typer.Option(False, "--execute", help="Execute migration (default: dry-run)"),
-    rollback: bool = typer.Option(False, "--rollback", help="Rollback migration (DESTRUCTIVE)"),
+    execute: bool = typer.Option(
+        False, "--execute", help="Execute migration (default: dry-run)"
+    ),
+    rollback: bool = typer.Option(
+        False, "--rollback", help="Rollback migration (DESTRUCTIVE)"
+    ),
 ):
     """Upgrade database to SCD Type-2 schema."""
 

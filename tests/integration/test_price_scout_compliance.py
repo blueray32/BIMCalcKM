@@ -4,14 +4,11 @@ Tests end-to-end flow with robots.txt checking, rate limiting, and price validat
 """
 
 import pytest
-import asyncio
 import time
 from unittest.mock import Mock, patch, AsyncMock
 from decimal import Decimal
 
 from bimcalc.intelligence.price_scout import SmartPriceScout
-from bimcalc.intelligence.scraping_compliance import ComplianceChecker
-from bimcalc.intelligence.rate_limiter import DomainRateLimiter
 from bimcalc.config import PriceScoutConfig, AppConfig
 
 
@@ -86,7 +83,10 @@ class TestComplianceIntegration:
         mock_openai.return_value = mock_client_instance
 
         # Test extraction
-        with patch("bimcalc.intelligence.price_scout.get_config", return_value=compliance_config):
+        with patch(
+            "bimcalc.intelligence.price_scout.get_config",
+            return_value=compliance_config,
+        ):
             scout = SmartPriceScout()
             result = await scout.extract("https://example.com/products/test")
 
@@ -113,10 +113,14 @@ class TestComplianceIntegration:
 
         # Clear cache
         from bimcalc.intelligence.scraping_compliance import _get_robots_parser
+
         _get_robots_parser.cache_clear()
 
         # Test extraction
-        with patch("bimcalc.intelligence.price_scout.get_config", return_value=compliance_config):
+        with patch(
+            "bimcalc.intelligence.price_scout.get_config",
+            return_value=compliance_config,
+        ):
             scout = SmartPriceScout()
 
             with pytest.raises(ValueError, match="robots.txt"):
@@ -127,13 +131,18 @@ class TestComplianceIntegration:
         """Test rate limiting delays between requests."""
         compliance_config.price_scout.default_rate_limit_seconds = 0.5
 
-        with patch("bimcalc.intelligence.price_scout.get_config", return_value=compliance_config):
+        with patch(
+            "bimcalc.intelligence.price_scout.get_config",
+            return_value=compliance_config,
+        ):
             # Disable robots.txt for this test
             compliance_config.price_scout.respect_robots_txt = False
 
             # Mock everything to make extraction fast
             with patch.object(
-                SmartPriceScout, "_fetch_page_content_with_retry", new_callable=AsyncMock
+                SmartPriceScout,
+                "_fetch_page_content_with_retry",
+                new_callable=AsyncMock,
             ) as mock_fetch:
                 mock_fetch.return_value = "test content"
 
@@ -204,7 +213,10 @@ class TestComplianceIntegration:
         mock_openai.return_value = mock_client_instance
 
         # Test extraction
-        with patch("bimcalc.intelligence.price_scout.get_config", return_value=compliance_config):
+        with patch(
+            "bimcalc.intelligence.price_scout.get_config",
+            return_value=compliance_config,
+        ):
             scout = SmartPriceScout()
             result = await scout.extract("https://example.com/products")
 
@@ -238,7 +250,10 @@ class TestRetryLogic:
                 raise Exception("Transient error")
             return "Success content"
 
-        with patch("bimcalc.intelligence.price_scout.get_config", return_value=compliance_config):
+        with patch(
+            "bimcalc.intelligence.price_scout.get_config",
+            return_value=compliance_config,
+        ):
             with patch.object(
                 SmartPriceScout,
                 "_fetch_page_content",
@@ -267,7 +282,10 @@ class TestRetryLogic:
         async def mock_fetch_that_always_fails(url):
             raise Exception("Persistent error")
 
-        with patch("bimcalc.intelligence.price_scout.get_config", return_value=compliance_config):
+        with patch(
+            "bimcalc.intelligence.price_scout.get_config",
+            return_value=compliance_config,
+        ):
             with patch.object(
                 SmartPriceScout,
                 "_fetch_page_content",
@@ -333,10 +351,14 @@ class TestEndToEndCompliance:
 
         # Clear cache
         from bimcalc.intelligence.scraping_compliance import _get_robots_parser
+
         _get_robots_parser.cache_clear()
 
         # Test full workflow
-        with patch("bimcalc.intelligence.price_scout.get_config", return_value=compliance_config):
+        with patch(
+            "bimcalc.intelligence.price_scout.get_config",
+            return_value=compliance_config,
+        ):
             scout = SmartPriceScout()
 
             # First extraction

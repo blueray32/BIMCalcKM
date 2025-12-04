@@ -99,7 +99,9 @@ def is_url_allowed(url: str, user_agent: str = "BIMCalc PriceScout/1.0") -> bool
         return True
 
 
-def get_crawl_delay(url: str, user_agent: str = "BIMCalc PriceScout/1.0") -> float | None:
+def get_crawl_delay(
+    url: str, user_agent: str = "BIMCalc PriceScout/1.0"
+) -> float | None:
     """Get crawl delay from robots.txt if specified.
 
     Args:

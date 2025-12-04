@@ -9,7 +9,7 @@ Tests:
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from uuid import uuid4
 
 import pytest
@@ -43,10 +43,10 @@ async def seed_price_items():
         # Cable tray elbow 90° 200x50mm
         price1 = PriceItemModel(
             org_id="test-org",  # Add org_id
-            item_code="CT-200x50-90", # Add item_code
-            region="IE", # Add region
-            source_name="test", # Add source_name
-            source_currency="EUR", # Add source_currency
+            item_code="CT-200x50-90",  # Add item_code
+            region="IE",  # Add region
+            source_name="test",  # Add source_name
+            source_currency="EUR",  # Add source_currency
             vendor_id="test",
             sku="CT-200x50-90",
             description="Cable Tray Ladder Elbow 90° 200x50mm Galvanized",
@@ -168,7 +168,9 @@ async def test_two_pass_matching(db_setup, seed_price_items):
         result_b, price_b = await orchestrator.match(item_b, created_by="test")
 
         assert result_b.decision == "auto-accepted", "Second match should auto-accept"
-        assert "mapping memory" in result_b.reason.lower(), "Should use instant mapping lookup"
+        assert "mapping memory" in result_b.reason.lower(), (
+            "Should use instant mapping lookup"
+        )
         assert price_b is not None
         assert price_b.sku == "CT-200x50-90", "Should match same price item"
 
@@ -214,7 +216,7 @@ async def test_as_of_report_reproducibility(db_setup, seed_price_items):
             height_mm=50.0,
             angle_deg=90.0,
             material="galvanized_steel",
-            canonical_key="66|cable_tray|elbow|w=200|h=50|a=90", # Manually set for test
+            canonical_key="66|cable_tray|elbow|w=200|h=50|a=90",  # Manually set for test
         )
         session.add(item)
         await session.commit()
@@ -282,14 +284,20 @@ async def test_as_of_report_reproducibility(db_setup, seed_price_items):
         # Regenerate report at T1 (should be identical)
         report1_replay = await generate_report(session, org_id, project_id, as_of=t1)
         assert len(report1_replay) == 1
-        assert report1_replay.iloc[0]["sku"] == "CT-200x50-90", "As-of T1 should show old mapping"
-        assert report1_replay.iloc[0]["total_net"] == total1, "Total should be identical"
+        assert report1_replay.iloc[0]["sku"] == "CT-200x50-90", (
+            "As-of T1 should show old mapping"
+        )
+        assert report1_replay.iloc[0]["total_net"] == total1, (
+            "Total should be identical"
+        )
 
         # Generate report at T3 (current time - should show new mapping)
         t3 = datetime.now(timezone.utc)
         report3 = await generate_report(session, org_id, project_id, as_of=t3)
         assert len(report3) == 1
-        assert report3.iloc[0]["sku"] == "CT-200x50-45", "As-of T3 should show new mapping"
+        assert report3.iloc[0]["sku"] == "CT-200x50-45", (
+            "As-of T3 should show new mapping"
+        )
         assert report3.iloc[0]["total_net"] != total1, "Total should be different"
 
 
@@ -337,7 +345,9 @@ async def test_classification_blocking_performance(db_setup, seed_price_items):
 
         # All candidates should have classification_code = 2650
         for candidate in candidates:
-            assert candidate.classification_code == 2650, "Should only return cable tray items"
+            assert candidate.classification_code == 2650, (
+                "Should only return cable tray items"
+            )
 
         # Verify reduction factor
         blocked_count = len(candidates)
@@ -384,9 +394,13 @@ async def test_critical_veto_flag_blocks_auto_accept(db_setup, seed_price_items)
         result, price = await orchestrator.match(item, created_by="test")
 
         # Should route to manual review due to Critical-Veto flag
-        assert result.decision == "manual-review", "Critical-Veto should block auto-accept"
+        assert result.decision == "manual-review", (
+            "Critical-Veto should block auto-accept"
+        )
         assert len(result.flags) > 0, "Should have flags"
-        assert any("unit" in flag.message.lower() for flag in result.flags), "Should have unit conflict flag"
+        assert any("unit" in flag.message.lower() for flag in result.flags), (
+            "Should have unit conflict flag"
+        )
 
 
 if __name__ == "__main__":

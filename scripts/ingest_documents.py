@@ -1,12 +1,10 @@
 import sys
 import os
 import asyncio
-import re
 from uuid import uuid4
 from datetime import datetime
 from pypdf import PdfReader
 from docx import Document as DocxDocument
-import openai
 from openai import AsyncOpenAI
 
 # Add project root to path
@@ -19,21 +17,21 @@ from sqlalchemy import select
 # Configure OpenAI
 client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
+
 async def get_embedding(text):
     if not client.api_key:
-        return [0.0] * 1536 # Placeholder
+        return [0.0] * 1536  # Placeholder
     try:
         # Truncate text to avoid token limits (rough approx)
-        truncated_text = text[:8000] 
+        truncated_text = text[:8000]
         response = await client.embeddings.create(
-            input=truncated_text,
-            model="text-embedding-3-large",
-            dimensions=1536
+            input=truncated_text, model="text-embedding-3-large", dimensions=1536
         )
         return response.data[0].embedding
     except Exception as e:
         print(f"Embedding error: {e}")
         return [0.0] * 1536
+
 
 def extract_text(file_path):
     ext = os.path.splitext(file_path)[1].lower()
@@ -54,6 +52,7 @@ def extract_text(file_path):
         print(f"Error extracting text from {file_path}: {e}")
     return text.strip()
 
+
 def get_tags(file_path):
     tags = []
     path_lower = file_path.lower()
@@ -70,6 +69,7 @@ def get_tags(file_path):
     if "test report" in path_lower:
         tags.append("#TestReport")
     return tags
+
 
 async def ingest_document(file_path, item_refs):
     print(f"Ingesting: {file_path}")
@@ -91,7 +91,7 @@ async def ingest_document(file_path, item_refs):
         doc_type=os.path.splitext(file_path)[1].lower(),
         source_file=file_path,
         created_at=datetime.utcnow(),
-        updated_at=datetime.utcnow()
+        updated_at=datetime.utcnow(),
     )
 
     links = []
@@ -107,7 +107,7 @@ async def ingest_document(file_path, item_refs):
                 item_id=item_id,
                 document_id=doc_id,
                 link_type="auto_match",
-                confidence=0.8
+                confidence=0.8,
             )
             links.append(link)
 
@@ -117,6 +117,7 @@ async def ingest_document(file_path, item_refs):
             session.add(link)
         await session.commit()
         print("Saved document and links.")
+
 
 async def main():
     if len(sys.argv) < 2:
@@ -128,8 +129,9 @@ async def main():
     item_refs = {}
     async with get_session() as session:
         result = await session.execute(
-            select(ItemModel.id, ItemModel.type_name)
-            .where(ItemModel.project_id == 'tritex24-229')
+            select(ItemModel.id, ItemModel.type_name).where(
+                ItemModel.project_id == "tritex24-229"
+            )
         )
         for row in result:
             item_refs[row.type_name] = row.id
@@ -140,7 +142,9 @@ async def main():
         if os.path.isdir(path):
             for root, _, files in os.walk(path):
                 for file in files:
-                    if file.lower().endswith((".pdf", ".docx", ".txt")) and not file.startswith("~$"):
+                    if file.lower().endswith(
+                        (".pdf", ".docx", ".txt")
+                    ) and not file.startswith("~$"):
                         files_to_process.append(os.path.join(root, file))
         else:
             files_to_process.append(path)
@@ -148,6 +152,7 @@ async def main():
     print(f"Found {len(files_to_process)} documents.")
     for file_path in files_to_process:
         await ingest_document(file_path, item_refs)
+
 
 if __name__ == "__main__":
     asyncio.run(main())

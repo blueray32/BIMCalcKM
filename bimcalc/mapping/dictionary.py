@@ -8,8 +8,10 @@ class MappingRow:
     canonical_key: str
     price_item_id: int
 
+
 class InMemoryDictionary:
     """Demo dictionary; replace with DB-backed SCD2 in production."""
+
     def __init__(self) -> None:
         self._store: dict[str, MappingRow] = {}
 

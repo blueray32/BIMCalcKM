@@ -34,6 +34,7 @@ router = APIRouter(tags=["items"])
 # Items Management Routes
 # ============================================================================
 
+
 @router.get("/items", response_class=HTMLResponse)
 async def items_list(
     request: Request,
@@ -75,9 +76,13 @@ async def items_list(
             stmt = stmt.where(ItemModel.category == category)
 
         # Get total count with filters
-        count_stmt = select(func.count()).select_from(ItemModel).where(
-            ItemModel.org_id == org_id,
-            ItemModel.project_id == project_id,
+        count_stmt = (
+            select(func.count())
+            .select_from(ItemModel)
+            .where(
+                ItemModel.org_id == org_id,
+                ItemModel.project_id == project_id,
+            )
         )
         if search:
             search_term = f"%{search}%"
@@ -230,7 +235,9 @@ async def items_export(
     output.seek(0)
 
     # Return as downloadable file
-    filename = f"items_{org_id}_{project_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+    filename = (
+        f"items_{org_id}_{project_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+    )
     return StreamingResponse(
         output,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",

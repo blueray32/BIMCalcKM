@@ -27,20 +27,24 @@ router = APIRouter(tags=["authentication"])
 # Authentication Routes
 # ============================================================================
 
+
 @router.get("/login", response_class=HTMLResponse)
 async def login_page(
     request: Request,
     error: str | None = None,
-    templates = Depends(get_templates),
+    templates=Depends(get_templates),
 ):
     """Login page.
 
     Extracted from: app_enhanced.py:183
     """
-    return templates.TemplateResponse("login.html", {
-        "request": request,
-        "error": error,
-    })
+    return templates.TemplateResponse(
+        "login.html",
+        {
+            "request": request,
+            "error": error,
+        },
+    )
 
 
 @router.post("/login")
@@ -77,10 +81,7 @@ async def login(
 
 
 @router.get("/logout")
-async def logout(
-    response: Response,
-    session: str | None = Cookie(default=None)
-):
+async def logout(response: Response, session: str | None = Cookie(default=None)):
     """Logout and clear session.
 
     Invalidates session and redirects to login page.
@@ -98,6 +99,7 @@ async def logout(
 # ============================================================================
 # Utility Routes
 # ============================================================================
+
 
 @router.get("/favicon.ico", include_in_schema=False)
 async def favicon():

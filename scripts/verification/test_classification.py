@@ -1,4 +1,5 @@
 """Quick test of classification system."""
+
 from bimcalc.classification.trust_hierarchy import classify_item
 from bimcalc.models import Item
 
@@ -26,7 +27,7 @@ item2 = Item(
     height_mm=600.0,
 )
 
-#Test pipe (should be 2215)
+# Test pipe (should be 2215)
 item3 = Item(
     org_id="test",
     project_id="test",

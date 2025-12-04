@@ -61,14 +61,14 @@ async def ingest_schedule(
     elif file_path.suffix.lower() in (".xlsx", ".xls"):
         df = pd.read_excel(file_path)
     else:
-        raise ValueError(f"Unsupported file format: {file_path.suffix}. Use CSV or XLSX.")
+        raise ValueError(
+            f"Unsupported file format: {file_path.suffix}. Use CSV or XLSX."
+        )
 
     # Check row count limit
     MAX_ROWS = 50000
     if len(df) > MAX_ROWS:
-        raise ValueError(
-            f"Too many rows ({len(df):,}). Maximum allowed: {MAX_ROWS:,}"
-        )
+        raise ValueError(f"Too many rows ({len(df):,}). Maximum allowed: {MAX_ROWS:,}")
 
     # Validate required columns
     required_cols = {"Family", "Type"}
@@ -125,6 +125,7 @@ async def ingest_schedule(
 
             # Check for duplicate before inserting
             from sqlalchemy import select
+
             existing_item = await session.execute(
                 select(ItemModel).where(
                     ItemModel.org_id == org_id,
@@ -133,10 +134,12 @@ async def ingest_schedule(
                     ItemModel.type_name == type_name,
                 )
             )
-            
+
             if existing_item.scalar_one_or_none():
                 # Item already exists - skip or update
-                errors.append(f"Row {idx}: Duplicate item (Family='{family}', Type='{type_name}') - skipped")
+                errors.append(
+                    f"Row {idx}: Duplicate item (Family='{family}', Type='{type_name}') - skipped"
+                )
                 continue
 
             session.add(item_model)

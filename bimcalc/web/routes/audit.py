@@ -25,6 +25,7 @@ router = APIRouter(tags=["audit"])
 # Audit Trail Routes
 # ============================================================================
 
+
 @router.get("/audit", response_class=HTMLResponse)
 async def audit_trail(
     request: Request,

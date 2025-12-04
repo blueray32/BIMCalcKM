@@ -36,14 +36,17 @@ class PerformanceBenchmark:
     async def setup(self):
         """Initialize database connection."""
         self.engine = create_async_engine(self.database_url, echo=False)
-        
+
         # Create tables
         from bimcalc.db.models import Base
+
         async with self.engine.begin() as conn:
             await conn.run_sync(Base.metadata.drop_all)
             await conn.run_sync(Base.metadata.create_all)
-            
-        self.session_factory = sessionmaker(self.engine, class_=AsyncSession, expire_on_commit=False)
+
+        self.session_factory = sessionmaker(
+            self.engine, class_=AsyncSession, expire_on_commit=False
+        )
 
     async def teardown(self):
         """Close database connection."""
@@ -54,7 +57,9 @@ class PerformanceBenchmark:
         """Get statistics about the price catalog."""
         # Total prices
         total_result = await session.execute(
-            select(func.count(PriceItemModel.id)).where(PriceItemModel.is_current == True)
+            select(func.count(PriceItemModel.id)).where(
+                PriceItemModel.is_current == True
+            )
         )
         total_prices = total_result.scalar()
 
@@ -112,9 +117,9 @@ class PerformanceBenchmark:
         num_iterations: int = 100,
     ) -> dict[str, Any]:
         """Benchmark candidate generation with classification blocking."""
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print("BENCHMARK: Candidate Generation")
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
 
         generator = CandidateGenerator(session)
 
@@ -149,7 +154,9 @@ class PerformanceBenchmark:
         print(f"  Min:        {results['min_ms']:.2f} ms")
         print(f"  Mean:       {results['mean_ms']:.2f} ms")
         print(f"  Median:     {results['median_ms']:.2f} ms")
-        print(f"  p95:        {results['p95_ms']:.2f} ms {'✓' if results['p95_ms'] < 500 else '✗ EXCEEDS TARGET'}")
+        print(
+            f"  p95:        {results['p95_ms']:.2f} ms {'✓' if results['p95_ms'] < 500 else '✗ EXCEEDS TARGET'}"
+        )
         print(f"  p99:        {results['p99_ms']:.2f} ms")
         print(f"  Max:        {results['max_ms']:.2f} ms")
         print(f"  Std Dev:    {results['std_dev_ms']:.2f} ms")
@@ -163,9 +170,9 @@ class PerformanceBenchmark:
         num_iterations: int = 50,
     ) -> dict[str, Any]:
         """Benchmark escape-hatch candidate generation."""
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print("BENCHMARK: Escape-Hatch Candidate Generation")
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
 
         generator = CandidateGenerator(session)
 
@@ -176,7 +183,9 @@ class PerformanceBenchmark:
         latencies = []
         for i in range(num_iterations):
             start = time.perf_counter()
-            candidates, used_escape_hatch = await generator.generate_with_escape_hatch(item, max_escape_hatch=2)
+            candidates, used_escape_hatch = await generator.generate_with_escape_hatch(
+                item, max_escape_hatch=2
+            )
             end = time.perf_counter()
             latency_ms = (end - start) * 1000
             latencies.append(latency_ms)
@@ -201,7 +210,9 @@ class PerformanceBenchmark:
         print(f"  Min:        {results['min_ms']:.2f} ms")
         print(f"  Mean:       {results['mean_ms']:.2f} ms")
         print(f"  Median:     {results['median_ms']:.2f} ms")
-        print(f"  p95:        {results['p95_ms']:.2f} ms {'✓' if results['p95_ms'] < 1000 else '✗ EXCEEDS TARGET'}")
+        print(
+            f"  p95:        {results['p95_ms']:.2f} ms {'✓' if results['p95_ms'] < 1000 else '✗ EXCEEDS TARGET'}"
+        )
         print(f"  p99:        {results['p99_ms']:.2f} ms")
         print(f"  Max:        {results['max_ms']:.2f} ms")
 
@@ -214,9 +225,9 @@ class PerformanceBenchmark:
         num_iterations: int = 50,
     ) -> dict[str, Any]:
         """Benchmark complete matching workflow."""
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print("BENCHMARK: End-to-End Matching")
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
 
         orchestrator = MatchOrchestrator(session)
         item = self.create_test_item(org_id, classification_code=66)
@@ -224,7 +235,9 @@ class PerformanceBenchmark:
         latencies = []
         for i in range(num_iterations):
             start = time.perf_counter()
-            result, matched_price = await orchestrator.match(item, created_by="benchmark")
+            result, matched_price = await orchestrator.match(
+                item, created_by="benchmark"
+            )
             end = time.perf_counter()
             latency_ms = (end - start) * 1000
             latencies.append(latency_ms)
@@ -249,7 +262,9 @@ class PerformanceBenchmark:
         print(f"  Min:        {results['min_ms']:.2f} ms")
         print(f"  Mean:       {results['mean_ms']:.2f} ms")
         print(f"  Median:     {results['median_ms']:.2f} ms")
-        print(f"  p95:        {results['p95_ms']:.2f} ms {'✓' if results['p95_ms'] < 500 else '✗ EXCEEDS TARGET'}")
+        print(
+            f"  p95:        {results['p95_ms']:.2f} ms {'✓' if results['p95_ms'] < 500 else '✗ EXCEEDS TARGET'}"
+        )
         print(f"  p99:        {results['p99_ms']:.2f} ms")
         print(f"  Max:        {results['max_ms']:.2f} ms")
 
@@ -261,9 +276,9 @@ class PerformanceBenchmark:
         org_id: str,
     ) -> dict[str, Any]:
         """Measure candidate reduction from classification blocking."""
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print("BENCHMARK: Classification Blocking Effectiveness")
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
 
         # Get total prices
         total_result = await session.execute(
@@ -290,15 +305,23 @@ class PerformanceBenchmark:
             "total_prices": total_prices,
             "after_classification_blocking": class_66_prices,
             "reduction_factor": reduction_factor,
-            "reduction_percentage": ((total_prices - class_66_prices) / total_prices * 100) if total_prices > 0 else 0,
+            "reduction_percentage": (
+                (total_prices - class_66_prices) / total_prices * 100
+            )
+            if total_prices > 0
+            else 0,
         }
 
         print("\nResults:")
         print(f"  Total prices in catalog:      {results['total_prices']:,}")
-        print(f"  After classification block:   {results['after_classification_blocking']:,}")
+        print(
+            f"  After classification block:   {results['after_classification_blocking']:,}"
+        )
         print(f"  Reduction factor:             {results['reduction_factor']:.1f}×")
         print(f"  Reduction percentage:         {results['reduction_percentage']:.1f}%")
-        print(f"  Target (≥20×):                {'✓ PASSED' if reduction_factor >= 20 else '✗ FAILED'}")
+        print(
+            f"  Target (≥20×):                {'✓ PASSED' if reduction_factor >= 20 else '✗ FAILED'}"
+        )
 
         return results
 
@@ -331,16 +354,24 @@ class PerformanceBenchmark:
             results = {}
 
             # 1. Classification blocking effectiveness
-            results["classification_blocking"] = await self.benchmark_classification_blocking_reduction(session, org_id)
+            results[
+                "classification_blocking"
+            ] = await self.benchmark_classification_blocking_reduction(session, org_id)
 
             # 2. Candidate generation
-            results["candidate_generation"] = await self.benchmark_candidate_generation(session, org_id, num_iterations=100)
+            results["candidate_generation"] = await self.benchmark_candidate_generation(
+                session, org_id, num_iterations=100
+            )
 
             # 3. Escape-hatch
-            results["escape_hatch"] = await self.benchmark_escape_hatch(session, org_id, num_iterations=50)
+            results["escape_hatch"] = await self.benchmark_escape_hatch(
+                session, org_id, num_iterations=50
+            )
 
             # 4. End-to-end matching
-            results["end_to_end"] = await self.benchmark_end_to_end_matching(session, org_id, num_iterations=50)
+            results["end_to_end"] = await self.benchmark_end_to_end_matching(
+                session, org_id, num_iterations=50
+            )
 
             return results
 
@@ -370,27 +401,35 @@ async def main():
         print("=" * 60)
 
         print("\nClassification Blocking:")
-        print(f"  Reduction factor: {results['classification_blocking']['reduction_factor']:.1f}× ({'✓' if results['classification_blocking']['reduction_factor'] >= 20 else '✗'})")
+        print(
+            f"  Reduction factor: {results['classification_blocking']['reduction_factor']:.1f}× ({'✓' if results['classification_blocking']['reduction_factor'] >= 20 else '✗'})"
+        )
 
         print("\nCandidate Generation:")
-        print(f"  p95 latency: {results['candidate_generation']['p95_ms']:.2f} ms ({'✓' if results['candidate_generation']['p95_ms'] < 500 else '✗'})")
+        print(
+            f"  p95 latency: {results['candidate_generation']['p95_ms']:.2f} ms ({'✓' if results['candidate_generation']['p95_ms'] < 500 else '✗'})"
+        )
 
         print("\nEscape-Hatch:")
         print(f"  p95 latency: {results['escape_hatch']['p95_ms']:.2f} ms")
 
         print("\nEnd-to-End Matching:")
-        print(f"  p95 latency: {results['end_to_end']['p95_ms']:.2f} ms ({'✓' if results['end_to_end']['p95_ms'] < 500 else '✗'})")
+        print(
+            f"  p95 latency: {results['end_to_end']['p95_ms']:.2f} ms ({'✓' if results['end_to_end']['p95_ms'] < 500 else '✗'})"
+        )
 
         # Overall status
         all_pass = (
-            results['classification_blocking']['reduction_factor'] >= 20
-            and results['candidate_generation']['p95_ms'] < 500
-            and results['end_to_end']['p95_ms'] < 500
+            results["classification_blocking"]["reduction_factor"] >= 20
+            and results["candidate_generation"]["p95_ms"] < 500
+            and results["end_to_end"]["p95_ms"] < 500
         )
 
-        print(f"\n{'='*60}")
-        print(f"Overall Status: {'✓ ALL TARGETS MET' if all_pass else '⚠ SOME TARGETS MISSED'}")
-        print(f"{'='*60}\n")
+        print(f"\n{'=' * 60}")
+        print(
+            f"Overall Status: {'✓ ALL TARGETS MET' if all_pass else '⚠ SOME TARGETS MISSED'}"
+        )
+        print(f"{'=' * 60}\n")
 
     finally:
         await benchmark.teardown()

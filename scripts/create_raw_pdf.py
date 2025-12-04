@@ -59,10 +59,11 @@ def create_minimal_pdf(filename):
         b"676\n"
         b"%%EOF\n"
     )
-    
+
     with open(filename, "wb") as f:
         f.write(content)
     print(f"Created {filename}")
+
 
 if __name__ == "__main__":
     create_minimal_pdf("dummy_quote.pdf")

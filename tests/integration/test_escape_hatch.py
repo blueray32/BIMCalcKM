@@ -36,7 +36,9 @@ async def db_session() -> AsyncSession:
 
 
 @pytest.mark.asyncio
-async def test_escape_hatch_engages_when_no_in_class_candidates(db_session: AsyncSession):
+async def test_escape_hatch_engages_when_no_in_class_candidates(
+    db_session: AsyncSession,
+):
     """Test that escape-hatch engages when no in-class candidates exist.
 
     Scenario:
@@ -116,7 +118,9 @@ async def test_escape_hatch_engages_when_no_in_class_candidates(db_session: Asyn
         height_mm=item.height_mm,
     )
 
-    candidates, used_escape_hatch = await generator.generate_with_escape_hatch(item_pydantic)
+    candidates, used_escape_hatch = await generator.generate_with_escape_hatch(
+        item_pydantic
+    )
 
     # Assertions
     assert used_escape_hatch is True, "Escape-hatch should have been used"
@@ -125,12 +129,16 @@ async def test_escape_hatch_engages_when_no_in_class_candidates(db_session: Asyn
 
     # Verify candidate is out-of-class
     for candidate in candidates:
-        assert candidate.classification_code == 22, "Candidate should be from different class"
+        assert candidate.classification_code == 22, (
+            "Candidate should be from different class"
+        )
         assert candidate.classification_code != item.classification_code
 
 
 @pytest.mark.asyncio
-async def test_escape_hatch_not_used_when_in_class_candidates_exist(db_session: AsyncSession):
+async def test_escape_hatch_not_used_when_in_class_candidates_exist(
+    db_session: AsyncSession,
+):
     """Test that escape-hatch is NOT used when in-class candidates exist.
 
     Scenario:
@@ -193,7 +201,9 @@ async def test_escape_hatch_not_used_when_in_class_candidates_exist(db_session: 
         height_mm=item.height_mm,
     )
 
-    candidates, used_escape_hatch = await generator.generate_with_escape_hatch(item_pydantic)
+    candidates, used_escape_hatch = await generator.generate_with_escape_hatch(
+        item_pydantic
+    )
 
     # Assertions
     assert used_escape_hatch is False, "Escape-hatch should NOT have been used"
@@ -205,7 +215,9 @@ async def test_escape_hatch_not_used_when_in_class_candidates_exist(db_session: 
 
 
 @pytest.mark.asyncio
-async def test_orchestrator_adds_classification_mismatch_flag_for_escape_hatch(db_session: AsyncSession):
+async def test_orchestrator_adds_classification_mismatch_flag_for_escape_hatch(
+    db_session: AsyncSession,
+):
     """Test that orchestrator adds Classification Mismatch flag when escape-hatch is used.
 
     Scenario:
@@ -270,17 +282,27 @@ async def test_orchestrator_adds_classification_mismatch_flag_for_escape_hatch(d
     result, matched_price = await orchestrator.match(item_pydantic, created_by="test")
 
     # Assertions
-    assert result.decision == "manual-review", "Escape-hatch matches should require manual review"
+    assert result.decision == "manual-review", (
+        "Escape-hatch matches should require manual review"
+    )
     assert matched_price is not None, "Should have found a match via escape-hatch"
 
     # Check for Classification Mismatch flag
     flag_types = [f.type for f in result.flags]
-    assert "Classification Mismatch" in flag_types, "Should have Classification Mismatch flag"
+    assert "Classification Mismatch" in flag_types, (
+        "Should have Classification Mismatch flag"
+    )
 
     # Verify flag is CRITICAL_VETO
-    classification_flag = next(f for f in result.flags if f.type == "Classification Mismatch")
-    assert classification_flag.severity == "Critical-Veto", "Classification Mismatch must be Critical-Veto"
-    assert "escape-hatch" in classification_flag.message.lower(), "Flag should mention escape-hatch"
+    classification_flag = next(
+        f for f in result.flags if f.type == "Classification Mismatch"
+    )
+    assert classification_flag.severity == "Critical-Veto", (
+        "Classification Mismatch must be Critical-Veto"
+    )
+    assert "escape-hatch" in classification_flag.message.lower(), (
+        "Flag should mention escape-hatch"
+    )
 
 
 @pytest.mark.asyncio
@@ -361,7 +383,9 @@ async def test_escape_hatch_respects_numeric_filters(db_session: AsyncSession):
         height_mm=item.height_mm,
     )
 
-    candidates, used_escape_hatch = await generator.generate_with_escape_hatch(item_pydantic)
+    candidates, used_escape_hatch = await generator.generate_with_escape_hatch(
+        item_pydantic
+    )
 
     # Assertions
     assert used_escape_hatch is True, "Escape-hatch should be used"

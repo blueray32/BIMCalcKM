@@ -253,11 +253,15 @@ async def test_escape_hatch_respects_org_isolation(db_session: AsyncSession):
         width_mm=item_acme.width_mm,
     )
 
-    candidates, used_escape_hatch = await generator.generate_with_escape_hatch(item_pydantic)
+    candidates, used_escape_hatch = await generator.generate_with_escape_hatch(
+        item_pydantic
+    )
 
     # Assertions
     # Escape-hatch should be attempted but find nothing (org isolation)
-    assert len(candidates) == 0, "Should not return candidates from different org, even with escape-hatch"
+    assert len(candidates) == 0, (
+        "Should not return candidates from different org, even with escape-hatch"
+    )
 
 
 @pytest.mark.asyncio
@@ -337,7 +341,9 @@ async def test_multiple_orgs_with_same_item_codes(db_session: AsyncSession):
     # Assertions
     assert len(candidates) == 1, "Should return exactly one candidate"
     assert candidates[0].sku == "SKU-ACME", "Should return acme's price"
-    assert candidates[0].unit_price == Decimal("25.0"), "Should return acme's unit price"
+    assert candidates[0].unit_price == Decimal("25.0"), (
+        "Should return acme's unit price"
+    )
 
 
 @pytest.mark.asyncio

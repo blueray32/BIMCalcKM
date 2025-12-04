@@ -11,7 +11,10 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from bimcalc.classification.cmm_loader import ClassificationMappingLoader, load_vendor_mapping
+from bimcalc.classification.cmm_loader import (
+    ClassificationMappingLoader,
+    load_vendor_mapping,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +30,7 @@ class TranslationResult:
         internal_group: Extracted internal group (if mapped)
         original_fields: Original field values before translation (for audit)
     """
+
     row: dict[str, Any]
     was_mapped: bool
     canonical_code: str | None = None
@@ -54,9 +58,13 @@ class VendorTranslator:
         self.loader = load_vendor_mapping(vendor_id, config_dir)
 
         if self.loader:
-            logger.info(f"Loaded vendor mapping for '{vendor_id}' with {len(self.loader.rules)} rules")
+            logger.info(
+                f"Loaded vendor mapping for '{vendor_id}' with {len(self.loader.rules)} rules"
+            )
         else:
-            logger.info(f"No vendor mapping found for '{vendor_id}', translation disabled")
+            logger.info(
+                f"No vendor mapping found for '{vendor_id}', translation disabled"
+            )
 
     def translate_row(self, row: dict[str, Any]) -> TranslationResult:
         """Translate a single row using CMM rules.
@@ -78,7 +86,9 @@ class VendorTranslator:
         # Store original fields for audit trail
         original_fields = {
             "description": row.get("Description", row.get("Description1", "")),
-            "classification_code": row.get("Classification Code", row.get("classification_code", "")),
+            "classification_code": row.get(
+                "Classification Code", row.get("classification_code", "")
+            ),
         }
 
         # Apply translation

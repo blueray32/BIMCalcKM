@@ -282,7 +282,7 @@ class TestRunMatching:
                     confidence_score=0.90,
                     flags=[],
                 ),
-                MagicMock()
+                MagicMock(),
             )
 
         mock_orchestrator.match.side_effect = mock_match_fn

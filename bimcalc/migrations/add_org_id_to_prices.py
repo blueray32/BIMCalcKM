@@ -118,13 +118,17 @@ async def run_migration(session: AsyncSession, dry_run: bool = False) -> None:
         count = result.scalar()
 
         if count == 1:
-            console.print("[bold green]✓[/bold green] org_id column added to price_items")
+            console.print(
+                "[bold green]✓[/bold green] org_id column added to price_items"
+            )
         else:
             console.print("[bold red]✗[/bold red] org_id column not found")
 
         # Count price records by org
         result = await session.execute(
-            text("SELECT org_id, COUNT(*) FROM price_items WHERE is_current = true GROUP BY org_id")
+            text(
+                "SELECT org_id, COUNT(*) FROM price_items WHERE is_current = true GROUP BY org_id"
+            )
         )
         org_counts = result.all()
         console.print("[bold green]✓[/bold green] Price records by org:")
@@ -141,11 +145,15 @@ async def run_rollback(session: AsyncSession, dry_run: bool = False) -> None:
     """Execute rollback SQL."""
     if dry_run:
         console.print("[yellow]DRY RUN MODE - No changes will be made[/yellow]\n")
-        console.print("[bold red]Rollback SQL (REMOVES MULTI-TENANT ISOLATION):[/bold red]")
+        console.print(
+            "[bold red]Rollback SQL (REMOVES MULTI-TENANT ISOLATION):[/bold red]"
+        )
         console.print(ROLLBACK_SQL)
         return
 
-    console.print("[bold red]WARNING: This will remove multi-tenant isolation![/bold red]")
+    console.print(
+        "[bold red]WARNING: This will remove multi-tenant isolation![/bold red]"
+    )
     confirm = typer.confirm("Are you sure you want to rollback?")
 
     if not confirm:
@@ -167,8 +175,12 @@ async def run_rollback(session: AsyncSession, dry_run: bool = False) -> None:
 
 @app.command()
 def migrate(
-    execute: bool = typer.Option(False, "--execute", help="Execute migration (default: dry-run)"),
-    rollback: bool = typer.Option(False, "--rollback", help="Rollback migration (REMOVES MULTI-TENANT ISOLATION)"),
+    execute: bool = typer.Option(
+        False, "--execute", help="Execute migration (default: dry-run)"
+    ),
+    rollback: bool = typer.Option(
+        False, "--rollback", help="Rollback migration (REMOVES MULTI-TENANT ISOLATION)"
+    ),
 ):
     """Add org_id to price_items for multi-tenant isolation."""
 

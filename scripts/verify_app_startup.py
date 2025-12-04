@@ -10,6 +10,7 @@ structlog.configure(
 print("Verifying app import...")
 try:
     from bimcalc.web.app_enhanced import app
+
     print("SUCCESS: App imported successfully.")
     # Print registered routes to verify inclusions
     print(f"Registered routes: {len(app.routes)}")
@@ -17,5 +18,6 @@ try:
 except Exception as e:
     print(f"FAILURE: App import failed: {e}")
     import traceback
+
     traceback.print_exc()
     sys.exit(1)

@@ -61,11 +61,15 @@ def run_migration_sqlite(db_path: Path, dry_run: bool = False) -> None:
         columns = [row[1] for row in cursor.fetchall()]
 
         if "is_current" in columns:
-            console.print("[yellow]Migration already applied (is_current column exists)[/yellow]")
+            console.print(
+                "[yellow]Migration already applied (is_current column exists)[/yellow]"
+            )
             console.print("[yellow]Skipping migration[/yellow]")
             return
 
-        console.print("\n[bold]Step 1:[/bold] Creating new price_items table with SCD Type-2 schema")
+        console.print(
+            "\n[bold]Step 1:[/bold] Creating new price_items table with SCD Type-2 schema"
+        )
 
         # Step 2: Rename old table
         cursor.execute("ALTER TABLE price_items RENAME TO price_items_old")
@@ -151,12 +155,30 @@ def run_migration_sqlite(db_path: Path, dry_run: bool = False) -> None:
         console.print("\n[bold]Step 3:[/bold] Creating indexes")
 
         indexes = [
-            ("idx_price_class", "CREATE INDEX IF NOT EXISTS idx_price_class ON price_items (classification_code)"),
-            ("idx_price_item_code", "CREATE INDEX IF NOT EXISTS idx_price_item_code ON price_items (item_code)"),
-            ("idx_price_region", "CREATE INDEX IF NOT EXISTS idx_price_region ON price_items (region)"),
-            ("idx_price_current", "CREATE INDEX IF NOT EXISTS idx_price_current ON price_items (item_code, region, is_current)"),
-            ("idx_price_temporal", "CREATE INDEX IF NOT EXISTS idx_price_temporal ON price_items (item_code, region, valid_from, valid_to)"),
-            ("idx_price_source", "CREATE INDEX IF NOT EXISTS idx_price_source ON price_items (source_name, last_updated)"),
+            (
+                "idx_price_class",
+                "CREATE INDEX IF NOT EXISTS idx_price_class ON price_items (classification_code)",
+            ),
+            (
+                "idx_price_item_code",
+                "CREATE INDEX IF NOT EXISTS idx_price_item_code ON price_items (item_code)",
+            ),
+            (
+                "idx_price_region",
+                "CREATE INDEX IF NOT EXISTS idx_price_region ON price_items (region)",
+            ),
+            (
+                "idx_price_current",
+                "CREATE INDEX IF NOT EXISTS idx_price_current ON price_items (item_code, region, is_current)",
+            ),
+            (
+                "idx_price_temporal",
+                "CREATE INDEX IF NOT EXISTS idx_price_temporal ON price_items (item_code, region, valid_from, valid_to)",
+            ),
+            (
+                "idx_price_source",
+                "CREATE INDEX IF NOT EXISTS idx_price_source ON price_items (source_name, last_updated)",
+            ),
         ]
 
         for idx_name, idx_sql in indexes:
@@ -182,9 +204,15 @@ def run_migration_sqlite(db_path: Path, dry_run: bool = False) -> None:
             )
         """)
 
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_sync_run ON data_sync_log (run_timestamp, source_name)")
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_sync_failures ON data_sync_log (status, run_timestamp)")
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_sync_source_health ON data_sync_log (source_name, status, run_timestamp)")
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_sync_run ON data_sync_log (run_timestamp, source_name)"
+        )
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_sync_failures ON data_sync_log (status, run_timestamp)"
+        )
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_sync_source_health ON data_sync_log (source_name, status, run_timestamp)"
+        )
 
         console.print("[green]✓[/green] data_sync_log table created")
 
@@ -197,7 +225,9 @@ def run_migration_sqlite(db_path: Path, dry_run: bool = False) -> None:
         conn.commit()
 
         console.print("\n[bold green]✓ Migration completed successfully![/bold green]")
-        console.print(f"[bold green]✓[/bold green] {migrated_count} price records migrated")
+        console.print(
+            f"[bold green]✓[/bold green] {migrated_count} price records migrated"
+        )
         console.print("[bold green]✓[/bold green] All indexes created")
         console.print("[bold green]✓[/bold green] data_sync_log table ready")
 
@@ -220,7 +250,9 @@ def run_rollback_sqlite(db_path: Path, dry_run: bool = False) -> None:
         console.print("[bold red]Would rollback migration (DESTRUCTIVE)[/bold red]")
         return
 
-    console.print("[bold red]WARNING: Rollback will DESTROY SCD Type-2 history![/bold red]")
+    console.print(
+        "[bold red]WARNING: Rollback will DESTROY SCD Type-2 history![/bold red]"
+    )
     console.print("[yellow]This cannot be undone![/yellow]\n")
 
     confirm = typer.confirm("Are you absolutely sure you want to rollback?")
@@ -237,7 +269,9 @@ def run_rollback_sqlite(db_path: Path, dry_run: bool = False) -> None:
         columns = [row[1] for row in cursor.fetchall()]
 
         if "is_current" not in columns:
-            console.print("[yellow]Migration not applied - nothing to rollback[/yellow]")
+            console.print(
+                "[yellow]Migration not applied - nothing to rollback[/yellow]"
+            )
             return
 
         console.print("[bold]Rolling back migration...[/bold]")
@@ -289,7 +323,9 @@ def run_rollback_sqlite(db_path: Path, dry_run: bool = False) -> None:
         conn.commit()
 
         console.print("[bold green]✓[/bold green] Rollback completed")
-        console.print(f"[yellow]⚠[/yellow] Kept {rollback_count} current records (history lost)")
+        console.print(
+            f"[yellow]⚠[/yellow] Kept {rollback_count} current records (history lost)"
+        )
 
     except Exception as e:
         conn.rollback()
@@ -302,8 +338,12 @@ def run_rollback_sqlite(db_path: Path, dry_run: bool = False) -> None:
 
 @app.command()
 def migrate(
-    execute: bool = typer.Option(False, "--execute", help="Execute migration (default: dry-run)"),
-    rollback: bool = typer.Option(False, "--rollback", help="Rollback migration (DESTRUCTIVE)"),
+    execute: bool = typer.Option(
+        False, "--execute", help="Execute migration (default: dry-run)"
+    ),
+    rollback: bool = typer.Option(
+        False, "--rollback", help="Rollback migration (DESTRUCTIVE)"
+    ),
 ):
     """Upgrade SQLite database to SCD Type-2 schema."""
 

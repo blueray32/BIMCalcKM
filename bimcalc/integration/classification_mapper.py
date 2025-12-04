@@ -11,7 +11,9 @@ from bimcalc.db.models import ClassificationMappingModel
 class ClassificationMapper:
     """Translates classification codes between different taxonomies."""
 
-    def __init__(self, session: AsyncSession, org_id: str, project_id: str | None = None):
+    def __init__(
+        self, session: AsyncSession, org_id: str, project_id: str | None = None
+    ):
         self.session = session
         self.org_id = org_id
         self.project_id = project_id
@@ -19,18 +21,18 @@ class ClassificationMapper:
 
     async def get_project_mapping(self, local_code: str) -> str | None:
         """Look up standard code from project-specific mapping.
-        
+
         Args:
             local_code: Project-specific classification code (e.g., "61")
-            
+
         Returns:
             Standard BIMCalc classification code (e.g., "2601") or None if not found
         """
         if not self.project_id:
             return None
-            
+
         from bimcalc.db.models import ProjectClassificationMappingModel
-        
+
         stmt = select(ProjectClassificationMappingModel.standard_code).where(
             ProjectClassificationMappingModel.org_id == self.org_id,
             ProjectClassificationMappingModel.project_id == self.project_id,
@@ -39,12 +41,8 @@ class ClassificationMapper:
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
 
-
     async def translate(
-        self,
-        source_code: str,
-        source_scheme: str,
-        target_scheme: str
+        self, source_code: str, source_scheme: str, target_scheme: str
     ) -> str | None:
         """Translate a classification code from source scheme to target scheme."""
         cache_key = (source_scheme, source_code, target_scheme)
@@ -65,10 +63,7 @@ class ClassificationMapper:
         return target_code
 
     async def translate_batch(
-        self,
-        codes: list[str],
-        source_scheme: str,
-        target_scheme: str
+        self, codes: list[str], source_scheme: str, target_scheme: str
     ) -> dict[str, str | None]:
         """Translate multiple codes in one query."""
         if not codes:

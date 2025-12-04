@@ -13,14 +13,15 @@ Usage:
 
 from __future__ import annotations
 
-from pydantic import BaseModel, Field
-from typing import List, Literal, Optional, Dict, Any
+from pydantic import BaseModel
+from typing import List, Literal, Optional, Dict
 from uuid import UUID
 
 
 # ============================================================================
 # Matching & Review Models
 # ============================================================================
+
 
 class BulkUpdateRequest(BaseModel):
     """Request for bulk match updates (approve/reject).
@@ -39,6 +40,7 @@ class BulkUpdateRequest(BaseModel):
 # ============================================================================
 # Price Import Models
 # ============================================================================
+
 
 class BulkPriceImportRequest(BaseModel):
     """Request schema for Crail4 -> BIMCalc bulk imports.
@@ -74,6 +76,7 @@ class BulkPriceImportResponse(BaseModel):
 # Compliance & Intelligence Models
 # ============================================================================
 
+
 class RuleUpdate(BaseModel):
     """Update an existing compliance rule.
 
@@ -107,6 +110,7 @@ class RuleCreate(BaseModel):
 # Document Management Models
 # ============================================================================
 
+
 class ConvertItemsRequest(BaseModel):
     """Request to convert extracted items to project estimate items.
 
@@ -120,6 +124,7 @@ class ConvertItemsRequest(BaseModel):
 # ============================================================================
 # Reporting Models
 # ============================================================================
+
 
 class ReportTemplateCreate(BaseModel):
     """Create a custom report template.

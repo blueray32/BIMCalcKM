@@ -1,9 +1,8 @@
 import os
-import re
 from datetime import datetime
 from uuid import uuid4
-from decimal import Decimal
 import aiofiles
+
 try:
     import pdfplumber
 except ImportError:
@@ -15,23 +14,26 @@ from bimcalc.db.models_documents import ProjectDocumentModel, ExtractedItemModel
 
 UPLOAD_DIR = "uploads"
 
+
 class DocumentProcessor:
     def __init__(self, db: AsyncSession):
         self.db = db
 
-    async def ingest_document(self, file: UploadFile, org_id: str, project_id: str) -> ProjectDocumentModel:
+    async def ingest_document(
+        self, file: UploadFile, org_id: str, project_id: str
+    ) -> ProjectDocumentModel:
         """Save uploaded file and create database record."""
         file_id = uuid4()
         filename = file.filename
         file_ext = os.path.splitext(filename)[1].lower()
-        
+
         # Ensure upload directory exists
         os.makedirs(UPLOAD_DIR, exist_ok=True)
-        
+
         file_path = os.path.join(UPLOAD_DIR, f"{file_id}{file_ext}")
-        
+
         # Save file to disk
-        async with aiofiles.open(file_path, 'wb') as out_file:
+        async with aiofiles.open(file_path, "wb") as out_file:
             content = await file.read()
             await out_file.write(content)
             file_size = len(content)
@@ -45,12 +47,12 @@ class DocumentProcessor:
             file_path=file_path,
             file_type=file.content_type or "application/octet-stream",
             file_size_bytes=file_size,
-            status="pending"
+            status="pending",
         )
         self.db.add(document)
         await self.db.commit()
         await self.db.refresh(document)
-        
+
         return document
 
     async def process_document(self, document_id: str):
@@ -64,7 +66,10 @@ class DocumentProcessor:
 
         try:
             extracted_items = []
-            if document.file_type == "application/pdf" or document.filename.lower().endswith(".pdf"):
+            if (
+                document.file_type == "application/pdf"
+                or document.filename.lower().endswith(".pdf")
+            ):
                 extracted_items = self._process_pdf(document.file_path)
             else:
                 # TODO: Handle Excel/CSV
@@ -72,10 +77,7 @@ class DocumentProcessor:
 
             # Save extracted items
             for item_data in extracted_items:
-                item = ExtractedItemModel(
-                    document_id=document.id,
-                    **item_data
-                )
+                item = ExtractedItemModel(document_id=document.id, **item_data)
                 self.db.add(item)
 
             document.status = "completed"
@@ -112,8 +114,11 @@ class DocumentProcessor:
         items = []
         headers = []
         # Simple heuristic: assume first row is header if it contains keywords
-        if table and any(k in str(table[0]).lower() for k in ['description', 'item', 'qty', 'quantity', 'price', 'cost']):
-            headers = [h.lower() if h else '' for h in table[0]]
+        if table and any(
+            k in str(table[0]).lower()
+            for k in ["description", "item", "qty", "quantity", "price", "cost"]
+        ):
+            headers = [h.lower() if h else "" for h in table[0]]
             rows = table[1:]
         else:
             rows = table
@@ -122,11 +127,11 @@ class DocumentProcessor:
             # Skip empty rows
             if not any(row):
                 continue
-                
+
             item = {
                 "raw_text": " | ".join([c for c in row if c]),
                 "page_number": page_num,
-                "confidence_score": 0.5 # Default confidence
+                "confidence_score": 0.5,  # Default confidence
             }
 
             # Try to map columns based on headers or position
@@ -138,21 +143,22 @@ class DocumentProcessor:
             unit = None
 
             for i, cell in enumerate(row):
-                if not cell: continue
+                if not cell:
+                    continue
                 val = cell.strip()
-                
+
                 # If we have headers, use them
                 if i < len(headers):
                     header = headers[i]
-                    if 'desc' in header or 'item' in header:
+                    if "desc" in header or "item" in header:
                         description = val
-                    elif 'qty' in header or 'quantity' in header:
+                    elif "qty" in header or "quantity" in header:
                         quantity = self._parse_number(val)
-                    elif 'unit' in header and 'price' not in header:
+                    elif "unit" in header and "price" not in header:
                         unit = val
-                    elif 'price' in header or 'rate' in header:
+                    elif "price" in header or "rate" in header:
                         unit_price = self._parse_number(val)
-                    elif 'total' in header or 'amount' in header:
+                    elif "total" in header or "amount" in header:
                         total_price = self._parse_number(val)
                 else:
                     # Fallback: guess based on content
@@ -171,15 +177,15 @@ class DocumentProcessor:
                 item["total_price"] = total_price
                 if quantity and unit_price:
                     item["confidence_score"] = 0.8
-                
+
                 items.append(item)
-        
+
         return items
 
     def _parse_text(self, text: str, page_num: int) -> list[dict]:
         """Fallback text parsing."""
         items = []
-        lines = text.split('\n')
+        lines = text.split("\n")
         for line in lines:
             # Look for lines that look like line items: "Description ... 10 ... $50.00"
             # Very naive implementation
@@ -193,20 +199,20 @@ class DocumentProcessor:
                         "description": " ".join(parts[:-2]),
                         "quantity": self._parse_number(parts[-2]),
                         "total_price": self._parse_number(parts[-1]),
-                        "confidence_score": 0.4
+                        "confidence_score": 0.4,
                     }
                     items.append(item)
         return items
 
     def _is_number(self, s: str) -> bool:
         try:
-            float(s.replace('$', '').replace(',', ''))
+            float(s.replace("$", "").replace(",", ""))
             return True
-        except:
+        except Exception:
             return False
 
     def _parse_number(self, s: str) -> float | None:
         try:
-            return float(s.replace('$', '').replace(',', ''))
-        except:
+            return float(s.replace("$", "").replace(",", ""))
+        except Exception:
             return None

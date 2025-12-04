@@ -39,7 +39,9 @@ class ReviewMetrics:
     confidence_low: int  # <70%
 
     # Classification breakdown
-    classification_breakdown: list[dict]  # [{code, total, critical, advisory, avg_confidence}]
+    classification_breakdown: list[
+        dict
+    ]  # [{code, total, critical, advisory, avg_confidence}]
 
     # Aging metrics
     oldest_review_days: float | None
@@ -97,9 +99,11 @@ async def compute_review_metrics(
           AND rr.decision IN ('manual-review', 'pending-review')
     """)
 
-    pending_results = (await session.execute(
-        pending_query, {"org_id": org_id, "project_id": project_id}
-    )).fetchall()
+    pending_results = (
+        await session.execute(
+            pending_query, {"org_id": org_id, "project_id": project_id}
+        )
+    ).fetchall()
 
     total_pending = len(pending_results)
 
@@ -162,7 +166,9 @@ async def compute_review_metrics(
                 MatchFlagModel.severity,
                 func.count().label("count"),
             )
-            .join(MatchResultModel, MatchResultModel.id == MatchFlagModel.match_result_id)
+            .join(
+                MatchResultModel, MatchResultModel.id == MatchFlagModel.match_result_id
+            )
             .where(MatchResultModel.item_id.in_(pending_item_ids))
             .group_by(MatchFlagModel.flag_type, MatchFlagModel.severity)
         )
@@ -287,7 +293,9 @@ async def compute_review_metrics(
                 "total": row.total,
                 "critical": row.critical_count,
                 "advisory": row.advisory_count,
-                "avg_confidence": float(row.avg_confidence) if row.avg_confidence else 0,
+                "avg_confidence": float(row.avg_confidence)
+                if row.avg_confidence
+                else 0,
             }
             for row in class_results
         ]

@@ -88,7 +88,9 @@ class MatchOrchestrator:
 
                 match = CandidateMatch(price_item=price_item, score=100.0, flags=flags)
 
-                result = self.auto_router.route(match, source="mapping_memory", created_by=created_by)
+                result = self.auto_router.route(
+                    match, source="mapping_memory", created_by=created_by
+                )
 
                 return result, price_item
 
@@ -96,7 +98,12 @@ class MatchOrchestrator:
         region = await self._get_project_region(item.org_id, item.project_id)
 
         # Step 4: Mapping miss → Generate candidates with escape-hatch
-        candidates, used_escape_hatch = await self.candidate_generator.generate_with_escape_hatch(item, region=region)
+        (
+            candidates,
+            used_escape_hatch,
+        ) = await self.candidate_generator.generate_with_escape_hatch(
+            item, region=region
+        )
 
         if not candidates:
             # No candidates found even with escape-hatch
@@ -135,23 +142,28 @@ class MatchOrchestrator:
 
         # Step 6: Evaluate flags for top candidate
         top_match = ranked[0]
-        top_match.flags = compute_flags(item.model_dump(), top_match.price_item.model_dump())
+        top_match.flags = compute_flags(
+            item.model_dump(), top_match.price_item.model_dump()
+        )
 
         # If escape-hatch was used, add Classification Mismatch flag (CRITICAL-VETO)
         if used_escape_hatch:
             from bimcalc.models import Flag, FlagSeverity
+
             escape_flag = Flag(
                 type="Classification Mismatch",
                 severity=FlagSeverity.CRITICAL_VETO,
                 message=(
                     f"Out-of-class match via escape-hatch: item class={item.classification_code}, "
                     f"price class={top_match.price_item.classification_code}"
-                )
+                ),
             )
             top_match.flags.append(escape_flag)
 
         # Step 7: Auto-route decision
-        result = self.auto_router.route(top_match, source="fuzzy_match", created_by=created_by)
+        result = self.auto_router.route(
+            top_match, source="fuzzy_match", created_by=created_by
+        )
         result.item_id = item.id  # Correct the item_id
 
         # Step 8: Write mapping if auto-accepted
@@ -206,7 +218,6 @@ class MatchOrchestrator:
             attributes=row.attributes or {},
         )
 
-
     async def _get_project_region(self, org_id: str, project_id: str) -> str:
         """Get project region.
 
@@ -221,8 +232,7 @@ class MatchOrchestrator:
         from bimcalc.db.models import ProjectModel
 
         stmt = select(ProjectModel.region).where(
-            ProjectModel.org_id == org_id,
-            ProjectModel.project_id == project_id
+            ProjectModel.org_id == org_id, ProjectModel.project_id == project_id
         )
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none() or "EU"

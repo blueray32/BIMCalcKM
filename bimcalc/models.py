@@ -65,7 +65,7 @@ class Item(BaseModel):
     # Audit
     source_file: str | None = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
-    
+
     # Flexible attributes for domain-specific data (e.g., electrical properties)
     attributes: dict[str, Any] = Field(default_factory=dict)
 

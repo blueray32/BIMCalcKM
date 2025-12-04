@@ -26,7 +26,13 @@ from sqlalchemy import func, select
 from bimcalc.config import get_config
 from bimcalc.db.connection import get_engine, get_session
 from bimcalc.db.match_results import record_match_result
-from bimcalc.db.models import Base, ItemMappingModel, ItemModel, MatchResultModel, PriceItemModel
+from bimcalc.db.models import (
+    Base,
+    ItemMappingModel,
+    ItemModel,
+    MatchResultModel,
+    PriceItemModel,
+)
 from bimcalc.ingestion.pricebooks import ingest_pricebook
 from bimcalc.ingestion.schedules import ingest_schedule
 from bimcalc.matching.orchestrator import MatchOrchestrator
@@ -45,10 +51,12 @@ app.add_typer(web_cli, name="web")
 
 # Register Agent CLI
 from bimcalc.agent.cli import agent_cli
+
 app.add_typer(agent_cli, name="agent")
 
 # Register Project CLI
 from bimcalc.cli_project import project_cli
+
 app.add_typer(project_cli, name="project")
 
 console = Console()
@@ -87,7 +95,9 @@ def ingest_schedules_cmd(
     org_id = org_id or config.org_id
     project_id = project_id or "default"
 
-    console.print(f"[bold]Ingesting schedules:[/bold] org={org_id}, project={project_id}")
+    console.print(
+        f"[bold]Ingesting schedules:[/bold] org={org_id}, project={project_id}"
+    )
 
     async def _ingest():
         total_success = 0
@@ -102,7 +112,9 @@ def ingest_schedules_cmd(
                     )
                     total_success += success_count
                     total_errors.extend(errors)
-                    console.print(f"    [green]✓[/green] {success_count} items imported")
+                    console.print(
+                        f"    [green]✓[/green] {success_count} items imported"
+                    )
                     if errors:
                         console.print(f"    [yellow]⚠[/yellow] {len(errors)} errors")
                         for err in errors[:5]:  # Show first 5 errors
@@ -111,7 +123,9 @@ def ingest_schedules_cmd(
                     console.print(f"    [red]✗[/red] Failed: {e}")
                     total_errors.append(str(e))
 
-        console.print(f"\n[bold green]✓[/bold green] Total: {total_success} items imported")
+        console.print(
+            f"\n[bold green]✓[/bold green] Total: {total_success} items imported"
+        )
         if total_errors:
             console.print(f"[yellow]⚠[/yellow] {len(total_errors)} errors (see above)")
 
@@ -139,7 +153,9 @@ def ingest_prices_cmd(
                     )
                     total_success += success_count
                     total_errors.extend(errors)
-                    console.print(f"    [green]✓[/green] {success_count} items imported")
+                    console.print(
+                        f"    [green]✓[/green] {success_count} items imported"
+                    )
                     if errors:
                         console.print(f"    [yellow]⚠[/yellow] {len(errors)} errors")
                         for err in errors[:5]:
@@ -148,7 +164,9 @@ def ingest_prices_cmd(
                     console.print(f"    [red]✗[/red] Failed: {e}")
                     total_errors.append(str(e))
 
-        console.print(f"\n[bold green]✓[/bold green] Total: {total_success} items imported")
+        console.print(
+            f"\n[bold green]✓[/bold green] Total: {total_success} items imported"
+        )
         if total_errors:
             console.print(f"[yellow]⚠[/yellow] {len(total_errors)} errors (see above)")
 
@@ -175,11 +193,14 @@ def match(
         async with get_session() as session:
             # CRITICAL: Run startup validations (fail-fast per CLAUDE.md)
             from bimcalc.startup_validation import run_all_validations
+
             try:
                 await run_all_validations(session)
             except Exception as e:
                 console.print(f"[bold red]✗ Startup validation failed:[/bold red] {e}")
-                console.print("[yellow]Fix configuration issues before running match.[/yellow]")
+                console.print(
+                    "[yellow]Fix configuration issues before running match.[/yellow]"
+                )
                 return
 
             orchestrator = MatchOrchestrator(session)
@@ -223,7 +244,9 @@ def match(
                     type_name=item_model.type_name,
                     category=item_model.category,
                     system_type=item_model.system_type,
-                    quantity=float(item_model.quantity) if item_model.quantity else None,
+                    quantity=float(item_model.quantity)
+                    if item_model.quantity
+                    else None,
                     unit=item_model.unit,
                     width_mm=item_model.width_mm,
                     height_mm=item_model.height_mm,
@@ -246,6 +269,7 @@ def match(
 
                 # Map decision to display status
                 from bimcalc.models import MatchDecision
+
                 if match_result.decision == MatchDecision.AUTO_ACCEPTED:
                     status = "AUTO"
                     auto_accepted += 1
@@ -282,9 +306,7 @@ def match(
                         MatchResultModel.timestamp >= run_started,
                     )
                 )
-                console.print(
-                    f"  Match results persisted: {persisted.scalar_one()}"
-                )
+                console.print(f"  Match results persisted: {persisted.scalar_one()}")
 
     asyncio.run(_match())
 
@@ -304,7 +326,9 @@ def review_ui_cmd(
     reviewer_val = reviewer or "review-ui"
 
     try:
-        from bimcalc.ui.review_app import run_review_ui  # Local import to avoid heavy deps
+        from bimcalc.ui.review_app import (
+            run_review_ui,
+        )  # Local import to avoid heavy deps
     except ImportError as exc:  # pragma: no cover - optional dependency guard
         raise typer.BadParameter(
             "textual is required for the review UI. Install with 'pip install textual'."
@@ -323,14 +347,18 @@ def web_serve(
     import uvicorn
 
     typer.echo(f"Starting enhanced web UI on http://{host}:{port}")
-    uvicorn.run("bimcalc.web.app_enhanced:app", host=host, port=port, reload=reload, workers=1)
+    uvicorn.run(
+        "bimcalc.web.app_enhanced:app", host=host, port=port, reload=reload, workers=1
+    )
 
 
 @app.command()
 def report(
     org_id: str | None = typer.Option(None, "--org", help="Organization ID"),
     project_id: str | None = typer.Option(None, "--project", help="Project ID"),
-    as_of: str | None = typer.Option(None, "--as-of", help="As-of timestamp (ISO format)"),
+    as_of: str | None = typer.Option(
+        None, "--as-of", help="As-of timestamp (ISO format)"
+    ),
     output: Path | None = typer.Option(None, "--out", "-o", help="Output CSV file"),
 ):
     """Generate cost report with as-of temporal query."""
@@ -389,7 +417,9 @@ def stats(
     org_id = org_id or config.org_id
     project_id = project_id or "default"
 
-    console.print(f"[bold]Project Statistics:[/bold] org={org_id}, project={project_id}")
+    console.print(
+        f"[bold]Project Statistics:[/bold] org={org_id}, project={project_id}"
+    )
 
     async def _stats():
         async with get_session() as session:
@@ -430,8 +460,12 @@ def stats(
 
 @app.command()
 def migrate(
-    execute: bool = typer.Option(False, "--execute", help="Execute migration (default: dry-run)"),
-    rollback: bool = typer.Option(False, "--rollback", help="Rollback migration (DESTRUCTIVE)"),
+    execute: bool = typer.Option(
+        False, "--execute", help="Execute migration (default: dry-run)"
+    ),
+    rollback: bool = typer.Option(
+        False, "--rollback", help="Rollback migration (DESTRUCTIVE)"
+    ),
 ):
     """Run database migration to SCD Type-2 schema."""
     from bimcalc.migrations.upgrade_to_scd2 import migrate as run_migration
@@ -442,12 +476,18 @@ def migrate(
 @app.command(name="sync-crail4")
 def sync_crail4_command(
     org_id: str = typer.Option("acme-construction", "--org", help="Organization ID"),
-    target_scheme: str = typer.Option("UniClass2015", "--scheme", help="Target classification scheme"),
-    full_sync: bool = typer.Option(False, "--full-sync", help="Ignore delta window and fetch all data"),
+    target_scheme: str = typer.Option(
+        "UniClass2015", "--scheme", help="Target classification scheme"
+    ),
+    full_sync: bool = typer.Option(
+        False, "--full-sync", help="Ignore delta window and fetch all data"
+    ),
     classifications: str | None = typer.Option(
         None, "--classifications", help="Comma-separated classification codes to filter"
     ),
-    region: str | None = typer.Option(None, "--region", help="Region filter (e.g., UK, IE)"),
+    region: str | None = typer.Option(
+        None, "--region", help="Region filter (e.g., UK, IE)"
+    ),
 ):
     """Trigger Crail4 AI price synchronization."""
     from bimcalc.integration.crail4_sync import sync_crail4_prices
@@ -455,7 +495,9 @@ def sync_crail4_command(
     delta_days = None if full_sync else 7
     class_filter = None
     if classifications:
-        class_filter = [code.strip() for code in classifications.split(",") if code.strip()]
+        class_filter = [
+            code.strip() for code in classifications.split(",") if code.strip()
+        ]
 
     console.print(
         f"[bold]Crail4 Sync:[/bold] org={org_id}, delta_days={delta_days}, target_scheme={target_scheme}"
@@ -487,8 +529,12 @@ def sync_crail4_command(
 def import_csv_prices_command(
     file_path: Path = typer.Argument(..., help="Path to CSV or Excel file"),
     org_id: str = typer.Option("acme-construction", "--org", help="Organization ID"),
-    vendor: str = typer.Option(..., "--vendor", help="Vendor/supplier name (e.g., CEF, Rexel)"),
-    sheet_name: str | None = typer.Option(None, "--sheet", help="Sheet name for Excel files"),
+    vendor: str = typer.Option(
+        ..., "--vendor", help="Vendor/supplier name (e.g., CEF, Rexel)"
+    ),
+    sheet_name: str | None = typer.Option(
+        None, "--sheet", help="Sheet name for Excel files"
+    ),
 ):
     """Import supplier price list from CSV or Excel file.
 
@@ -520,9 +566,9 @@ def import_csv_prices_command(
             console.print(f"Items loaded: {result['items_loaded']}")
             console.print(f"Items rejected: {result['items_rejected']}")
 
-            if result['rejection_reasons']:
+            if result["rejection_reasons"]:
                 console.print("\n[yellow]Rejection reasons:[/yellow]")
-                for reason, count in result['rejection_reasons'].items():
+                for reason, count in result["rejection_reasons"].items():
                     console.print(f"  {reason}: {count}")
 
         except Exception as exc:
@@ -540,7 +586,9 @@ def sync_prices_cmd(
         "-c",
         help="Pipeline configuration file",
     ),
-    dry_run: bool = typer.Option(False, "--dry-run", help="Simulate run without writing to database"),
+    dry_run: bool = typer.Option(
+        False, "--dry-run", help="Simulate run without writing to database"
+    ),
 ):
     """Run automated price synchronization pipeline.
 
@@ -562,7 +610,9 @@ def sync_prices_cmd(
             importers = load_pipeline_config(config_file)
 
             if not importers:
-                console.print("[yellow]No importers configured or all disabled[/yellow]")
+                console.print(
+                    "[yellow]No importers configured or all disabled[/yellow]"
+                )
                 return
 
             console.print(f"Loaded {len(importers)} data sources\n")
@@ -675,12 +725,16 @@ def pipeline_status_cmd(
                 else:
                     overall_status = "[green]SUCCESS[/green]"
 
-                console.print(f"\n[bold]{run_ts.strftime('%Y-%m-%d %H:%M:%S UTC')}[/bold]")
+                console.print(
+                    f"\n[bold]{run_ts.strftime('%Y-%m-%d %H:%M:%S UTC')}[/bold]"
+                )
                 console.print(f"Status: {overall_status}")
                 console.print(
                     f"Sources: {successful} success, {failed} failed, {partial} partial"
                 )
-                console.print(f"Records: {total_inserted} inserted, {total_updated} updated")
+                console.print(
+                    f"Records: {total_inserted} inserted, {total_updated} updated"
+                )
 
                 # Show failed sources
                 if failed > 0 or partial > 0:

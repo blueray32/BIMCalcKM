@@ -10,7 +10,6 @@ import asyncio
 import logging
 from datetime import datetime
 from typing import Any
-from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -94,10 +93,14 @@ class MultiSourceOrchestrator:
         Returns:
             List of enabled PriceSourceModel instances
         """
-        stmt = select(PriceSourceModel).where(
-            PriceSourceModel.org_id == self.org_id,
-            PriceSourceModel.enabled == True  # noqa: E712
-        ).order_by(PriceSourceModel.name)
+        stmt = (
+            select(PriceSourceModel)
+            .where(
+                PriceSourceModel.org_id == self.org_id,
+                PriceSourceModel.enabled == True,  # noqa: E712
+            )
+            .order_by(PriceSourceModel.name)
+        )
 
         result = await self._session.execute(stmt)
         sources = result.scalars().all()
@@ -106,9 +109,7 @@ class MultiSourceOrchestrator:
         return list(sources)
 
     async def fetch_from_source(
-        self,
-        source: PriceSourceModel,
-        force_refresh: bool = False
+        self, source: PriceSourceModel, force_refresh: bool = False
     ) -> dict[str, Any]:
         """Fetch prices from a single source.
 
@@ -132,7 +133,9 @@ class MultiSourceOrchestrator:
             # Apply source-specific rate limit
             if self.scout.rate_limiter:
                 domain = source.domain
-                self.scout.rate_limiter.set_domain_delay(domain, source.rate_limit_seconds)
+                self.scout.rate_limiter.set_domain_delay(
+                    domain, source.rate_limit_seconds
+                )
 
             # Fetch products
             result = await self.scout.extract(source.url, force_refresh=force_refresh)
@@ -202,8 +205,7 @@ class MultiSourceOrchestrator:
             error_msg = f"Extraction failed: {str(e)}"
 
             logger.error(
-                f"Extraction failed for source {source.name}: {e}",
-                exc_info=True
+                f"Extraction failed for source {source.name}: {e}", exc_info=True
             )
 
             # Update source metadata
@@ -239,7 +241,10 @@ class MultiSourceOrchestrator:
 
         # Fetch from all sources in parallel
         logger.info(f"Starting parallel fetch from {len(sources)} sources")
-        fetch_tasks = [self.fetch_from_source(source, force_refresh=force_refresh) for source in sources]
+        fetch_tasks = [
+            self.fetch_from_source(source, force_refresh=force_refresh)
+            for source in sources
+        ]
         source_results = await asyncio.gather(*fetch_tasks, return_exceptions=False)
 
         # Aggregate results
@@ -254,10 +259,12 @@ class MultiSourceOrchestrator:
                 all_products.extend(products)
             else:
                 result.stats["sources_failed"] += 1
-                result.errors.append({
-                    "source": source_name,
-                    "error": source_result.get("error", "Unknown error")
-                })
+                result.errors.append(
+                    {
+                        "source": source_name,
+                        "error": source_result.get("error", "Unknown error"),
+                    }
+                )
 
         result.stats["total_products"] = len(all_products)
 
@@ -277,8 +284,7 @@ class MultiSourceOrchestrator:
         return result
 
     def _deduplicate_products(
-        self,
-        products: list[dict[str, Any]]
+        self, products: list[dict[str, Any]]
     ) -> tuple[list[dict[str, Any]], int]:
         """Deduplicate products based on vendor code.
 
@@ -320,8 +326,7 @@ class MultiSourceOrchestrator:
 
                 # Sort by price (handle None values)
                 valid_price_products = [
-                    p for p in group
-                    if p.get("unit_price") is not None
+                    p for p in group if p.get("unit_price") is not None
                 ]
 
                 if not valid_price_products:
@@ -330,8 +335,7 @@ class MultiSourceOrchestrator:
                 else:
                     # Keep cheapest
                     best_product = min(
-                        valid_price_products,
-                        key=lambda p: float(p["unit_price"])
+                        valid_price_products, key=lambda p: float(p["unit_price"])
                     )
 
                 # Add metadata about duplicate sources
@@ -354,7 +358,9 @@ class MultiSourceOrchestrator:
 
         return unique_products, duplicates_removed
 
-    def _calculate_price_variance(self, products: list[dict[str, Any]]) -> dict[str, Any] | None:
+    def _calculate_price_variance(
+        self, products: list[dict[str, Any]]
+    ) -> dict[str, Any] | None:
         """Calculate price variance statistics for duplicate products.
 
         Args:
@@ -364,9 +370,7 @@ class MultiSourceOrchestrator:
             Dict with min, max, mean, variance_pct or None if insufficient data
         """
         prices = [
-            float(p["unit_price"])
-            for p in products
-            if p.get("unit_price") is not None
+            float(p["unit_price"]) for p in products if p.get("unit_price") is not None
         ]
 
         if len(prices) < 2:
@@ -375,7 +379,9 @@ class MultiSourceOrchestrator:
         min_price = min(prices)
         max_price = max(prices)
         mean_price = sum(prices) / len(prices)
-        variance_pct = ((max_price - min_price) / mean_price * 100) if mean_price > 0 else 0
+        variance_pct = (
+            ((max_price - min_price) / mean_price * 100) if mean_price > 0 else 0
+        )
 
         return {
             "min": round(min_price, 2),

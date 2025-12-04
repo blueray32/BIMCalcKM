@@ -1,4 +1,5 @@
 """Backfill canonical keys for existing items."""
+
 import asyncio
 
 from sqlalchemy import select
@@ -50,6 +51,7 @@ async def backfill_canonical_keys():
 
         await session.commit()
         print(f"✓ Updated {updated} items with canonical keys")
+
 
 if __name__ == "__main__":
     asyncio.run(backfill_canonical_keys())

@@ -22,6 +22,7 @@ logger = logging.getLogger(__name__)
 
 class StartupValidationError(Exception):
     """Raised when startup validation fails."""
+
     pass
 
 
@@ -73,8 +74,7 @@ async def validate_database_connection(session: AsyncSession) -> None:
 
 
 async def validate_classification_distribution(
-    session: AsyncSession,
-    min_price_items: int = 10
+    session: AsyncSession, min_price_items: int = 10
 ) -> None:
     """Validate classification distribution in price catalog.
 
@@ -93,7 +93,9 @@ async def validate_classification_distribution(
     try:
         # Check total price count
         result = await session.execute(
-            select(func.count()).select_from(PriceItemModel).where(PriceItemModel.is_current == True)
+            select(func.count())
+            .select_from(PriceItemModel)
+            .where(PriceItemModel.is_current == True)
         )
         total_prices = result.scalar()
 
@@ -111,10 +113,7 @@ async def validate_classification_distribution(
 
         # Check classification distribution
         result = await session.execute(
-            select(
-                PriceItemModel.classification_code,
-                func.count().label('count')
-            )
+            select(PriceItemModel.classification_code, func.count().label("count"))
             .where(PriceItemModel.is_current == True)
             .group_by(PriceItemModel.classification_code)
             .order_by(func.count().desc())
@@ -139,7 +138,7 @@ async def validate_classification_distribution(
             .select_from(PriceItemModel)
             .where(
                 PriceItemModel.is_current == True,
-                PriceItemModel.classification_code.is_(None)
+                PriceItemModel.classification_code.is_(None),
             )
         )
         null_count = result.scalar()
@@ -155,7 +154,9 @@ async def validate_classification_distribution(
     except Exception as e:
         logger.error(f"Classification distribution validation failed: {e}")
         # Don't fail startup for distribution issues, just warn
-        logger.warning("⚠ Continuing with startup despite distribution validation failure")
+        logger.warning(
+            "⚠ Continuing with startup despite distribution validation failure"
+        )
 
 
 async def validate_vat_and_currency_config() -> None:

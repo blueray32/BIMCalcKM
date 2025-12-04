@@ -100,7 +100,9 @@ class SCD2PriceUpdater:
             self.stats["failed"] += 1
             return False
 
-    async def _insert_new_record(self, record: PriceRecord, timestamp: datetime) -> None:
+    async def _insert_new_record(
+        self, record: PriceRecord, timestamp: datetime
+    ) -> None:
         """Insert a new price record.
 
         Args:

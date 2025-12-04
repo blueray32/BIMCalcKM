@@ -18,9 +18,10 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from sqlalchemy import func, select
 
 from bimcalc.db.connection import get_session
-from bimcalc.db.models import DataSyncLogModel
+from bimcalc.db.models import DataSyncLogModel, IngestLogModel
 from bimcalc.pipeline.config_loader import load_pipeline_config
 from bimcalc.pipeline.orchestrator import PipelineOrchestrator
+from bimcalc.reporting.progress import compute_progress_metrics
 from bimcalc.web.dependencies import get_org_project, get_templates
 
 # Create router with pipeline tag
@@ -30,6 +31,7 @@ router = APIRouter(tags=["pipeline"])
 # ============================================================================
 # Pipeline Management Routes
 # ============================================================================
+
 
 @router.get("/pipeline", response_class=HTMLResponse)
 async def pipeline_dashboard(
@@ -68,16 +70,16 @@ async def pipeline_dashboard(
 
         # Get summary statistics
         success_result = await session.execute(
-            select(func.count()).select_from(DataSyncLogModel).where(
-                DataSyncLogModel.status == "SUCCESS"
-            )
+            select(func.count())
+            .select_from(DataSyncLogModel)
+            .where(DataSyncLogModel.status == "SUCCESS")
         )
         success_count = success_result.scalar_one()
 
         failed_result = await session.execute(
-            select(func.count()).select_from(DataSyncLogModel).where(
-                DataSyncLogModel.status == "FAILED"
-            )
+            select(func.count())
+            .select_from(DataSyncLogModel)
+            .where(DataSyncLogModel.status == "FAILED")
         )
         failed_count = failed_result.scalar_one()
 
@@ -117,12 +119,17 @@ async def run_pipeline_manual():
     """
     try:
         # Load configuration
-        config_path = Path(__file__).parent.parent.parent / "config" / "pipeline_sources.yaml"
+        config_path = (
+            Path(__file__).parent.parent.parent / "config" / "pipeline_sources.yaml"
+        )
 
         if not config_path.exists():
             return JSONResponse(
                 status_code=400,
-                content={"success": False, "message": f"Configuration file not found: {config_path}"},
+                content={
+                    "success": False,
+                    "message": f"Configuration file not found: {config_path}",
+                },
             )
 
         importers = load_pipeline_config(config_path)
@@ -130,7 +137,10 @@ async def run_pipeline_manual():
         if not importers:
             return JSONResponse(
                 status_code=400,
-                content={"success": False, "message": "No enabled data sources configured"},
+                content={
+                    "success": False,
+                    "message": "No enabled data sources configured",
+                },
             )
 
         # Run pipeline
@@ -159,12 +169,17 @@ async def get_pipeline_sources():
     Extracted from: app_enhanced.py:895
     """
     try:
-        config_path = Path(__file__).parent.parent.parent / "config" / "pipeline_sources.yaml"
+        config_path = (
+            Path(__file__).parent.parent.parent / "config" / "pipeline_sources.yaml"
+        )
 
         if not config_path.exists():
             return JSONResponse(
                 status_code=404,
-                content={"success": False, "message": f"Configuration file not found: {config_path}"},
+                content={
+                    "success": False,
+                    "message": f"Configuration file not found: {config_path}",
+                },
             )
 
         importers = load_pipeline_config(config_path)
@@ -199,7 +214,6 @@ async def get_pipeline_status(
 
     Extracted from: app_enhanced.py:279
     """
-    
 
     async with get_session() as session:
         # Get progress metrics
@@ -229,7 +243,9 @@ async def get_pipeline_status(
                 "overall_completion": float(metrics.overall_completion),
             },
             "matching": {
-                "status": "completed" if metrics.stage_matching.status == "completed" else "in_progress",
+                "status": "completed"
+                if metrics.stage_matching.status == "completed"
+                else "in_progress",
                 "progress": f"{metrics.matched_items}/{metrics.total_items} items",
                 "completion_percent": float(metrics.stage_matching.completion_percent),
                 "auto_approved": metrics.auto_approved,
@@ -242,10 +258,14 @@ async def get_pipeline_status(
                 "advisory_flags": metrics.flagged_advisory,
             },
             "last_ingest": {
-                "timestamp": last_ingest.started_at.isoformat() if last_ingest else None,
+                "timestamp": last_ingest.started_at.isoformat()
+                if last_ingest
+                else None,
                 "filename": last_ingest.filename if last_ingest else None,
                 "items_total": last_ingest.items_total if last_ingest else 0,
-            } if last_ingest else None,
+            }
+            if last_ingest
+            else None,
             "computed_at": metrics.computed_at.isoformat(),
         }
 

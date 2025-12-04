@@ -10,7 +10,7 @@ Routes:
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse
 from sqlalchemy import select
 
@@ -28,6 +28,7 @@ router = APIRouter(tags=["matching"])
 # ============================================================================
 # Matching Pipeline Routes
 # ============================================================================
+
 
 @router.get("/match", response_class=HTMLResponse)
 async def match_page(
@@ -129,12 +130,14 @@ async def run_matching(
             # Persist match result to database
             await record_match_result(session, item_model.id, match_result)
 
-            results.append({
-                "item": f"{item.family} / {item.type_name}",
-                "decision": match_result.decision.value,
-                "confidence": match_result.confidence_score,
-                "flags": [f.type for f in match_result.flags],
-            })
+            results.append(
+                {
+                    "item": f"{item.family} / {item.type_name}",
+                    "decision": match_result.decision.value,
+                    "confidence": match_result.confidence_score,
+                    "flags": [f.type for f in match_result.flags],
+                }
+            )
 
         # Commit all changes (canonical keys and match results)
         await session.commit()

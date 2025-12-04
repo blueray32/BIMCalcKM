@@ -139,10 +139,7 @@ async def compute_price_metrics(
         return _empty_metrics()
 
     current_query = select(func.count(PriceItemModel.id)).where(
-        and_(
-            PriceItemModel.org_id == org_id,
-            PriceItemModel.is_current == True
-        )
+        and_(PriceItemModel.org_id == org_id, PriceItemModel.is_current == True)
     )
     current_price_items = (await session.execute(current_query)).scalar_one()
     historical_price_items = total_price_items - current_price_items
@@ -151,15 +148,11 @@ async def compute_price_metrics(
     # 2. Currency & VAT Distribution
     # ========================================================================
 
-    currency_query = select(
-        PriceItemModel.currency,
-        func.count(PriceItemModel.id).label('count')
-    ).where(
-        and_(
-            PriceItemModel.org_id == org_id,
-            PriceItemModel.is_current == True
-        )
-    ).group_by(PriceItemModel.currency)
+    currency_query = (
+        select(PriceItemModel.currency, func.count(PriceItemModel.id).label("count"))
+        .where(and_(PriceItemModel.org_id == org_id, PriceItemModel.is_current == True))
+        .group_by(PriceItemModel.currency)
+    )
 
     currency_result = await session.execute(currency_query)
     currencies = currency_result.all()
@@ -173,7 +166,7 @@ async def compute_price_metrics(
         and_(
             PriceItemModel.org_id == org_id,
             PriceItemModel.is_current == True,
-            PriceItemModel.vat_rate.isnot(None)
+            PriceItemModel.vat_rate.isnot(None),
         )
     )
     vat_specified_count = (await session.execute(vat_specified_query)).scalar_one()
@@ -184,15 +177,10 @@ async def compute_price_metrics(
     # ========================================================================
 
     stats_query = select(
-        func.min(PriceItemModel.unit_price).label('min_price'),
-        func.max(PriceItemModel.unit_price).label('max_price'),
-        func.avg(PriceItemModel.unit_price).label('avg_price')
-    ).where(
-        and_(
-            PriceItemModel.org_id == org_id,
-            PriceItemModel.is_current == True
-        )
-    )
+        func.min(PriceItemModel.unit_price).label("min_price"),
+        func.max(PriceItemModel.unit_price).label("max_price"),
+        func.avg(PriceItemModel.unit_price).label("avg_price"),
+    ).where(and_(PriceItemModel.org_id == org_id, PriceItemModel.is_current == True))
     stats = (await session.execute(stats_query)).one()
 
     min_unit_price = float(stats.min_price) if stats.min_price else None
@@ -219,46 +207,49 @@ async def compute_price_metrics(
         and_(
             PriceItemModel.org_id == org_id,
             PriceItemModel.is_current == True,
-            PriceItemModel.classification_code.isnot(None)
+            PriceItemModel.classification_code.isnot(None),
         )
     )
-    classifications_with_prices = (await session.execute(class_with_prices_query)).scalar_one()
+    classifications_with_prices = (
+        await session.execute(class_with_prices_query)
+    ).scalar_one()
 
     # Total distinct classifications needed (from Items table)
     total_class_query = select(
         func.count(func.distinct(ItemModel.classification_code))
-    ).where(
-        and_(
-            ItemModel.org_id == org_id,
-            ItemModel.classification_code.isnot(None)
-        )
-    )
+    ).where(and_(ItemModel.org_id == org_id, ItemModel.classification_code.isnot(None)))
     total_classifications = (await session.execute(total_class_query)).scalar_one()
 
     # If no items exist, fallback to pricebook count
     if total_classifications == 0:
         total_classifications = classifications_with_prices
 
-    classification_coverage_pct = (classifications_with_prices / total_classifications * 100) if total_classifications > 0 else 0.0
+    classification_coverage_pct = (
+        (classifications_with_prices / total_classifications * 100)
+        if total_classifications > 0
+        else 0.0
+    )
 
     # Top classifications by count
-    top_class_query = select(
-        PriceItemModel.classification_code,
-        func.count(PriceItemModel.id).label('count'),
-        func.avg(PriceItemModel.unit_price).label('avg_price'),
-        func.min(PriceItemModel.unit_price).label('min_price'),
-        func.max(PriceItemModel.unit_price).label('max_price')
-    ).where(
-        and_(
-            PriceItemModel.org_id == org_id,
-            PriceItemModel.is_current == True,
-            PriceItemModel.classification_code.isnot(None)
+    top_class_query = (
+        select(
+            PriceItemModel.classification_code,
+            func.count(PriceItemModel.id).label("count"),
+            func.avg(PriceItemModel.unit_price).label("avg_price"),
+            func.min(PriceItemModel.unit_price).label("min_price"),
+            func.max(PriceItemModel.unit_price).label("max_price"),
         )
-    ).group_by(
-        PriceItemModel.classification_code
-    ).order_by(
-        func.count(PriceItemModel.id).desc()
-    ).limit(10)
+        .where(
+            and_(
+                PriceItemModel.org_id == org_id,
+                PriceItemModel.is_current == True,
+                PriceItemModel.classification_code.isnot(None),
+            )
+        )
+        .group_by(PriceItemModel.classification_code)
+        .order_by(func.count(PriceItemModel.id).desc())
+        .limit(10)
+    )
 
     top_class_result = await session.execute(top_class_query)
     top_classifications = [
@@ -278,16 +269,11 @@ async def compute_price_metrics(
 
     # Age calculations
     age_query = select(
-        func.min(PriceItemModel.last_updated).label('oldest'),
+        func.min(PriceItemModel.last_updated).label("oldest"),
         func.avg(
-            func.extract('epoch', now - PriceItemModel.last_updated) / 86400
-        ).label('avg_age_days')
-    ).where(
-        and_(
-            PriceItemModel.org_id == org_id,
-            PriceItemModel.is_current == True
-        )
-    )
+            func.extract("epoch", now - PriceItemModel.last_updated) / 86400
+        ).label("avg_age_days"),
+    ).where(and_(PriceItemModel.org_id == org_id, PriceItemModel.is_current == True))
     age_stats = (await session.execute(age_query)).one()
 
     oldest_price_days = None
@@ -305,7 +291,7 @@ async def compute_price_metrics(
         and_(
             PriceItemModel.org_id == org_id,
             PriceItemModel.is_current == True,
-            PriceItemModel.last_updated >= thirty_days_ago
+            PriceItemModel.last_updated >= thirty_days_ago,
         )
     )
     prices_updated_last_30_days = (await session.execute(recent_30_query)).scalar_one()
@@ -314,7 +300,7 @@ async def compute_price_metrics(
         and_(
             PriceItemModel.org_id == org_id,
             PriceItemModel.is_current == True,
-            PriceItemModel.last_updated >= ninety_days_ago
+            PriceItemModel.last_updated >= ninety_days_ago,
         )
     )
     prices_updated_last_90_days = (await session.execute(recent_90_query)).scalar_one()
@@ -323,7 +309,7 @@ async def compute_price_metrics(
         and_(
             PriceItemModel.org_id == org_id,
             PriceItemModel.is_current == True,
-            PriceItemModel.last_updated < one_year_ago
+            PriceItemModel.last_updated < one_year_ago,
         )
     )
     stale_prices_count = (await session.execute(stale_query)).scalar_one()
@@ -332,20 +318,18 @@ async def compute_price_metrics(
     # 6. Top Expensive Items
     # ========================================================================
 
-    expensive_query = select(
-        PriceItemModel.item_code,
-        PriceItemModel.description,
-        PriceItemModel.unit_price,
-        PriceItemModel.vendor_id,
-        PriceItemModel.last_updated
-    ).where(
-        and_(
-            PriceItemModel.org_id == org_id,
-            PriceItemModel.is_current == True
+    expensive_query = (
+        select(
+            PriceItemModel.item_code,
+            PriceItemModel.description,
+            PriceItemModel.unit_price,
+            PriceItemModel.vendor_id,
+            PriceItemModel.last_updated,
         )
-    ).order_by(
-        PriceItemModel.unit_price.desc()
-    ).limit(10)
+        .where(and_(PriceItemModel.org_id == org_id, PriceItemModel.is_current == True))
+        .order_by(PriceItemModel.unit_price.desc())
+        .limit(10)
+    )
 
     expensive_result = await session.execute(expensive_query)
     top_10_expensive = [
@@ -354,7 +338,9 @@ async def compute_price_metrics(
             "description": row.description[:100] if row.description else "N/A",
             "unit_price": float(row.unit_price),
             "vendor": row.vendor_id or "Unknown",
-            "updated": row.last_updated.strftime("%Y-%m-%d") if row.last_updated else "N/A"
+            "updated": row.last_updated.strftime("%Y-%m-%d")
+            if row.last_updated
+            else "N/A",
         }
         for row in expensive_result.all()
     ]
@@ -369,33 +355,35 @@ async def compute_price_metrics(
         and_(
             PriceItemModel.org_id == org_id,
             PriceItemModel.is_current == True,
-            PriceItemModel.vendor_id.isnot(None)
+            PriceItemModel.vendor_id.isnot(None),
         )
     )
     unique_vendors = (await session.execute(vendor_count_query)).scalar_one()
 
-    top_vendors_query = select(
-        PriceItemModel.vendor_id,
-        func.count(PriceItemModel.id).label('count'),
-        func.avg(PriceItemModel.unit_price).label('avg_price')
-    ).where(
-        and_(
-            PriceItemModel.org_id == org_id,
-            PriceItemModel.is_current == True,
-            PriceItemModel.vendor_id.isnot(None)
+    top_vendors_query = (
+        select(
+            PriceItemModel.vendor_id,
+            func.count(PriceItemModel.id).label("count"),
+            func.avg(PriceItemModel.unit_price).label("avg_price"),
         )
-    ).group_by(
-        PriceItemModel.vendor_id
-    ).order_by(
-        func.count(PriceItemModel.id).desc()
-    ).limit(10)
+        .where(
+            and_(
+                PriceItemModel.org_id == org_id,
+                PriceItemModel.is_current == True,
+                PriceItemModel.vendor_id.isnot(None),
+            )
+        )
+        .group_by(PriceItemModel.vendor_id)
+        .order_by(func.count(PriceItemModel.id).desc())
+        .limit(10)
+    )
 
     top_vendors_result = await session.execute(top_vendors_query)
     top_vendors = [
         {
             "vendor": row.vendor_id,
             "count": row.count,
-            "avg_price": float(row.avg_price) if row.avg_price else 0
+            "avg_price": float(row.avg_price) if row.avg_price else 0,
         }
         for row in top_vendors_result.all()
     ]
@@ -404,15 +392,22 @@ async def compute_price_metrics(
     # 8. Quality Score
     # ========================================================================
 
-    current_pct = (current_price_items / total_price_items * 100) if total_price_items > 0 else 0
-    fresh_30_day_pct = (prices_updated_last_30_days / current_price_items * 100) if current_price_items > 0 else 0
-    stale_pct = (stale_prices_count / current_price_items * 100) if current_price_items > 0 else 0
+    current_pct = (
+        (current_price_items / total_price_items * 100) if total_price_items > 0 else 0
+    )
+    fresh_30_day_pct = (
+        (prices_updated_last_30_days / current_price_items * 100)
+        if current_price_items > 0
+        else 0
+    )
+    stale_pct = (
+        (stale_prices_count / current_price_items * 100)
+        if current_price_items > 0
+        else 0
+    )
 
     quality_score = _calculate_quality_score(
-        current_pct,
-        classification_coverage_pct,
-        fresh_30_day_pct,
-        stale_pct
+        current_pct, classification_coverage_pct, fresh_30_day_pct, stale_pct
     )
 
     if quality_score >= 85:
@@ -454,7 +449,7 @@ async def compute_price_metrics(
         top_vendors=top_vendors,
         quality_score=quality_score,
         quality_status=quality_status,
-        computed_at=now
+        computed_at=now,
     )
 
 
@@ -486,5 +481,5 @@ def _empty_metrics() -> PriceMetrics:
         top_vendors=[],
         quality_score=0,
         quality_status="No Data",
-        computed_at=datetime.now(UTC)
+        computed_at=datetime.now(UTC),
     )

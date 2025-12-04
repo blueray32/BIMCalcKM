@@ -6,9 +6,8 @@ Tests the pipeline router module extracted in Phase 3.10.
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from unittest.mock import patch, MagicMock, AsyncMock, mock_open
+from unittest.mock import patch, MagicMock, AsyncMock
 from datetime import datetime
-from pathlib import Path
 
 from bimcalc.web.routes import pipeline
 
@@ -64,7 +63,9 @@ def mock_pipeline_run():
 class TestPipelineDashboard:
     """Tests for GET /pipeline route."""
 
-    @pytest.mark.skip(reason="Pipeline template requires complex runs - better in integration")
+    @pytest.mark.skip(
+        reason="Pipeline template requires complex runs - better in integration"
+    )
     @patch("bimcalc.web.routes.pipeline.get_session")
     @patch("bimcalc.web.dependencies.get_config")
     def test_pipeline_dashboard_renders(
@@ -92,7 +93,9 @@ class TestPipelineDashboard:
         mock_count = MagicMock()
         mock_count.scalar_one.return_value = 1
         mock_count_or_none = MagicMock()
-        mock_count_or_none.scalar_one_or_none.return_value = datetime(2025, 1, 1, 12, 0, 0)
+        mock_count_or_none.scalar_one_or_none.return_value = datetime(
+            2025, 1, 1, 12, 0, 0
+        )
 
         session.execute.side_effect = [
             mock_runs_result,
@@ -160,7 +163,9 @@ class TestRunPipelineManual:
         mock_config_path = MagicMock()
         mock_config_path.exists.return_value = True
         mock_path.return_value.parent.parent.parent = MagicMock()
-        mock_path.return_value.parent.parent.parent.__truediv__.return_value = mock_config_path
+        mock_path.return_value.parent.parent.parent.__truediv__.return_value = (
+            mock_config_path
+        )
 
         # Mock importers
         mock_importer = MagicMock()
@@ -196,7 +201,9 @@ class TestRunPipelineManual:
         mock_config_path = MagicMock()
         mock_config_path.exists.return_value = False
         mock_path.return_value.parent.parent.parent = MagicMock()
-        mock_path.return_value.parent.parent.parent.__truediv__.return_value = mock_config_path
+        mock_path.return_value.parent.parent.parent.__truediv__.return_value = (
+            mock_config_path
+        )
 
         response = client.post("/pipeline/run")
         assert response.status_code == 400
@@ -217,7 +224,9 @@ class TestRunPipelineManual:
         mock_config_path = MagicMock()
         mock_config_path.exists.return_value = True
         mock_path.return_value.parent.parent.parent = MagicMock()
-        mock_path.return_value.parent.parent.parent.__truediv__.return_value = mock_config_path
+        mock_path.return_value.parent.parent.parent.__truediv__.return_value = (
+            mock_config_path
+        )
 
         # Mock no importers
         mock_load_config.return_value = []
@@ -241,7 +250,9 @@ class TestRunPipelineManual:
         mock_config_path = MagicMock()
         mock_config_path.exists.return_value = True
         mock_path.return_value.parent.parent.parent = MagicMock()
-        mock_path.return_value.parent.parent.parent.__truediv__.return_value = mock_config_path
+        mock_path.return_value.parent.parent.parent.__truediv__.return_value = (
+            mock_config_path
+        )
 
         # Mock exception
         mock_load_config.side_effect = Exception("Test error")
@@ -269,7 +280,9 @@ class TestGetPipelineSources:
         mock_config_path = MagicMock()
         mock_config_path.exists.return_value = True
         mock_path.return_value.parent.parent.parent = MagicMock()
-        mock_path.return_value.parent.parent.parent.__truediv__.return_value = mock_config_path
+        mock_path.return_value.parent.parent.parent.__truediv__.return_value = (
+            mock_config_path
+        )
 
         # Mock importer
         mock_importer = MagicMock()
@@ -301,7 +314,9 @@ class TestGetPipelineSources:
         mock_config_path = MagicMock()
         mock_config_path.exists.return_value = False
         mock_path.return_value.parent.parent.parent = MagicMock()
-        mock_path.return_value.parent.parent.parent.__truediv__.return_value = mock_config_path
+        mock_path.return_value.parent.parent.parent.__truediv__.return_value = (
+            mock_config_path
+        )
 
         response = client.get("/pipeline/sources")
         assert response.status_code == 404
@@ -321,7 +336,9 @@ class TestGetPipelineSources:
         mock_config_path = MagicMock()
         mock_config_path.exists.return_value = True
         mock_path.return_value.parent.parent.parent = MagicMock()
-        mock_path.return_value.parent.parent.parent.__truediv__.return_value = mock_config_path
+        mock_path.return_value.parent.parent.parent.__truediv__.return_value = (
+            mock_config_path
+        )
 
         # Mock exception
         mock_load_config.side_effect = Exception("Test error")

@@ -5,7 +5,7 @@ Tests updated for actual model definitions extracted from app_enhanced.py.
 
 import pytest
 from pydantic import ValidationError
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 from bimcalc.web.models import (
     BulkUpdateRequest,
@@ -29,7 +29,7 @@ class TestBulkUpdateRequest:
             match_result_ids=[match_id],
             action="approve",
             org_id="org-123",
-            project_id="proj-456"
+            project_id="proj-456",
         )
         assert request.match_result_ids == [match_id]
         assert request.action == "approve"
@@ -44,7 +44,7 @@ class TestBulkUpdateRequest:
             action="reject",
             annotation="Price variance too high",
             org_id="org-123",
-            project_id="proj-456"
+            project_id="proj-456",
         )
         assert len(request.match_result_ids) == 2
         assert request.action == "reject"
@@ -57,7 +57,7 @@ class TestBulkUpdateRequest:
                 match_result_ids=[uuid4()],
                 action="invalid",  # Not in Literal["approve", "reject"]
                 org_id="org-123",
-                project_id="proj-456"
+                project_id="proj-456",
             )
         assert "action" in str(exc_info.value)
 
@@ -66,7 +66,7 @@ class TestBulkUpdateRequest:
         with pytest.raises(ValidationError):
             BulkUpdateRequest(
                 match_result_ids=[uuid4()],
-                action="approve"
+                action="approve",
                 # Missing org_id and project_id
             )
 
@@ -80,8 +80,8 @@ class TestBulkPriceImportModels:
             org_id="org-123",
             items=[
                 {"code": "ABC123", "price": 10.50},
-                {"code": "XYZ789", "price": 25.00}
-            ]
+                {"code": "XYZ789", "price": 25.00},
+            ],
         )
         assert len(request.items) == 2
         assert request.org_id == "org-123"
@@ -96,7 +96,7 @@ class TestBulkPriceImportModels:
             items=[{"code": "ABC"}],
             source="manual_upload",
             target_scheme="UniClass2",
-            created_by="admin@example.com"
+            created_by="admin@example.com",
         )
         assert request.source == "manual_upload"
         assert request.target_scheme == "UniClass2"
@@ -111,7 +111,7 @@ class TestBulkPriceImportModels:
             items_loaded=85,
             items_rejected=15,
             rejection_reasons={"missing_price": 10, "invalid_code": 5},
-            errors=["Item XYZ not found", "Invalid price format"]
+            errors=["Item XYZ not found", "Invalid price format"],
         )
         assert response.run_id == "run-12345"
         assert response.items_loaded == 85
@@ -129,7 +129,7 @@ class TestComplianceModels:
             name="Test Rule",
             description="This is a test compliance rule",
             rule_type="safety",
-            severity="high"
+            severity="high",
         )
         assert rule.name == "Test Rule"
         assert rule.rule_type == "safety"
@@ -145,7 +145,7 @@ class TestComplianceModels:
             rule_type="safety",
             severity="critical",
             is_active=False,
-            configuration={"threshold": 100, "auto_flag": True}
+            configuration={"threshold": 100, "auto_flag": True},
         )
         assert rule.severity == "critical"
         assert rule.is_active is False
@@ -161,9 +161,7 @@ class TestComplianceModels:
 
     def test_rule_update_configuration(self):
         """Test updating rule configuration."""
-        update = RuleUpdate(
-            configuration={"enabled": True, "threshold": 50}
-        )
+        update = RuleUpdate(configuration={"enabled": True, "threshold": 50})
         assert update.configuration["enabled"] is True
         assert update.configuration["threshold"] == 50
 
@@ -197,7 +195,7 @@ class TestReportingModels:
         template = ReportTemplateCreate(
             name="Monthly Cost Report",
             org_id="org-123",
-            configuration={"columns": ["item", "price", "quantity"]}
+            configuration={"columns": ["item", "price", "quantity"]},
         )
         assert template.name == "Monthly Cost Report"
         assert template.org_id == "org-123"
@@ -210,7 +208,7 @@ class TestReportingModels:
             name="Project Report",
             org_id="org-123",
             project_id="proj-456",
-            configuration={"format": "excel"}
+            configuration={"format": "excel"},
         )
         assert template.project_id == "proj-456"
 
@@ -225,8 +223,7 @@ class TestReportingModels:
     def test_send_email_custom_report_type(self):
         """Test email with custom report type."""
         email = SendEmailRequest(
-            recipient_emails=["user@example.com"],
-            report_type="monthly"
+            recipient_emails=["user@example.com"], report_type="monthly"
         )
         assert email.report_type == "monthly"
 
@@ -253,4 +250,6 @@ def test_all_models_are_basemodel_subclasses():
 
     for model_name in models.__all__:
         model_class = getattr(models, model_name)
-        assert issubclass(model_class, BaseModel), f"{model_name} is not a BaseModel subclass"
+        assert issubclass(model_class, BaseModel), (
+            f"{model_name} is not a BaseModel subclass"
+        )

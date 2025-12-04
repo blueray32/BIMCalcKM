@@ -42,7 +42,9 @@ async def db_session() -> AsyncSession:
 
 
 @pytest.mark.asyncio
-async def test_fetch_pending_reviews_returns_latest_manual_entry(db_session: AsyncSession):
+async def test_fetch_pending_reviews_returns_latest_manual_entry(
+    db_session: AsyncSession,
+):
     item = ItemModel(
         org_id="acme",
         project_id="proj-a",
@@ -183,7 +185,9 @@ async def test_approve_review_record_writes_mapping_and_audit(db_session: AsyncS
         reason="Manual review",
         created_by="matcher",
         timestamp=datetime.utcnow(),
-        flags=[ReviewFlag(type="StalePrice", severity=FlagSeverity.ADVISORY, message="old")],
+        flags=[
+            ReviewFlag(type="StalePrice", severity=FlagSeverity.ADVISORY, message="old")
+        ],
     )
 
     await approve_review_record(
@@ -212,7 +216,9 @@ async def test_approve_review_record_writes_mapping_and_audit(db_session: AsyncS
 
 
 @pytest.mark.asyncio
-async def test_approve_review_record_blocks_critical_veto_flags(db_session: AsyncSession):
+async def test_approve_review_record_blocks_critical_veto_flags(
+    db_session: AsyncSession,
+):
     """Backend MUST reject approval when Critical-Veto flags exist."""
     item = ItemModel(
         org_id="acme",
@@ -287,13 +293,15 @@ async def test_approve_review_record_blocks_critical_veto_flags(db_session: Asyn
             ReviewFlag(
                 type="Unit Conflict",
                 severity=FlagSeverity.CRITICAL_VETO,
-                message="Unit mismatch: ea != m"
+                message="Unit mismatch: ea != m",
             )
         ],
     )
 
     # Attempt to approve should raise ValueError
-    with pytest.raises(ValueError, match="Cannot approve item with Critical-Veto flags"):
+    with pytest.raises(
+        ValueError, match="Cannot approve item with Critical-Veto flags"
+    ):
         await approve_review_record(
             db_session,
             review_record,

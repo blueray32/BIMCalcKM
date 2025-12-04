@@ -36,6 +36,7 @@ router = APIRouter(tags=["dashboard"])
 # Dashboard Routes
 # ============================================================================
 
+
 @router.get("/", response_class=HTMLResponse)
 async def dashboard(
     request: Request,
@@ -43,7 +44,7 @@ async def dashboard(
     project: str | None = None,
     view: str | None = Query(default=None),
     username: str = Depends(require_auth) if AUTH_ENABLED else None,
-    templates = Depends(get_templates),
+    templates=Depends(get_templates),
 ):
     """Main dashboard with navigation and statistics.
 
@@ -59,14 +60,18 @@ async def dashboard(
     if project is None:
         async with get_session() as session:
             # Find most recent project
-            stmt = select(ProjectModel).order_by(ProjectModel.created_at.desc()).limit(1)
+            stmt = (
+                select(ProjectModel).order_by(ProjectModel.created_at.desc()).limit(1)
+            )
             result = await session.execute(stmt)
             latest_project = result.scalar_one_or_none()
-            
+
             if latest_project:
                 # Redirect to same URL but with org/project params
                 # Preserve view param if present
-                url = f"/?org={latest_project.org_id}&project={latest_project.project_id}"
+                url = (
+                    f"/?org={latest_project.org_id}&project={latest_project.project_id}"
+                )
                 if view:
                     url += f"&view={view}"
                 return RedirectResponse(url=url)
@@ -116,7 +121,9 @@ async def dashboard(
     async with get_session() as session:
         # Get statistics
         items_result = await session.execute(
-            select(func.count()).select_from(ItemModel).where(
+            select(func.count())
+            .select_from(ItemModel)
+            .where(
                 ItemModel.org_id == org_id,
                 ItemModel.project_id == project_id,
             )
@@ -124,15 +131,16 @@ async def dashboard(
         items_count = items_result.scalar_one()
 
         prices_result = await session.execute(
-            select(func.count()).select_from(PriceItemModel).where(
-                PriceItemModel.org_id == org_id,
-                PriceItemModel.is_current == True
-            )
+            select(func.count())
+            .select_from(PriceItemModel)
+            .where(PriceItemModel.org_id == org_id, PriceItemModel.is_current == True)
         )
         prices_count = prices_result.scalar_one()
 
         mappings_result = await session.execute(
-            select(func.count()).select_from(ItemMappingModel).where(
+            select(func.count())
+            .select_from(ItemMappingModel)
+            .where(
                 ItemMappingModel.org_id == org_id,
                 ItemMappingModel.end_ts.is_(None),
             )
@@ -178,6 +186,7 @@ async def dashboard(
 # Progress Tracking Routes
 # ============================================================================
 
+
 @router.get("/progress", response_class=HTMLResponse)
 async def progress_dashboard(
     request: Request,
@@ -185,7 +194,7 @@ async def progress_dashboard(
     project: str | None = None,
     view: str | None = Query(default="standard"),  # standard or executive
     username: str = Depends(require_auth) if AUTH_ENABLED else None,
-    templates = Depends(get_templates),
+    templates=Depends(get_templates),
 ):
     """Progress tracking dashboard for cost estimation workflow.
 
@@ -202,7 +211,9 @@ async def progress_dashboard(
         metrics = await compute_progress_metrics(session, org_id, project_id)
 
     # Choose template based on view mode
-    template_name = "progress_executive.html" if view == "executive" else "progress.html"
+    template_name = (
+        "progress_executive.html" if view == "executive" else "progress.html"
+    )
 
     return templates.TemplateResponse(
         template_name,
@@ -240,8 +251,14 @@ async def progress_export(
         summary_data = [
             {"Metric": "Project", "Value": project_id},
             {"Metric": "Organization", "Value": org_id},
-            {"Metric": "Generated At", "Value": datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")},
-            {"Metric": "Overall Completion", "Value": f"{metrics.overall_completion:.1f}%"},
+            {
+                "Metric": "Generated At",
+                "Value": datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC"),
+            },
+            {
+                "Metric": "Overall Completion",
+                "Value": f"{metrics.overall_completion:.1f}%",
+            },
             {"Metric": "Total Items", "Value": metrics.total_items},
             {"Metric": "Matched Items", "Value": metrics.matched_items},
             {"Metric": "Pending Review", "Value": metrics.pending_review},
@@ -256,21 +273,23 @@ async def progress_export(
                     "Code": c.code,
                     "Total": c.total,
                     "Matched": c.matched,
-                    "Coverage %": f"{c.percent:.1f}%"
+                    "Coverage %": f"{c.percent:.1f}%",
                 }
                 for c in metrics.classification_coverage
             ]
-            pd.DataFrame(class_data).to_excel(writer, sheet_name="Classifications", index=False)
+            pd.DataFrame(class_data).to_excel(
+                writer, sheet_name="Classifications", index=False
+            )
 
     output.seek(0)
-    filename = f"progress_{org_id}_{project_id}_{datetime.now().strftime('%Y%m%d')}.xlsx"
+    filename = (
+        f"progress_{org_id}_{project_id}_{datetime.now().strftime('%Y%m%d')}.xlsx"
+    )
 
-    headers = {
-        "Content-Disposition": f"attachment; filename={filename}"
-    }
+    headers = {"Content-Disposition": f"attachment; filename={filename}"}
 
     return Response(
         content=output.getvalue(),
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers=headers
+        headers=headers,
     )

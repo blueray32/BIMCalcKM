@@ -6,7 +6,6 @@ from uuid import UUID, uuid4
 from sqlalchemy import (
     JSON,
     DateTime,
-    ForeignKey,
     Index,
     Text,
     Uuid,
@@ -16,14 +15,19 @@ from sqlalchemy.sql import func
 
 from bimcalc.db.models import Base
 
+
 class ReportTemplateModel(Base):
     """User-defined template for generating custom reports."""
 
     __tablename__ = "report_templates"
 
-    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True), primary_key=True, default=uuid4
+    )
     org_id: Mapped[str] = mapped_column(Text, nullable=False, index=True)
-    project_id: Mapped[str | None] = mapped_column(Text, index=True) # Optional: if null, available to all projects in org
+    project_id: Mapped[str | None] = mapped_column(
+        Text, index=True
+    )  # Optional: if null, available to all projects in org
 
     name: Mapped[str] = mapped_column(Text, nullable=False)
     description: Mapped[str | None] = mapped_column(Text)
@@ -41,9 +45,10 @@ class ReportTemplateModel(Base):
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
     )
 
-    __table_args__ = (
-        Index("idx_report_templates_org", "org_id"),
-    )
+    __table_args__ = (Index("idx_report_templates_org", "org_id"),)

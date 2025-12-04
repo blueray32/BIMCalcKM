@@ -28,6 +28,7 @@ class MappingRule:
         map_to: Dict of canonical fields to populate when matched
         priority: Optional priority (lower = higher priority for overlapping rules)
     """
+
     match: dict[str, Any]
     map_to: dict[str, Any]
     priority: int = 100
@@ -105,7 +106,9 @@ class ClassificationMappingLoader:
                 continue
 
             if "match" not in item or "map_to" not in item:
-                logger.warning(f"Skipping rule at index {idx}: missing 'match' or 'map_to'")
+                logger.warning(
+                    f"Skipping rule at index {idx}: missing 'match' or 'map_to'"
+                )
                 continue
 
             priority = item.get("priority", 100)
@@ -151,14 +154,18 @@ class ClassificationMappingLoader:
 
         if rule:
             translated = rule.apply(row)
-            logger.debug(f"Mapped row: {row.get('Description1', 'unknown')} → {translated.get('canonical_code', 'unknown')}")
+            logger.debug(
+                f"Mapped row: {row.get('Description1', 'unknown')} → {translated.get('canonical_code', 'unknown')}"
+            )
             return translated, True
         else:
             logger.debug(f"No mapping found for row: {row}")
             return row, False
 
 
-def load_vendor_mapping(vendor_id: str, config_dir: Path = Path("config/vendors")) -> ClassificationMappingLoader | None:
+def load_vendor_mapping(
+    vendor_id: str, config_dir: Path = Path("config/vendors")
+) -> ClassificationMappingLoader | None:
     """Load vendor mapping file by vendor ID.
 
     Args:
@@ -178,7 +185,9 @@ def load_vendor_mapping(vendor_id: str, config_dir: Path = Path("config/vendors"
     mapping_file = config_dir / f"config_vendor_{vendor_id}_classification_map.yaml"
 
     if not mapping_file.exists():
-        logger.warning(f"No mapping file found for vendor '{vendor_id}' at {mapping_file}")
+        logger.warning(
+            f"No mapping file found for vendor '{vendor_id}' at {mapping_file}"
+        )
         return None
 
     return ClassificationMappingLoader(mapping_file)

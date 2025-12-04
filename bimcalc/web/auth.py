@@ -15,11 +15,13 @@ from datetime import datetime, timedelta
 import redis
 from fastapi import Cookie, HTTPException, Request
 
+
 # Redis connection for session storage
 def get_redis_client() -> redis.Redis:
     """Get Redis client for session storage."""
     redis_url = os.environ.get("REDIS_URL", "redis://redis:6379/0")
     return redis.from_url(redis_url, decode_responses=True)
+
 
 # Session expiry
 SESSION_EXPIRY_HOURS = 24
@@ -27,6 +29,7 @@ SESSION_EXPIRY_SECONDS = SESSION_EXPIRY_HOURS * 3600
 
 # In-memory fallback for development when Redis is missing
 _memory_sessions = {}
+
 
 def get_credentials() -> tuple[str, str]:
     """Get username and password from environment variables.
@@ -43,7 +46,9 @@ def get_credentials() -> tuple[str, str]:
     if not password:
         # For demo/development only - MUST set in production
         password = "changeme"
-        print("⚠️  WARNING: Using default password 'changeme'. Set BIMCALC_PASSWORD environment variable!")
+        print(
+            "⚠️  WARNING: Using default password 'changeme'. Set BIMCALC_PASSWORD environment variable!"
+        )
 
     # Hash the password for comparison
     password_hash = hashlib.sha256(password.encode()).hexdigest()
@@ -61,25 +66,25 @@ def create_session(username: str) -> str:
         str: Session token
     """
     session_token = secrets.token_urlsafe(32)
-    
+
     session_data = {
         "username": username,
         "created_at": datetime.utcnow().isoformat(),
-        "expires_at": (datetime.utcnow() + timedelta(hours=SESSION_EXPIRY_HOURS)).isoformat(),
+        "expires_at": (
+            datetime.utcnow() + timedelta(hours=SESSION_EXPIRY_HOURS)
+        ).isoformat(),
     }
-    
+
     try:
         redis_client = get_redis_client()
         # Store in Redis with TTL
         redis_client.setex(
-            f"session:{session_token}",
-            SESSION_EXPIRY_SECONDS,
-            json.dumps(session_data)
+            f"session:{session_token}", SESSION_EXPIRY_SECONDS, json.dumps(session_data)
         )
     except (redis.exceptions.ConnectionError, redis.exceptions.TimeoutError):
         print("⚠️  Redis unavailable, using in-memory session storage")
         _memory_sessions[session_token] = session_data
-    
+
     return session_token
 
 
@@ -96,7 +101,7 @@ def validate_session(session_token: str | None) -> str | None:
         return None
 
     session_data_str = None
-    
+
     try:
         redis_client = get_redis_client()
         session_data_str = redis_client.get(f"session:{session_token}")
@@ -111,19 +116,19 @@ def validate_session(session_token: str | None) -> str | None:
                 return None
             return session_data["username"]
         return None
-    
+
     if not session_data_str:
         return None
 
     try:
         session_data = json.loads(session_data_str)
-        
+
         # Check if session expired (Redis TTL should handle this, but double-check)
         expires_at = datetime.fromisoformat(session_data["expires_at"])
         if datetime.utcnow() > expires_at:
             redis_client.delete(f"session:{session_token}")
             return None
-        
+
         return session_data["username"]
     except (json.JSONDecodeError, KeyError, ValueError):
         # Invalid session data
@@ -148,14 +153,14 @@ def require_auth(request: Request, session: str | None = Cookie(default=None)) -
     auth_disabled = os.environ.get("BIMCALC_AUTH_DISABLED", "false").lower() == "true"
     if auth_disabled:
         return "default_user"  # Return a default user when auth is disabled
-    
+
     username = validate_session(session)
     if not username:
         # Redirect to login page
         raise HTTPException(
             status_code=307,
             detail="Authentication required",
-            headers={"Location": "/login"}
+            headers={"Location": "/login"},
         )
 
     return username
@@ -194,7 +199,7 @@ def logout(session_token: str | None) -> None:
 
 def cleanup_expired_sessions() -> None:
     """Remove expired sessions from Redis.
-    
+
     Note: Redis TTL automatically handles expiration, so this is mainly
     for manual cleanup if needed.
     """

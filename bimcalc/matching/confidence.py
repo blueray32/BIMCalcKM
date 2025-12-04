@@ -208,9 +208,7 @@ class ConfidenceCalculator:
             details={
                 "weighted_score": round(weighted_score, 2),
                 "bonuses": round(bonuses, 2),
-                "field_scores": {
-                    k: round(v, 2) for k, v in field_scores.items()
-                },
+                "field_scores": {k: round(v, 2) for k, v in field_scores.items()},
             },
         )
 
@@ -241,18 +239,14 @@ class ConfidenceCalculator:
         if item.width_mm is not None and price.width_mm is not None:
             width_diff = abs(item.width_mm - price.width_mm)
             if width_diff <= self.size_tolerance_mm:
-                width_score = 100.0 * (
-                    1.0 - width_diff / self.size_tolerance_mm
-                )
+                width_score = 100.0 * (1.0 - width_diff / self.size_tolerance_mm)
 
         # Check height
         height_score = 0.0
         if item.height_mm is not None and price.height_mm is not None:
             height_diff = abs(item.height_mm - price.height_mm)
             if height_diff <= self.size_tolerance_mm:
-                height_score = 100.0 * (
-                    1.0 - height_diff / self.size_tolerance_mm
-                )
+                height_score = 100.0 * (1.0 - height_diff / self.size_tolerance_mm)
 
         # Check DN (pipe diameter)
         dn_score = 0.0

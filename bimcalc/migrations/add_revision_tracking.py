@@ -211,7 +211,9 @@ async def run_migration(session: AsyncSession, dry_run: bool = False):
     logs_exist = await check_table_exists(session, "ingest_logs")
 
     console.print("[yellow]Current state:[/yellow]")
-    console.print(f"  • item_revisions table: {'✓ exists' if revisions_exist else '✗ missing'}")
+    console.print(
+        f"  • item_revisions table: {'✓ exists' if revisions_exist else '✗ missing'}"
+    )
     console.print(f"  • ingest_logs table: {'✓ exists' if logs_exist else '✗ missing'}")
 
     if revisions_exist and logs_exist:
@@ -219,7 +221,9 @@ async def run_migration(session: AsyncSession, dry_run: bool = False):
         return
 
     if dry_run:
-        console.print("\n[bold yellow]DRY RUN MODE - SQL that would be executed:[/bold yellow]")
+        console.print(
+            "\n[bold yellow]DRY RUN MODE - SQL that would be executed:[/bold yellow]"
+        )
         console.print(MIGRATION_SQL)
         return
 
@@ -228,15 +232,23 @@ async def run_migration(session: AsyncSession, dry_run: bool = False):
     try:
         # Split SQL into individual statements and execute separately
         # PostgreSQL async doesn't support multiple statements in one call
-        statements = [stmt.strip() for stmt in MIGRATION_SQL.split(';') if stmt.strip() and not stmt.strip().startswith('--')]
+        statements = [
+            stmt.strip()
+            for stmt in MIGRATION_SQL.split(";")
+            if stmt.strip() and not stmt.strip().startswith("--")
+        ]
 
         for i, stmt in enumerate(statements, 1):
             if stmt:
-                console.print(f"  [dim]Executing statement {i}/{len(statements)}...[/dim]")
+                console.print(
+                    f"  [dim]Executing statement {i}/{len(statements)}...[/dim]"
+                )
                 await session.execute(text(stmt))
 
         await session.commit()
-        console.print("\n[bold green]✓ Migration completed successfully![/bold green]\n")
+        console.print(
+            "\n[bold green]✓ Migration completed successfully![/bold green]\n"
+        )
 
         # Verify
         revisions_exist = await check_table_exists(session, "item_revisions")
@@ -254,11 +266,17 @@ async def run_migration(session: AsyncSession, dry_run: bool = False):
 
 async def run_rollback(session: AsyncSession, dry_run: bool = False):
     """Rollback the migration."""
-    console.print("\n[bold red]═══ Rollback Revision Tracking Migration ═══[/bold red]\n")
-    console.print("[yellow]WARNING: This will delete all revision and ingest log data![/yellow]\n")
+    console.print(
+        "\n[bold red]═══ Rollback Revision Tracking Migration ═══[/bold red]\n"
+    )
+    console.print(
+        "[yellow]WARNING: This will delete all revision and ingest log data![/yellow]\n"
+    )
 
     if dry_run:
-        console.print("[bold yellow]DRY RUN MODE - SQL that would be executed:[/bold yellow]")
+        console.print(
+            "[bold yellow]DRY RUN MODE - SQL that would be executed:[/bold yellow]"
+        )
         console.print(ROLLBACK_SQL)
         return
 
@@ -276,7 +294,9 @@ async def run_rollback(session: AsyncSession, dry_run: bool = False):
 
 @app.command()
 def migrate(
-    execute: bool = typer.Option(False, "--execute", help="Actually run the migration (default is dry-run)"),
+    execute: bool = typer.Option(
+        False, "--execute", help="Actually run the migration (default is dry-run)"
+    ),
     rollback: bool = typer.Option(False, "--rollback", help="Rollback the migration"),
 ):
     """Run or rollback the revision tracking migration."""

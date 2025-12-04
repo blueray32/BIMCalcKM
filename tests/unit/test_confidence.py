@@ -206,9 +206,7 @@ class TestEnhancedFuzzyMatching:
         # Material weight is 15%, so mismatch reduces score
         assert result.details["field_scores"]["material"] == 0.0
 
-    def test_unit_mismatch_lowers_score(
-        self, calculator: ConfidenceCalculator
-    ) -> None:
+    def test_unit_mismatch_lowers_score(self, calculator: ConfidenceCalculator) -> None:
         """Test unit mismatch reduces confidence score."""
         item = Item(
             id=uuid4(),

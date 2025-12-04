@@ -3,9 +3,7 @@
 Tests robots.txt checking, crawl delay detection, and compliance validation.
 """
 
-import pytest
-from unittest.mock import Mock, patch, MagicMock
-import urllib.robotparser
+from unittest.mock import Mock, patch
 
 from bimcalc.intelligence.scraping_compliance import (
     is_url_allowed,

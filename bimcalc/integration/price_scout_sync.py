@@ -54,7 +54,9 @@ async def sync_price_scout_prices(
         # Use MultiSourceOrchestrator for parallel fetching
         logger.info(f"Starting multi-source price sync for org: {org_id}")
 
-        async with MultiSourceOrchestrator(org_id=org_id, session=session) as orchestrator:
+        async with MultiSourceOrchestrator(
+            org_id=org_id, session=session
+        ) as orchestrator:
             # Fetch from all enabled sources in parallel
             multi_result = await orchestrator.fetch_all(force_refresh=full_sync)
 
@@ -73,14 +75,14 @@ async def sync_price_scout_prices(
             # Log any errors
             if multi_result.errors:
                 for error in multi_result.errors:
-                    logger.warning(
-                        f"Source {error['source']} failed: {error['error']}"
-                    )
+                    logger.warning(f"Source {error['source']} failed: {error['error']}")
 
             raw_items = multi_result.products
 
         # Transform items using existing pipeline
-        logger.info(f"Fetched {len(raw_items)} unique items from {multi_result.stats['sources_succeeded']} sources")
+        logger.info(
+            f"Fetched {len(raw_items)} unique items from {multi_result.stats['sources_succeeded']} sources"
+        )
 
         if not raw_items:
             logger.info("No items fetched from Price Scout")
@@ -104,6 +106,7 @@ async def sync_price_scout_prices(
     }
 
     import os
+
     base_url = os.getenv("API_BASE_URL", "http://localhost:8001")
     api_url = f"{base_url}/api/price-items/bulk-import"
 

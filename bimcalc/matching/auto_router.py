@@ -68,7 +68,9 @@ class AutoRouter:
             if confidence < self.min_confidence:
                 reasons.append(f"confidence {confidence:.1f}% < {self.min_confidence}%")
             if has_critical_flags:
-                critical_types = ", ".join(f.type for f in flags if f.severity == "Critical-Veto")
+                critical_types = ", ".join(
+                    f.type for f in flags if f.severity == "Critical-Veto"
+                )
                 reasons.append(f"CRITICAL flags: {critical_types}")
             elif has_any_flags:
                 flag_types = ", ".join(f.type for f in flags)

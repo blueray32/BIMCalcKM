@@ -129,7 +129,9 @@ class PipelineOrchestrator:
                         result.records_failed += 1
             except Exception as e:
                 # Error during fetch/process
-                logger.error(f"Error processing records from {importer.source_name}: {e}")
+                logger.error(
+                    f"Error processing records from {importer.source_name}: {e}"
+                )
                 result.status = ImportStatus.FAILED
                 result.message = f"Processing error: {str(e)}"
                 return result
@@ -138,7 +140,9 @@ class PipelineOrchestrator:
             try:
                 await updater.commit()
             except Exception as e:
-                logger.error(f"Error committing updates for {importer.source_name}: {e}")
+                logger.error(
+                    f"Error committing updates for {importer.source_name}: {e}"
+                )
                 await updater.rollback()
                 result.status = ImportStatus.FAILED
                 result.message = f"Commit error: {str(e)}"

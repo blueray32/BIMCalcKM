@@ -11,6 +11,7 @@ from io import BytesIO
 
 logger = logging.getLogger(__name__)
 
+
 class VendorAnalyzer:
     """Analyzes vendor documents (PDFs) to extract pricing data."""
 
@@ -53,13 +54,15 @@ Rules:
                 response = await client.get(url, follow_redirects=True)
                 response.raise_for_status()
                 content = response.content
-                
-            return await self.extract_quote_data(content, url.split('/')[-1])
+
+            return await self.extract_quote_data(content, url.split("/")[-1])
         except Exception as e:
             logger.error(f"Failed to fetch PDF from {url}: {e}")
             return {"error": f"Download failed: {str(e)}"}
 
-    async def extract_quote_data(self, file_content: bytes, filename: str) -> dict[str, Any]:
+    async def extract_quote_data(
+        self, file_content: bytes, filename: str
+    ) -> dict[str, Any]:
         """Extract structured data from a quote/invoice file.
 
         Args:
@@ -105,10 +108,13 @@ Rules:
             model="gpt-4o-mini",
             messages=[
                 {"role": "system", "content": self.SYSTEM_PROMPT},
-                {"role": "user", "content": f"Analyze this document text:\n\n{context[:10000]}"}  # Limit context window
+                {
+                    "role": "user",
+                    "content": f"Analyze this document text:\n\n{context[:10000]}",
+                },  # Limit context window
             ],
             temperature=0.1,
-            response_format={"type": "json_object"}
+            response_format={"type": "json_object"},
         )
 
         return response.choices[0].message.content or "{}"

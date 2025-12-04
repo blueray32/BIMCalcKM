@@ -128,7 +128,9 @@ def generate_price_record(
     region = random.choice(REGIONS)
 
     # Create unique item_code per (org, classification, family, index)
-    item_code = f"{org_id[:5].upper()}-{classification_code}-{family[:3].upper()}-{index:06d}"
+    item_code = (
+        f"{org_id[:5].upper()}-{classification_code}-{family[:3].upper()}-{index:06d}"
+    )
 
     return PriceItemModel(
         org_id=org_id,
@@ -168,7 +170,9 @@ async def generate_price_catalog(
 
     total_inserted = 0
     for classification_code in CLASSIFICATIONS:
-        print(f"  Generating {prices_per_class} prices for classification {classification_code}...")
+        print(
+            f"  Generating {prices_per_class} prices for classification {classification_code}..."
+        )
 
         for batch_start in range(0, prices_per_class, batch_size):
             batch_end = min(batch_start + batch_size, prices_per_class)
@@ -193,9 +197,13 @@ async def main():
     """Generate test data for performance benchmarking."""
     import argparse
 
-    parser = argparse.ArgumentParser(description="Generate test data for performance testing")
+    parser = argparse.ArgumentParser(
+        description="Generate test data for performance testing"
+    )
     parser.add_argument("--org", default="perf-test-org", help="Organization ID")
-    parser.add_argument("--num-prices", type=int, default=10000, help="Number of prices to generate")
+    parser.add_argument(
+        "--num-prices", type=int, default=10000, help="Number of prices to generate"
+    )
     parser.add_argument(
         "--database-url",
         default="sqlite+aiosqlite:///./bimcalc_perftest.db",
@@ -246,9 +254,9 @@ async def main():
 
         # Count by region
         result = await session.execute(
-            select(PriceItemModel.region, func.count(PriceItemModel.id).label("count")).group_by(
-                PriceItemModel.region
-            )
+            select(
+                PriceItemModel.region, func.count(PriceItemModel.id).label("count")
+            ).group_by(PriceItemModel.region)
         )
         print("\nPrices by Region:")
         for row in result:

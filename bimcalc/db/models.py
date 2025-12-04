@@ -27,7 +27,6 @@ from sqlalchemy import (
 )
 from pgvector.sqlalchemy import Vector
 
-from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from sqlalchemy.sql import func
 
@@ -43,14 +42,16 @@ class ItemModel(Base):
 
     __tablename__ = "items"
 
-    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True), primary_key=True, default=uuid4
+    )
     org_id: Mapped[str] = mapped_column(Text, nullable=False, index=True)
     project_id: Mapped[str] = mapped_column(Text, nullable=False, index=True)
 
     # Classification
     classification_code: Mapped[str | None] = mapped_column(Text, index=True)
     canonical_key: Mapped[str | None] = mapped_column(Text, index=True)
-    
+
     # Link to Price Item (Foreign Key)
     price_item_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), index=True)
 
@@ -81,14 +82,16 @@ class ItemModel(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
-    
+
     # Flexible attributes for domain-specific data
     attributes: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
 
     __table_args__ = (
         Index("idx_items_class", "classification_code"),  # CRITICAL for blocking
         Index("idx_items_canonical", "canonical_key"),  # CRITICAL for O(1) lookup
-        Index("idx_items_org_project_created", "org_id", "project_id", "created_at"),  # Items list performance
+        Index(
+            "idx_items_org_project_created", "org_id", "project_id", "created_at"
+        ),  # Items list performance
     )
 
 
@@ -101,7 +104,9 @@ class PriceItemModel(Base):
 
     __tablename__ = "price_items"
 
-    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True), primary_key=True, default=uuid4
+    )
 
     # Multi-tenant scoping (CRITICAL for org isolation)
     org_id: Mapped[str] = mapped_column(Text, nullable=False, index=True)
@@ -138,7 +143,9 @@ class PriceItemModel(Base):
     # Governance fields (data provenance & integrity)
     source_name: Mapped[str] = mapped_column(Text, nullable=False, index=True)
     source_currency: Mapped[str] = mapped_column(String(3), nullable=False)
-    original_effective_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    original_effective_date: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True)
+    )
 
     # SCD Type-2 temporal fields
     valid_from: Mapped[datetime] = mapped_column(
@@ -149,7 +156,10 @@ class PriceItemModel(Base):
 
     # Audit & metadata
     last_updated: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now()
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        onupdate=func.now(),
     )
     vendor_note: Mapped[str | None] = mapped_column(Text)
     attributes: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
@@ -163,11 +173,11 @@ class PriceItemModel(Base):
 
     __table_args__ = (
         CheckConstraint("unit_price >= 0", name="check_unit_price_non_negative"),
-        CheckConstraint("valid_to IS NULL OR valid_to > valid_from", name="check_valid_period"),
-
+        CheckConstraint(
+            "valid_to IS NULL OR valid_to > valid_from", name="check_valid_period"
+        ),
         # CRITICAL for blocking by classification
         Index("idx_price_class", "classification_code"),
-
         # SCD Type-2: Enforce one active record per (org_id, item_code, region)
         Index(
             "idx_price_active_unique",
@@ -178,13 +188,17 @@ class PriceItemModel(Base):
             postgresql_where=text("is_current = true"),
             sqlite_where=text("is_current = 1"),
         ),
-
         # Temporal queries (as-of lookups)
-        Index("idx_price_temporal", "org_id", "item_code", "region", "valid_from", "valid_to"),
-
+        Index(
+            "idx_price_temporal",
+            "org_id",
+            "item_code",
+            "region",
+            "valid_from",
+            "valid_to",
+        ),
         # Current price lookups (most common query)
         Index("idx_price_current", "org_id", "item_code", "region", "is_current"),
-
         # Source tracking for operational monitoring
         Index("idx_price_source", "source_name", "last_updated"),
     )
@@ -198,7 +212,9 @@ class PriceImportRunModel(Base):
     id: Mapped[str] = mapped_column(Text, primary_key=True)
     org_id: Mapped[str] = mapped_column(Text, nullable=False, index=True)
     source: Mapped[str] = mapped_column(Text, nullable=False)
-    started_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), nullable=False)
+    started_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True), nullable=False
+    )
     completed_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True))
     status: Mapped[str] = mapped_column(Text, nullable=False)
     items_fetched: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
@@ -221,22 +237,32 @@ class PriceSourceModel(Base):
 
     __tablename__ = "price_sources"
 
-    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True), primary_key=True, default=uuid4
+    )
     org_id: Mapped[str] = mapped_column(Text, nullable=False, index=True)
 
     # Source identification
     name: Mapped[str] = mapped_column(Text, nullable=False)  # "TLC Direct", "Rexel UK"
     url: Mapped[str] = mapped_column(Text, nullable=False)  # Base catalog URL
-    domain: Mapped[str] = mapped_column(Text, nullable=False, index=True)  # For rate limiting
+    domain: Mapped[str] = mapped_column(
+        Text, nullable=False, index=True
+    )  # For rate limiting
 
     # Configuration
     enabled: Mapped[bool] = mapped_column(nullable=False, default=True, index=True)
-    cache_ttl_seconds: Mapped[int] = mapped_column(Integer, nullable=False, default=86400)  # 24hrs
-    rate_limit_seconds: Mapped[float] = mapped_column(Float, nullable=False, default=2.0)
+    cache_ttl_seconds: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=86400
+    )  # 24hrs
+    rate_limit_seconds: Mapped[float] = mapped_column(
+        Float, nullable=False, default=2.0
+    )
 
     # Operational metadata
     last_sync_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    last_sync_status: Mapped[str | None] = mapped_column(Text)  # "success", "failed", "partial"
+    last_sync_status: Mapped[str | None] = mapped_column(
+        Text
+    )  # "success", "failed", "partial"
     last_sync_items_count: Mapped[int | None] = mapped_column(Integer)
     last_sync_error: Mapped[str | None] = mapped_column(Text)
 
@@ -245,21 +271,24 @@ class PriceSourceModel(Base):
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
     )
     created_by: Mapped[str | None] = mapped_column(Text)
 
     # Additional metadata
     notes: Mapped[str | None] = mapped_column(Text)
-    tags: Mapped[list[str] | None] = mapped_column(JSON)  # JSON for cross-DB compatibility
+    tags: Mapped[list[str] | None] = mapped_column(
+        JSON
+    )  # JSON for cross-DB compatibility
 
     __table_args__ = (
         # Prevent duplicate sources per org
         UniqueConstraint("org_id", "domain", name="uq_price_source_domain"),
-
         # Index for enabled sources (most common query)
         Index("idx_price_sources_enabled", "org_id", "enabled"),
-
         # Index for last sync tracking
         Index("idx_price_sources_last_sync", "org_id", "last_sync_at"),
     )
@@ -293,7 +322,9 @@ class ItemMappingModel(Base):
 
     __tablename__ = "item_mapping"
 
-    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True), primary_key=True, default=uuid4
+    )
     org_id: Mapped[str] = mapped_column(Text, nullable=False)
     canonical_key: Mapped[str] = mapped_column(Text, nullable=False)
     price_item_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
@@ -309,8 +340,12 @@ class ItemMappingModel(Base):
     reason: Mapped[str] = mapped_column(Text, nullable=False)
 
     __table_args__ = (
-        UniqueConstraint("org_id", "canonical_key", "start_ts", name="uq_mapping_start"),
-        CheckConstraint("end_ts IS NULL OR end_ts > start_ts", name="check_valid_period"),
+        UniqueConstraint(
+            "org_id", "canonical_key", "start_ts", name="uq_mapping_start"
+        ),
+        CheckConstraint(
+            "end_ts IS NULL OR end_ts > start_ts", name="check_valid_period"
+        ),
         # At most one active row per (org_id, canonical_key)
         Index(
             "idx_mapping_active",
@@ -330,15 +365,21 @@ class MatchFlagModel(Base):
 
     __tablename__ = "match_flags"
 
-    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True), primary_key=True, default=uuid4
+    )
     match_result_id: Mapped[UUID] = mapped_column(
         Uuid(as_uuid=True),
         ForeignKey("match_results.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
-    item_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False, index=True)
-    price_item_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False, index=True)
+    item_id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True), nullable=False, index=True
+    )
+    price_item_id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True), nullable=False, index=True
+    )
 
     # Flag details
     flag_type: Mapped[str] = mapped_column(Text, nullable=False)
@@ -365,11 +406,13 @@ class MatchResultModel(Base):
 
     __tablename__ = "match_results"
 
-    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
-    item_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False, index=True)
-    price_item_id: Mapped[UUID | None] = mapped_column(
-        Uuid(as_uuid=True), index=True
+    id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True), primary_key=True, default=uuid4
     )
+    item_id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True), nullable=False, index=True
+    )
+    price_item_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), index=True)
 
     # Match metadata
     confidence_score: Mapped[float] = mapped_column(nullable=False)
@@ -385,7 +428,8 @@ class MatchResultModel(Base):
 
     __table_args__ = (
         CheckConstraint(
-            "confidence_score >= 0 AND confidence_score <= 100", name="check_confidence_range"
+            "confidence_score >= 0 AND confidence_score <= 100",
+            name="check_confidence_range",
         ),
         CheckConstraint(
             "source IN ('mapping_memory', 'fuzzy_match', 'review_ui')",
@@ -400,7 +444,7 @@ class MatchResultModel(Base):
 
 class ProjectClassificationMappingModel(Base):
     """Project-specific classification code mappings.
-    
+
     Allows projects to define their own local classification codes
     (e.g., "61" from Tritex) and map them to standard BIMCalc codes
     (e.g., "2601" for Electrical Distribution).
@@ -408,7 +452,9 @@ class ProjectClassificationMappingModel(Base):
 
     __tablename__ = "project_classification_mappings"
 
-    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True), primary_key=True, default=uuid4
+    )
     org_id: Mapped[str] = mapped_column(Text, nullable=False, index=True)
     project_id: Mapped[str] = mapped_column(Text, nullable=False, index=True)
 
@@ -420,13 +466,21 @@ class ProjectClassificationMappingModel(Base):
 
     # Optional metadata
     description: Mapped[str] = mapped_column(Text, default="", nullable=False)
-    created_by: Mapped[str] = mapped_column(String(255), default="system", nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    created_by: Mapped[str] = mapped_column(
+        String(255), default="system", nullable=False
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, nullable=False
+    )
 
     __table_args__ = (
         # Unique constraint: one project can't have duplicate local codes
-        UniqueConstraint('org_id', 'project_id', 'local_code', name='uq_project_local_code'),
-        Index('idx_project_classification_lookup', 'org_id', 'project_id', 'local_code'),
+        UniqueConstraint(
+            "org_id", "project_id", "local_code", name="uq_project_local_code"
+        ),
+        Index(
+            "idx_project_classification_lookup", "org_id", "project_id", "local_code"
+        ),
     )
 
 
@@ -443,7 +497,9 @@ class DataSyncLogModel(Base):
 
     __tablename__ = "data_sync_log"
 
-    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True), primary_key=True, default=uuid4
+    )
 
     # Pipeline execution tracking
     run_timestamp: Mapped[datetime] = mapped_column(
@@ -473,16 +529,19 @@ class DataSyncLogModel(Base):
             "status IN ('SUCCESS', 'FAILED', 'PARTIAL_SUCCESS', 'SKIPPED')",
             name="check_sync_status_valid",
         ),
-        CheckConstraint("records_updated >= 0", name="check_records_updated_non_negative"),
-        CheckConstraint("records_inserted >= 0", name="check_records_inserted_non_negative"),
-        CheckConstraint("records_failed >= 0", name="check_records_failed_non_negative"),
-
+        CheckConstraint(
+            "records_updated >= 0", name="check_records_updated_non_negative"
+        ),
+        CheckConstraint(
+            "records_inserted >= 0", name="check_records_inserted_non_negative"
+        ),
+        CheckConstraint(
+            "records_failed >= 0", name="check_records_failed_non_negative"
+        ),
         # Query by run for full pipeline status
         Index("idx_sync_run", "run_timestamp", "source_name"),
-
         # Alert queries (find failures)
         Index("idx_sync_failures", "status", "run_timestamp"),
-
         # Source health monitoring
         Index("idx_sync_source_health", "source_name", "status", "run_timestamp"),
     )
@@ -493,7 +552,9 @@ class DocumentModel(Base):
 
     __tablename__ = "documents"
 
-    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True), primary_key=True, default=uuid4
+    )
     title: Mapped[str] = mapped_column(Text, nullable=False)
     content: Mapped[str] = mapped_column(Text, nullable=False)
     embedding: Mapped[Vector] = mapped_column(Vector(1536))  # Requires pgvector type
@@ -528,19 +589,29 @@ class DocumentLinkModel(Base):
 
     __tablename__ = "document_links"
 
-    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True), primary_key=True, default=uuid4
+    )
     item_id: Mapped[UUID] = mapped_column(
-        Uuid(as_uuid=True), ForeignKey("items.id", ondelete="CASCADE"), nullable=False, index=True
+        Uuid(as_uuid=True),
+        ForeignKey("items.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
     document_id: Mapped[UUID] = mapped_column(
-        Uuid(as_uuid=True), ForeignKey("documents.id", ondelete="CASCADE"), nullable=False, index=True
+        Uuid(as_uuid=True),
+        ForeignKey("documents.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
-    
+
     # Link metadata
-    link_type: Mapped[str] = mapped_column(Text, nullable=False) # e.g., "commissioning_cert", "manual", "contract"
+    link_type: Mapped[str] = mapped_column(
+        Text, nullable=False
+    )  # e.g., "commissioning_cert", "manual", "contract"
     confidence: Mapped[float] = mapped_column(Float, default=1.0)
     created_by: Mapped[str] = mapped_column(Text, default="system")
-    
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
@@ -552,75 +623,102 @@ class DocumentLinkModel(Base):
 
 class QAChecklistModel(Base):
     """Auto-generated QA testing checklist for items."""
-    
+
     __tablename__ = "qa_checklists"
-    
-    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+
+    id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True), primary_key=True, default=uuid4
+    )
     item_id: Mapped[UUID] = mapped_column(
-        Uuid(as_uuid=True), ForeignKey("items.id", ondelete="CASCADE"), nullable=False, unique=True, index=True
+        Uuid(as_uuid=True),
+        ForeignKey("items.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
+        index=True,
     )
     org_id: Mapped[str] = mapped_column(Text, nullable=False, index=True)
     project_id: Mapped[str] = mapped_column(Text, nullable=False, index=True)
-    
+
     # Checklist data (stored as JSON)
-    checklist_items: Mapped[dict] = mapped_column(JSON, nullable=False)  # {"items": [...]}
-    source_documents: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)  # {"docs": [...]}
-    
+    checklist_items: Mapped[dict] = mapped_column(
+        JSON, nullable=False
+    )  # {"items": [...]}
+    source_documents: Mapped[dict] = mapped_column(
+        JSON, default=dict, nullable=False
+    )  # {"docs": [...]}
+
     # Generation metadata
     auto_generated: Mapped[bool] = mapped_column(default=True, nullable=False)
     generated_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
     )
-    
+
     # Completion tracking
     completed_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True))
-    completion_percent: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
-    
+    completion_percent: Mapped[float] = mapped_column(
+        Float, default=0.0, nullable=False
+    )
+
     # Audit
     created_by: Mapped[str] = mapped_column(Text, default="system", nullable=False)
     updated_at: Mapped[datetime] = mapped_column(
-        TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+        TIMESTAMP(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
     )
-    
+
     __table_args__ = (
-        CheckConstraint("completion_percent >= 0 AND completion_percent <= 100", name="check_completion_range"),
+        CheckConstraint(
+            "completion_percent >= 0 AND completion_percent <= 100",
+            name="check_completion_range",
+        ),
         Index("idx_qa_checklists_org_project", "org_id", "project_id"),
     )
 
 
 class ChecklistTemplateModel(Base):
     """Reusable checklist templates for common item types."""
-    
+
     __tablename__ = "checklist_templates"
-    
-    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
-    
+
+    id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True), primary_key=True, default=uuid4
+    )
+
     # Template metadata
     name: Mapped[str] = mapped_column(Text, nullable=False)
     description: Mapped[str | None] = mapped_column(Text)
-    
+
     # Applicability
-    classification_codes: Mapped[list[str]] = mapped_column(JSON, default=list, nullable=False)
-    category: Mapped[str | None] = mapped_column(Text)  # Optional: Electrical, HVAC, etc.
-    
+    classification_codes: Mapped[list[str]] = mapped_column(
+        JSON, default=list, nullable=False
+    )
+    category: Mapped[str | None] = mapped_column(
+        Text
+    )  # Optional: Electrical, HVAC, etc.
+
     # Template content (same structure as checklist_items)
     template_items: Mapped[dict] = mapped_column(JSON, nullable=False)
-    
+
     # Template metadata
     is_builtin: Mapped[bool] = mapped_column(default=False, nullable=False)
     created_by: Mapped[str] = mapped_column(Text, default="system", nullable=False)
-    
+
     # Usage tracking
     usage_count: Mapped[int] = mapped_column(default=0, nullable=False)
-    
+
     # Audit
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
     updated_at: Mapped[datetime] = mapped_column(
-        TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+        TIMESTAMP(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
     )
-    
+
     __table_args__ = (
         Index("idx_checklist_templates_codes", "classification_codes"),
         Index("idx_checklist_templates_builtin", "is_builtin"),
@@ -629,37 +727,46 @@ class ChecklistTemplateModel(Base):
 
 class ProjectModel(Base):
     """Project metadata and configuration."""
-    
+
     __tablename__ = "projects"
-    
-    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
-    
+
+    id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True), primary_key=True, default=uuid4
+    )
+
     # Project identification
     org_id: Mapped[str] = mapped_column(Text, nullable=False)
     project_id: Mapped[str] = mapped_column(Text, nullable=False)
-    region: Mapped[str] = mapped_column(Text, nullable=False, default="EU")  # EU, UK, US
-    
+    region: Mapped[str] = mapped_column(
+        Text, nullable=False, default="EU"
+    )  # EU, UK, US
+
     # Metadata
     display_name: Mapped[str] = mapped_column(Text, nullable=False)
     description: Mapped[str | None] = mapped_column(Text)
     settings: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
-    
+
     # Status
-    status: Mapped[str] = mapped_column(Text, default="active", nullable=False)  # active, archived, completed
-    
+    status: Mapped[str] = mapped_column(
+        Text, default="active", nullable=False
+    )  # active, archived, completed
+
     # Dates
     start_date: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True))
     target_completion: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True))
-    
+
     # Audit
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
     created_by: Mapped[str] = mapped_column(Text, default="system", nullable=False)
     updated_at: Mapped[datetime] = mapped_column(
-        TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+        TIMESTAMP(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
     )
-    
+
     __table_args__ = (
         UniqueConstraint("org_id", "project_id", name="uq_projects_org_project"),
         Index("idx_projects_org", "org_id"),
@@ -669,33 +776,36 @@ class ProjectModel(Base):
 
 class LaborRateOverride(Base):
     """Category-specific labor rate overrides for a project.
-    
+
     Allows different labor rates per category (e.g., Electrical, Mechanical).
     When calculating labor costs, category-specific rates take precedence
     over the project's base blended_labor_rate.
     """
+
     __tablename__ = "labor_rate_overrides"
-    
-    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+
+    id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True), primary_key=True, default=uuid4
+    )
     project_id: Mapped[UUID] = mapped_column(
         Uuid(as_uuid=True),
-        ForeignKey('projects.id', ondelete='CASCADE'),
+        ForeignKey("projects.id", ondelete="CASCADE"),
         nullable=False,
-        index=True
+        index=True,
     )
     category: Mapped[str] = mapped_column(Text, nullable=False)
     rate: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
-    
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
     updated_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), onupdate=func.now()
     )
-    
+
     __table_args__ = (
-        UniqueConstraint('project_id', 'category', name='uq_project_category_rate'),
-        Index('idx_labor_rate_project', 'project_id'),
+        UniqueConstraint("project_id", "category", name="uq_project_category_rate"),
+        Index("idx_labor_rate_project", "project_id"),
     )
 
 
@@ -711,7 +821,9 @@ class ItemRevisionModel(Base):
 
     __tablename__ = "item_revisions"
 
-    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True), primary_key=True, default=uuid4
+    )
 
     # Links to the item and import
     item_id: Mapped[UUID] = mapped_column(
@@ -743,7 +855,12 @@ class ItemRevisionModel(Base):
             name="check_change_type_valid",
         ),
         Index("idx_revisions_item_field", "item_id", "field_name"),
-        Index("idx_revisions_org_project_timestamp", "org_id", "project_id", "ingest_timestamp"),
+        Index(
+            "idx_revisions_org_project_timestamp",
+            "org_id",
+            "project_id",
+            "ingest_timestamp",
+        ),
     )
 
 
@@ -759,7 +876,9 @@ class IngestLogModel(Base):
 
     __tablename__ = "ingest_logs"
 
-    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True), primary_key=True, default=uuid4
+    )
 
     org_id: Mapped[str] = mapped_column(Text, nullable=False, index=True)
     project_id: Mapped[str] = mapped_column(Text, nullable=False, index=True)
@@ -805,32 +924,99 @@ class IngestLogModel(Base):
 
 class TrainingExampleModel(Base):
     """User feedback for training the classifier.
-    
+
     Captures instances where a user manually confirms or corrects a match,
     providing a 'ground truth' label (classification code) for an item description.
     """
-    
+
     __tablename__ = "training_examples"
-    
-    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+
+    id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True), primary_key=True, default=uuid4
+    )
     org_id: Mapped[str] = mapped_column(Text, nullable=False, index=True)
-    
+
     # Input features (snapshot at time of feedback)
     item_family: Mapped[str] = mapped_column(Text, nullable=False)
     item_type: Mapped[str] = mapped_column(Text, nullable=False)
-    item_description: Mapped[str | None] = mapped_column(Text) # Constructed from attributes
-    
+    item_description: Mapped[str | None] = mapped_column(
+        Text
+    )  # Constructed from attributes
+
     # Target label (Ground Truth)
-    target_classification_code: Mapped[str] = mapped_column(Text, nullable=False, index=True)
-    
+    target_classification_code: Mapped[str] = mapped_column(
+        Text, nullable=False, index=True
+    )
+
     # Metadata
     source_item_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), index=True)
     price_item_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), index=True)
-    feedback_type: Mapped[str] = mapped_column(Text, nullable=False) # 'confirmation', 'correction'
-    
+    feedback_type: Mapped[str] = mapped_column(
+        Text, nullable=False
+    )  # 'confirmation', 'correction'
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
     created_by: Mapped[str] = mapped_column(Text, default="system")
 
 
+class PriceImportModel(Base):
+    """Track bulk price import jobs (e.g. CSV upload)."""
+
+    __tablename__ = "price_imports"
+
+    id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True), primary_key=True, default=uuid4
+    )
+    org_id: Mapped[str] = mapped_column(Text, nullable=False, index=True)
+    project_id: Mapped[str] = mapped_column(Text, nullable=False, index=True)
+
+    source: Mapped[str] = mapped_column(
+        Text, nullable=False
+    )  # "bulk_scout", "manual_upload"
+    filename: Mapped[str | None] = mapped_column(Text)
+
+    status: Mapped[str] = mapped_column(
+        Text, nullable=False, default="pending", index=True
+    )
+    notes: Mapped[str | None] = mapped_column(Text)
+
+    created_by: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class PriceImportItemModel(Base):
+    """Individual item from a bulk import job."""
+
+    __tablename__ = "price_import_items"
+
+    id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True), primary_key=True, default=uuid4
+    )
+    import_id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("price_imports.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    org_id: Mapped[str] = mapped_column(Text, nullable=False, index=True)
+
+    # Extracted Data
+    raw_data: Mapped[dict] = mapped_column(JSON, default=dict)
+    description: Mapped[str | None] = mapped_column(Text)
+    vendor_code: Mapped[str | None] = mapped_column(Text)
+    unit_price: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))
+    currency: Mapped[str | None] = mapped_column(String(3))
+    unit: Mapped[str | None] = mapped_column(Text)
+
+    status: Mapped[str] = mapped_column(
+        Text, nullable=False, default="pending"
+    )  # pending, imported, failed
+    error_message: Mapped[str | None] = mapped_column(Text)
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )

@@ -108,7 +108,9 @@ def validate_config():
             if source.get("type") == "csv":
                 # Check required CSV config
                 if "file_path" not in config_obj:
-                    errors.append(f"Source {source_num}: CSV source missing 'file_path'")
+                    errors.append(
+                        f"Source {source_num}: CSV source missing 'file_path'"
+                    )
                     print("  ❌ Missing 'file_path'")
                 else:
                     file_path = Path(config_obj["file_path"])
@@ -131,7 +133,9 @@ def validate_config():
                     print(f"  Region: {config_obj['region']}")
 
                 if "column_mapping" not in config_obj:
-                    errors.append(f"Source {source_num}: CSV source missing 'column_mapping'")
+                    errors.append(
+                        f"Source {source_num}: CSV source missing 'column_mapping'"
+                    )
                     print("  ❌ Missing 'column_mapping'")
                 else:
                     mapping = config_obj["column_mapping"]

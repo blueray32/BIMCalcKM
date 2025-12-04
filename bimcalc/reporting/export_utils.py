@@ -16,7 +16,7 @@ from openpyxl.utils import get_column_letter
 
 def _sanitize_sheet_name(name: str) -> str:
     """Ensure Excel sheet name is valid and within length."""
-    safe = "".join("-" if ch in '[]:*?/\\' else ch for ch in name).strip()
+    safe = "".join("-" if ch in "[]:*?/\\" else ch for ch in name).strip()
     if not safe:
         safe = "Sheet"
     return safe[:31]
@@ -58,14 +58,16 @@ class ExcelExporter:
             self.wb.remove(self.wb["Sheet"])
 
         # Define styles
-        self.header_fill = PatternFill(start_color="667EEA", end_color="667EEA", fill_type="solid")
+        self.header_fill = PatternFill(
+            start_color="667EEA", end_color="667EEA", fill_type="solid"
+        )
         self.header_font = Font(bold=True, color="FFFFFF", size=12)
         self.title_font = Font(bold=True, size=14)
         self.border = Border(
-            left=Side(style='thin'),
-            right=Side(style='thin'),
-            top=Side(style='thin'),
-            bottom=Side(style='thin')
+            left=Side(style="thin"),
+            right=Side(style="thin"),
+            top=Side(style="thin"),
+            bottom=Side(style="thin"),
         )
 
     def add_metadata_sheet(self):
@@ -73,33 +75,33 @@ class ExcelExporter:
         ws = self.wb.create_sheet(_sanitize_sheet_name("Export Info"), 0)
 
         # Title
-        ws['A1'] = self.title
-        ws['A1'].font = Font(bold=True, size=16, color="667EEA")
+        ws["A1"] = self.title
+        ws["A1"].font = Font(bold=True, size=16, color="667EEA")
 
         # Metadata
-        ws['A3'] = "Organization:"
-        ws['B3'] = self.org_id
-        ws['A4'] = "Project:"
-        ws['B4'] = self.project_id
-        ws['A5'] = "Generated:"
-        ws['B5'] = self.timestamp.strftime("%Y-%m-%d %H:%M:%S")
-        ws['A6'] = "System:"
-        ws['B6'] = "BIMCalc Executive Dashboard"
+        ws["A3"] = "Organization:"
+        ws["B3"] = self.org_id
+        ws["A4"] = "Project:"
+        ws["B4"] = self.project_id
+        ws["A5"] = "Generated:"
+        ws["B5"] = self.timestamp.strftime("%Y-%m-%d %H:%M:%S")
+        ws["A6"] = "System:"
+        ws["B6"] = "BIMCalc Executive Dashboard"
 
         # Style metadata
         for row in range(3, 7):
-            ws[f'A{row}'].font = Font(bold=True)
+            ws[f"A{row}"].font = Font(bold=True)
 
         # Column widths
-        ws.column_dimensions['A'].width = 20
-        ws.column_dimensions['B'].width = 40
+        ws.column_dimensions["A"].width = 20
+        ws.column_dimensions["B"].width = 40
 
     def add_kpi_sheet(self, name: str, data: list[dict[str, Any]]):
         """Add a sheet with KPI data."""
         ws = self.wb.create_sheet(_sanitize_sheet_name(name))
 
         if not data:
-            ws['A1'] = "No data available"
+            ws["A1"] = "No data available"
             return
 
         # Headers
@@ -108,7 +110,7 @@ class ExcelExporter:
             cell = ws.cell(row=1, column=col_idx, value=header)
             cell.fill = self.header_fill
             cell.font = self.header_font
-            cell.alignment = Alignment(horizontal='center', vertical='center')
+            cell.alignment = Alignment(horizontal="center", vertical="center")
             cell.border = self.border
 
         # Data rows
@@ -117,14 +119,14 @@ class ExcelExporter:
                 value = row_data.get(header, "")
                 cell = ws.cell(row=row_idx, column=col_idx, value=value)
                 cell.border = self.border
-                cell.alignment = Alignment(horizontal='left', vertical='center')
+                cell.alignment = Alignment(horizontal="left", vertical="center")
 
         # Auto-adjust column widths
         for col_idx in range(1, len(headers) + 1):
             ws.column_dimensions[get_column_letter(col_idx)].width = 20
 
         # Freeze header row
-        ws.freeze_panes = 'A2'
+        ws.freeze_panes = "A2"
 
     def save(self) -> bytes:
         """Save workbook to bytes."""
@@ -143,52 +145,48 @@ def export_dashboard_to_excel(metrics, org_id: str, project_id: str) -> bytes:
     kpi_data = [
         {
             "Metric": "Total Cost (Net)",
-            "Value": format_currency(metrics.total_cost_net, metrics.currency)
+            "Value": format_currency(metrics.total_cost_net, metrics.currency),
         },
         {
             "Metric": "Total Cost (Gross)",
-            "Value": format_currency(metrics.total_cost_gross, metrics.currency)
+            "Value": format_currency(metrics.total_cost_gross, metrics.currency),
         },
         {
             "Metric": "High Risk Cost",
-            "Value": format_currency(metrics.high_risk_cost, metrics.currency)
+            "Value": format_currency(metrics.high_risk_cost, metrics.currency),
         },
-        {
-            "Metric": "Total Items",
-            "Value": format_count(metrics.total_items)
-        },
-        {
-            "Metric": "Matched Items",
-            "Value": format_count(metrics.matched_items)
-        },
+        {"Metric": "Total Items", "Value": format_count(metrics.total_items)},
+        {"Metric": "Matched Items", "Value": format_count(metrics.matched_items)},
         {
             "Metric": "Match Coverage",
-            "Value": format_percentage(metrics.match_percentage)
+            "Value": format_percentage(metrics.match_percentage),
         },
         {
             "Metric": "Auto-Approval Rate",
-            "Value": format_percentage(metrics.auto_approval_rate)
+            "Value": format_percentage(metrics.auto_approval_rate),
         },
         {
             "Metric": "Average Confidence",
-            "Value": format_percentage(metrics.avg_confidence) if metrics.avg_confidence else "N/A"
+            "Value": format_percentage(metrics.avg_confidence)
+            if metrics.avg_confidence
+            else "N/A",
         },
         {
             "Metric": "High Confidence %",
-            "Value": format_percentage(metrics.high_confidence_percentage)
+            "Value": format_percentage(metrics.high_confidence_percentage),
         },
         {
             "Metric": "Pending Review",
-            "Value": format_count(metrics.total_pending_review)
+            "Value": format_count(metrics.total_pending_review),
         },
         {
             "Metric": "High Urgency Items",
-            "Value": format_count(metrics.high_urgency_count)
+            "Value": format_count(metrics.high_urgency_count),
         },
         {
             "Metric": "Health Score",
-            "Value": f"{metrics.health_score}/100 ({metrics.health_status})"
-        }
+            "Value": f"{metrics.health_score}/100 ({metrics.health_status})",
+        },
     ]
     exporter.add_kpi_sheet("KPI Summary", kpi_data)
 
@@ -196,16 +194,16 @@ def export_dashboard_to_excel(metrics, org_id: str, project_id: str) -> bytes:
     activity_data = [
         {
             "Activity": "Recent Matches (7 days)",
-            "Count": format_count(metrics.recent_matches)
+            "Count": format_count(metrics.recent_matches),
         },
         {
             "Activity": "Recent Approvals (7 days)",
-            "Count": format_count(metrics.recent_approvals)
+            "Count": format_count(metrics.recent_approvals),
         },
         {
             "Activity": "Recent Ingestions (7 days)",
-            "Count": format_count(metrics.recent_ingestions)
-        }
+            "Count": format_count(metrics.recent_ingestions),
+        },
     ]
     exporter.add_kpi_sheet("Recent Activity", activity_data)
 
@@ -214,11 +212,15 @@ def export_dashboard_to_excel(metrics, org_id: str, project_id: str) -> bytes:
         class_rows = [
             {
                 "Classification": f"{cls.get('code', 'N/A')} - {cls.get('name', 'N/A')}",
-                "Items": format_count(cls.get('items', 0)),
-                "Matched Items": format_count(cls.get('matched', 0)),
-                "Matched Cost": format_currency(cls.get('matched_cost', 0), metrics.currency),
-                "Cost Share": format_percentage(cls.get('cost_share', 0)),
-                "Avg Confidence": format_percentage(cls.get('avg_confidence')) if cls.get('avg_confidence') else "N/A",
+                "Items": format_count(cls.get("items", 0)),
+                "Matched Items": format_count(cls.get("matched", 0)),
+                "Matched Cost": format_currency(
+                    cls.get("matched_cost", 0), metrics.currency
+                ),
+                "Cost Share": format_percentage(cls.get("cost_share", 0)),
+                "Avg Confidence": format_percentage(cls.get("avg_confidence"))
+                if cls.get("avg_confidence")
+                else "N/A",
             }
             for cls in classification_data
         ]
@@ -227,12 +229,31 @@ def export_dashboard_to_excel(metrics, org_id: str, project_id: str) -> bytes:
         for cls in classification_data:
             sheet_name = f"{cls.get('code', 'Class')}"
             detail_rows = [
-                {"Metric": "Classification", "Value": f"{cls.get('code', 'N/A')} - {cls.get('name', 'N/A')}"},
-                {"Metric": "Total Items", "Value": format_count(cls.get('items', 0))},
-                {"Metric": "Matched Items", "Value": format_count(cls.get('matched', 0))},
-                {"Metric": "Matched Cost", "Value": format_currency(cls.get('matched_cost', 0), metrics.currency)},
-                {"Metric": "Cost Share", "Value": format_percentage(cls.get('cost_share', 0))},
-                {"Metric": "Average Confidence", "Value": format_percentage(cls.get('avg_confidence')) if cls.get('avg_confidence') else "N/A"},
+                {
+                    "Metric": "Classification",
+                    "Value": f"{cls.get('code', 'N/A')} - {cls.get('name', 'N/A')}",
+                },
+                {"Metric": "Total Items", "Value": format_count(cls.get("items", 0))},
+                {
+                    "Metric": "Matched Items",
+                    "Value": format_count(cls.get("matched", 0)),
+                },
+                {
+                    "Metric": "Matched Cost",
+                    "Value": format_currency(
+                        cls.get("matched_cost", 0), metrics.currency
+                    ),
+                },
+                {
+                    "Metric": "Cost Share",
+                    "Value": format_percentage(cls.get("cost_share", 0)),
+                },
+                {
+                    "Metric": "Average Confidence",
+                    "Value": format_percentage(cls.get("avg_confidence"))
+                    if cls.get("avg_confidence")
+                    else "N/A",
+                },
             ]
             exporter.add_kpi_sheet(f"{sheet_name} Detail", detail_rows)
 
@@ -246,49 +267,26 @@ def export_progress_to_excel(metrics, org_id: str, project_id: str) -> bytes:
 
     # Summary
     unmatched_items = metrics.total_items - metrics.matched_items
-    match_percentage = (metrics.matched_items / metrics.total_items * 100) if metrics.total_items > 0 else 0
+    match_percentage = (
+        (metrics.matched_items / metrics.total_items * 100)
+        if metrics.total_items > 0
+        else 0
+    )
 
     summary_data = [
-        {
-            "Metric": "Total Items",
-            "Value": format_count(metrics.total_items)
-        },
-        {
-            "Metric": "Matched Items",
-            "Value": format_count(metrics.matched_items)
-        },
-        {
-            "Metric": "Unmatched Items",
-            "Value": format_count(unmatched_items)
-        },
-        {
-            "Metric": "Match Coverage",
-            "Value": format_percentage(match_percentage)
-        },
-        {
-            "Metric": "Pending Review",
-            "Value": format_count(metrics.pending_review)
-        },
-        {
-            "Metric": "Auto-Approved",
-            "Value": format_count(metrics.auto_approved)
-        },
-        {
-            "Metric": "Flagged Critical",
-            "Value": format_count(metrics.flagged_critical)
-        },
-        {
-            "Metric": "Flagged Advisory",
-            "Value": format_count(metrics.flagged_advisory)
-        },
+        {"Metric": "Total Items", "Value": format_count(metrics.total_items)},
+        {"Metric": "Matched Items", "Value": format_count(metrics.matched_items)},
+        {"Metric": "Unmatched Items", "Value": format_count(unmatched_items)},
+        {"Metric": "Match Coverage", "Value": format_percentage(match_percentage)},
+        {"Metric": "Pending Review", "Value": format_count(metrics.pending_review)},
+        {"Metric": "Auto-Approved", "Value": format_count(metrics.auto_approved)},
+        {"Metric": "Flagged Critical", "Value": format_count(metrics.flagged_critical)},
+        {"Metric": "Flagged Advisory", "Value": format_count(metrics.flagged_advisory)},
         {
             "Metric": "Overall Completion",
-            "Value": format_percentage(metrics.overall_completion)
+            "Value": format_percentage(metrics.overall_completion),
         },
-        {
-            "Metric": "Overall Status",
-            "Value": metrics.overall_status
-        }
+        {"Metric": "Overall Status", "Value": metrics.overall_status},
     ]
     exporter.add_kpi_sheet("Match Summary", summary_data)
 
@@ -296,16 +294,16 @@ def export_progress_to_excel(metrics, org_id: str, project_id: str) -> bytes:
     confidence_data = [
         {
             "Confidence Level": "High (≥85%)",
-            "Count": format_count(metrics.confidence_high)
+            "Count": format_count(metrics.confidence_high),
         },
         {
             "Confidence Level": "Medium (70-84%)",
-            "Count": format_count(metrics.confidence_medium)
+            "Count": format_count(metrics.confidence_medium),
         },
         {
             "Confidence Level": "Low (<70%)",
-            "Count": format_count(metrics.confidence_low)
-        }
+            "Count": format_count(metrics.confidence_low),
+        },
     ]
     exporter.add_kpi_sheet("Confidence Distribution", confidence_data)
 
@@ -313,10 +311,10 @@ def export_progress_to_excel(metrics, org_id: str, project_id: str) -> bytes:
     if metrics.classification_coverage:
         class_data = [
             {
-                "Classification Code": cls.get('code', 'N/A'),
-                "Total Items": format_count(cls.get('total', 0)),
-                "Matched Items": format_count(cls.get('matched', 0)),
-                "Coverage": format_percentage(cls.get('percent', 0))
+                "Classification Code": cls.get("code", "N/A"),
+                "Total Items": format_count(cls.get("total", 0)),
+                "Matched Items": format_count(cls.get("matched", 0)),
+                "Coverage": format_percentage(cls.get("percent", 0)),
             }
             for cls in metrics.classification_coverage
         ]
@@ -331,52 +329,37 @@ def export_review_to_excel(metrics, org_id: str, project_id: str) -> bytes:
     exporter.add_metadata_sheet()
 
     # Summary
-    clean_items = metrics.total_pending - metrics.critical_flags_count - metrics.advisory_flags_count
+    clean_items = (
+        metrics.total_pending
+        - metrics.critical_flags_count
+        - metrics.advisory_flags_count
+    )
     summary_data = [
-        {
-            "Metric": "Total Pending",
-            "Value": format_count(metrics.total_pending)
-        },
+        {"Metric": "Total Pending", "Value": format_count(metrics.total_pending)},
         {
             "Metric": "Critical Flags",
-            "Value": format_count(metrics.critical_flags_count)
+            "Value": format_count(metrics.critical_flags_count),
         },
         {
             "Metric": "Advisory Flags",
-            "Value": format_count(metrics.advisory_flags_count)
+            "Value": format_count(metrics.advisory_flags_count),
         },
-        {
-            "Metric": "Clean Items",
-            "Value": format_count(clean_items)
-        },
-        {
-            "Metric": "High Urgency",
-            "Value": format_count(metrics.high_urgency)
-        },
-        {
-            "Metric": "Medium Urgency",
-            "Value": format_count(metrics.medium_urgency)
-        },
-        {
-            "Metric": "Low Urgency",
-            "Value": format_count(metrics.low_urgency)
-        },
+        {"Metric": "Clean Items", "Value": format_count(clean_items)},
+        {"Metric": "High Urgency", "Value": format_count(metrics.high_urgency)},
+        {"Metric": "Medium Urgency", "Value": format_count(metrics.medium_urgency)},
+        {"Metric": "Low Urgency", "Value": format_count(metrics.low_urgency)},
         {
             "Metric": "Oldest Review (days)",
-            "Value": f"{metrics.oldest_review_days:.1f}" if metrics.oldest_review_days else "N/A"
+            "Value": f"{metrics.oldest_review_days:.1f}"
+            if metrics.oldest_review_days
+            else "N/A",
         },
         {
             "Metric": "Average Age (days)",
-            "Value": f"{metrics.avg_age_days:.1f}" if metrics.avg_age_days else "N/A"
+            "Value": f"{metrics.avg_age_days:.1f}" if metrics.avg_age_days else "N/A",
         },
-        {
-            "Metric": "Items >7 Days",
-            "Value": format_count(metrics.items_over_7_days)
-        },
-        {
-            "Metric": "Items >30 Days",
-            "Value": format_count(metrics.items_over_30_days)
-        }
+        {"Metric": "Items >7 Days", "Value": format_count(metrics.items_over_7_days)},
+        {"Metric": "Items >30 Days", "Value": format_count(metrics.items_over_30_days)},
     ]
     exporter.add_kpi_sheet("Review Summary", summary_data)
 
@@ -384,16 +367,16 @@ def export_review_to_excel(metrics, org_id: str, project_id: str) -> bytes:
     confidence_data = [
         {
             "Confidence Level": "High (≥85%)",
-            "Count": format_count(metrics.confidence_high)
+            "Count": format_count(metrics.confidence_high),
         },
         {
             "Confidence Level": "Medium (70-84%)",
-            "Count": format_count(metrics.confidence_medium)
+            "Count": format_count(metrics.confidence_medium),
         },
         {
             "Confidence Level": "Low (<70%)",
-            "Count": format_count(metrics.confidence_low)
-        }
+            "Count": format_count(metrics.confidence_low),
+        },
     ]
     exporter.add_kpi_sheet("Confidence Distribution", confidence_data)
 
@@ -401,11 +384,13 @@ def export_review_to_excel(metrics, org_id: str, project_id: str) -> bytes:
     if metrics.classification_breakdown:
         class_data = [
             {
-                "Classification Code": cls.get('code', 'N/A'),
-                "Total Items": format_count(cls.get('total', 0)),
-                "Critical Flags": format_count(cls.get('critical', 0)),
-                "Advisory Flags": format_count(cls.get('advisory', 0)),
-                "Avg Confidence": format_percentage(cls.get('avg_confidence', 0)) if cls.get('avg_confidence') else "N/A"
+                "Classification Code": cls.get("code", "N/A"),
+                "Total Items": format_count(cls.get("total", 0)),
+                "Critical Flags": format_count(cls.get("critical", 0)),
+                "Advisory Flags": format_count(cls.get("advisory", 0)),
+                "Avg Confidence": format_percentage(cls.get("avg_confidence", 0))
+                if cls.get("avg_confidence")
+                else "N/A",
             }
             for cls in metrics.classification_breakdown
         ]
@@ -421,78 +406,84 @@ def export_reports_to_excel(metrics, org_id: str, project_id: str) -> bytes:
 
     # Financial Summary
     vat_amount = metrics.total_cost_gross - metrics.total_cost_net
-    cost_at_risk_pct = (metrics.high_risk_total_cost / metrics.total_cost_net * 100) if metrics.total_cost_net > 0 else 0
+    cost_at_risk_pct = (
+        (metrics.high_risk_total_cost / metrics.total_cost_net * 100)
+        if metrics.total_cost_net > 0
+        else 0
+    )
 
     summary_data = [
         {
             "Metric": "Total Cost (Net)",
-            "Value": format_currency(metrics.total_cost_net, metrics.currency)
+            "Value": format_currency(metrics.total_cost_net, metrics.currency),
         },
         {
             "Metric": "Total Cost (Gross)",
-            "Value": format_currency(metrics.total_cost_gross, metrics.currency)
+            "Value": format_currency(metrics.total_cost_gross, metrics.currency),
         },
         {
             "Metric": "VAT Amount",
-            "Value": format_currency(vat_amount, metrics.currency)
+            "Value": format_currency(vat_amount, metrics.currency),
         },
         {
             "Metric": "High Confidence Cost",
-            "Value": format_currency(metrics.high_confidence_cost, metrics.currency)
+            "Value": format_currency(metrics.high_confidence_cost, metrics.currency),
         },
         {
             "Metric": "Medium Confidence Cost",
-            "Value": format_currency(metrics.medium_confidence_cost, metrics.currency)
+            "Value": format_currency(metrics.medium_confidence_cost, metrics.currency),
         },
         {
             "Metric": "Low Confidence Cost",
-            "Value": format_currency(metrics.low_confidence_cost, metrics.currency)
+            "Value": format_currency(metrics.low_confidence_cost, metrics.currency),
         },
         {
             "Metric": "High Risk Total Cost",
-            "Value": format_currency(metrics.high_risk_total_cost, metrics.currency)
+            "Value": format_currency(metrics.high_risk_total_cost, metrics.currency),
         },
-        {
-            "Metric": "Cost at Risk %",
-            "Value": format_percentage(cost_at_risk_pct)
-        },
-        {
-            "Metric": "Total Items",
-            "Value": format_count(metrics.total_items)
-        },
-        {
-            "Metric": "Matched Items",
-            "Value": format_count(metrics.matched_items)
-        },
+        {"Metric": "Cost at Risk %", "Value": format_percentage(cost_at_risk_pct)},
+        {"Metric": "Total Items", "Value": format_count(metrics.total_items)},
+        {"Metric": "Matched Items", "Value": format_count(metrics.matched_items)},
         {
             "Metric": "Unmatched Items",
-            "Value": format_count(metrics.unmatched_items_count)
+            "Value": format_count(metrics.unmatched_items_count),
         },
         {
             "Metric": "Match Coverage",
-            "Value": format_percentage(metrics.match_percentage)
+            "Value": format_percentage(metrics.match_percentage),
         },
         {
             "Metric": "Average Unit Price",
-            "Value": format_currency(metrics.avg_unit_price, metrics.currency) if metrics.avg_unit_price else "N/A"
+            "Value": format_currency(metrics.avg_unit_price, metrics.currency)
+            if metrics.avg_unit_price
+            else "N/A",
         },
         {
             "Metric": "Average Confidence",
-            "Value": format_percentage(metrics.avg_confidence) if metrics.avg_confidence else "N/A"
-        }
+            "Value": format_percentage(metrics.avg_confidence)
+            if metrics.avg_confidence
+            else "N/A",
+        },
     ]
     exporter.add_kpi_sheet("Financial Summary", summary_data)
 
     # Classification Cost Breakdown
-    if hasattr(metrics, 'classification_cost_breakdown') and metrics.classification_cost_breakdown:
+    if (
+        hasattr(metrics, "classification_cost_breakdown")
+        and metrics.classification_cost_breakdown
+    ):
         class_cost_data = [
             {
-                "Classification": cls.get('code', 'N/A'),
-                "Name": cls.get('name', 'N/A'),
-                "Items": format_count(cls.get('count', 0)),
-                "Net Cost": format_currency(cls.get('net_cost', 0), metrics.currency),
-                "Gross Cost": format_currency(cls.get('gross_cost', 0), metrics.currency),
-                "Avg Confidence": format_percentage(cls.get('avg_confidence', 0)) if cls.get('avg_confidence') else "N/A"
+                "Classification": cls.get("code", "N/A"),
+                "Name": cls.get("name", "N/A"),
+                "Items": format_count(cls.get("count", 0)),
+                "Net Cost": format_currency(cls.get("net_cost", 0), metrics.currency),
+                "Gross Cost": format_currency(
+                    cls.get("gross_cost", 0), metrics.currency
+                ),
+                "Avg Confidence": format_percentage(cls.get("avg_confidence", 0))
+                if cls.get("avg_confidence")
+                else "N/A",
             }
             for cls in metrics.classification_cost_breakdown
         ]
@@ -502,11 +493,13 @@ def export_reports_to_excel(metrics, org_id: str, project_id: str) -> bytes:
     if metrics.top_10_expensive:
         top_items_data = [
             {
-                "Family": item.get('family', 'N/A')[:50],
-                "Type": item.get('type', 'N/A')[:50] if item.get('type') else "N/A",
-                "Unit Cost": format_currency(item.get('unit_price', 0), metrics.currency),
-                "Total Cost": format_currency(item.get('cost', 0), metrics.currency),
-                "Confidence": format_percentage(item.get('confidence', 0))
+                "Family": item.get("family", "N/A")[:50],
+                "Type": item.get("type", "N/A")[:50] if item.get("type") else "N/A",
+                "Unit Cost": format_currency(
+                    item.get("unit_price", 0), metrics.currency
+                ),
+                "Total Cost": format_currency(item.get("cost", 0), metrics.currency),
+                "Confidence": format_percentage(item.get("confidence", 0)),
             }
             for item in metrics.top_10_expensive
         ]
@@ -521,69 +514,60 @@ def export_audit_to_excel(metrics, org_id: str, project_id: str) -> bytes:
     exporter.add_metadata_sheet()
 
     # Summary
-    high_confidence_pct = (metrics.high_confidence_count / metrics.total_decisions * 100) if metrics.total_decisions > 0 else 0
+    high_confidence_pct = (
+        (metrics.high_confidence_count / metrics.total_decisions * 100)
+        if metrics.total_decisions > 0
+        else 0
+    )
 
     summary_data = [
-        {
-            "Metric": "Total Decisions",
-            "Value": format_count(metrics.total_decisions)
-        },
+        {"Metric": "Total Decisions", "Value": format_count(metrics.total_decisions)},
         {
             "Metric": "Total Items Audited",
-            "Value": format_count(metrics.total_items_audited)
+            "Value": format_count(metrics.total_items_audited),
         },
-        {
-            "Metric": "Auto-Approved",
-            "Value": format_count(metrics.auto_approved_count)
-        },
-        {
-            "Metric": "User Approved",
-            "Value": format_count(metrics.user_approved_count)
-        },
-        {
-            "Metric": "Manual Review",
-            "Value": format_count(metrics.manual_review_count)
-        },
-        {
-            "Metric": "Rejected",
-            "Value": format_count(metrics.rejected_count)
-        },
+        {"Metric": "Auto-Approved", "Value": format_count(metrics.auto_approved_count)},
+        {"Metric": "User Approved", "Value": format_count(metrics.user_approved_count)},
+        {"Metric": "Manual Review", "Value": format_count(metrics.manual_review_count)},
+        {"Metric": "Rejected", "Value": format_count(metrics.rejected_count)},
         {
             "Metric": "System Automation %",
-            "Value": format_percentage(metrics.system_percentage)
+            "Value": format_percentage(metrics.system_percentage),
         },
         {
             "Metric": "High Confidence %",
-            "Value": format_percentage(high_confidence_pct)
+            "Value": format_percentage(high_confidence_pct),
         },
         {
             "Metric": "Average Confidence",
-            "Value": format_percentage(metrics.avg_confidence) if metrics.avg_confidence else "N/A"
+            "Value": format_percentage(metrics.avg_confidence)
+            if metrics.avg_confidence
+            else "N/A",
         },
         {
             "Metric": "Compliance Score",
-            "Value": f"{metrics.compliance_score}/100 ({metrics.compliance_status})"
+            "Value": f"{metrics.compliance_score}/100 ({metrics.compliance_status})",
         },
         {
             "Metric": "Decisions (Last 7 Days)",
-            "Value": format_count(metrics.decisions_last_7_days)
+            "Value": format_count(metrics.decisions_last_7_days),
         },
         {
             "Metric": "Decisions (Last 30 Days)",
-            "Value": format_count(metrics.decisions_last_30_days)
+            "Value": format_count(metrics.decisions_last_30_days),
         },
         {
             "Metric": "Avg Decisions/Day",
-            "Value": f"{metrics.avg_decisions_per_day:.1f}"
+            "Value": f"{metrics.avg_decisions_per_day:.1f}",
         },
         {
             "Metric": "Peak Decision Day",
-            "Value": metrics.peak_decision_day if metrics.peak_decision_day else "N/A"
+            "Value": metrics.peak_decision_day if metrics.peak_decision_day else "N/A",
         },
         {
             "Metric": "Peak Decision Count",
-            "Value": format_count(metrics.peak_decision_count)
-        }
+            "Value": format_count(metrics.peak_decision_count),
+        },
     ]
     exporter.add_kpi_sheet("Audit Summary", summary_data)
 
@@ -591,16 +575,16 @@ def export_audit_to_excel(metrics, org_id: str, project_id: str) -> bytes:
     confidence_data = [
         {
             "Confidence Level": "High (≥85%)",
-            "Count": format_count(metrics.high_confidence_count)
+            "Count": format_count(metrics.high_confidence_count),
         },
         {
             "Confidence Level": "Medium (70-84%)",
-            "Value": format_count(metrics.medium_confidence_count)
+            "Value": format_count(metrics.medium_confidence_count),
         },
         {
             "Confidence Level": "Low (<70%)",
-            "Count": format_count(metrics.low_confidence_count)
-        }
+            "Count": format_count(metrics.low_confidence_count),
+        },
     ]
     exporter.add_kpi_sheet("Confidence Distribution", confidence_data)
 
@@ -608,16 +592,10 @@ def export_audit_to_excel(metrics, org_id: str, project_id: str) -> bytes:
     sources_data = [
         {
             "Source": "Mapping Memory",
-            "Count": format_count(metrics.mapping_memory_count)
+            "Count": format_count(metrics.mapping_memory_count),
         },
-        {
-            "Source": "Fuzzy Match",
-            "Count": format_count(metrics.fuzzy_match_count)
-        },
-        {
-            "Source": "Review UI",
-            "Count": format_count(metrics.review_ui_count)
-        }
+        {"Source": "Fuzzy Match", "Count": format_count(metrics.fuzzy_match_count)},
+        {"Source": "Review UI", "Count": format_count(metrics.review_ui_count)},
     ]
     exporter.add_kpi_sheet("Decision Sources", sources_data)
 
@@ -625,9 +603,11 @@ def export_audit_to_excel(metrics, org_id: str, project_id: str) -> bytes:
     if metrics.daily_timeline:
         timeline_data = [
             {
-                "Date": entry.get('date', 'N/A'),
-                "Decisions": format_count(entry.get('count', 0)),
-                "Avg Confidence": format_percentage(entry.get('avg_confidence', 0)) if entry.get('avg_confidence') else "N/A"
+                "Date": entry.get("date", "N/A"),
+                "Decisions": format_count(entry.get("count", 0)),
+                "Avg Confidence": format_percentage(entry.get("avg_confidence", 0))
+                if entry.get("avg_confidence")
+                else "N/A",
             }
             for entry in metrics.daily_timeline
         ]
@@ -637,9 +617,11 @@ def export_audit_to_excel(metrics, org_id: str, project_id: str) -> bytes:
     if metrics.top_reviewers:
         reviewers_data = [
             {
-                "Reviewer": reviewer.get('created_by', 'N/A'),
-                "Decisions": format_count(reviewer.get('count', 0)),
-                "Avg Confidence": format_percentage(reviewer.get('avg_confidence', 0)) if reviewer.get('avg_confidence') else "N/A"
+                "Reviewer": reviewer.get("created_by", "N/A"),
+                "Decisions": format_count(reviewer.get("count", 0)),
+                "Avg Confidence": format_percentage(reviewer.get("avg_confidence", 0))
+                if reviewer.get("avg_confidence")
+                else "N/A",
             }
             for reviewer in metrics.top_reviewers
         ]
@@ -654,88 +636,93 @@ def export_prices_to_excel(metrics, org_id: str) -> bytes:
     exporter.add_metadata_sheet()
 
     # Summary
-    current_pct = (metrics.current_price_items / metrics.total_price_items * 100) if metrics.total_price_items > 0 else 0
+    current_pct = (
+        (metrics.current_price_items / metrics.total_price_items * 100)
+        if metrics.total_price_items > 0
+        else 0
+    )
     summary_data = [
         {
             "Metric": "Total Price Items",
-            "Value": format_count(metrics.total_price_items)
+            "Value": format_count(metrics.total_price_items),
         },
         {
             "Metric": "Current Price Items",
-            "Value": format_count(metrics.current_price_items)
+            "Value": format_count(metrics.current_price_items),
         },
-        {
-            "Metric": "Current Items %",
-            "Value": format_percentage(current_pct)
-        },
+        {"Metric": "Current Items %", "Value": format_percentage(current_pct)},
         {
             "Metric": "Historical Price Items",
-            "Value": format_count(metrics.historical_price_items)
+            "Value": format_count(metrics.historical_price_items),
         },
-        {
-            "Metric": "Primary Currency",
-            "Value": metrics.currency
-        },
-        {
-            "Metric": "Unique Vendors",
-            "Value": format_count(metrics.unique_vendors)
-        },
+        {"Metric": "Primary Currency", "Value": metrics.currency},
+        {"Metric": "Unique Vendors", "Value": format_count(metrics.unique_vendors)},
         {
             "Metric": "Min Unit Price",
-            "Value": format_currency(metrics.min_unit_price, metrics.currency) if metrics.min_unit_price else "N/A"
+            "Value": format_currency(metrics.min_unit_price, metrics.currency)
+            if metrics.min_unit_price
+            else "N/A",
         },
         {
             "Metric": "Max Unit Price",
-            "Value": format_currency(metrics.max_unit_price, metrics.currency) if metrics.max_unit_price else "N/A"
+            "Value": format_currency(metrics.max_unit_price, metrics.currency)
+            if metrics.max_unit_price
+            else "N/A",
         },
         {
             "Metric": "Avg Unit Price",
-            "Value": format_currency(metrics.avg_unit_price, metrics.currency) if metrics.avg_unit_price else "N/A"
+            "Value": format_currency(metrics.avg_unit_price, metrics.currency)
+            if metrics.avg_unit_price
+            else "N/A",
         },
         {
             "Metric": "Median Unit Price",
-            "Value": format_currency(metrics.median_unit_price, metrics.currency) if metrics.median_unit_price else "N/A"
+            "Value": format_currency(metrics.median_unit_price, metrics.currency)
+            if metrics.median_unit_price
+            else "N/A",
         },
         {
             "Metric": "Classification Coverage",
-            "Value": format_percentage(metrics.classification_coverage_pct)
+            "Value": format_percentage(metrics.classification_coverage_pct),
         },
         {
             "Metric": "Classifications with Prices",
-            "Value": format_count(metrics.classifications_with_prices)
+            "Value": format_count(metrics.classifications_with_prices),
         },
         {
             "Metric": "Quality Score",
-            "Value": f"{metrics.quality_score}/100 ({metrics.quality_status})"
+            "Value": f"{metrics.quality_score}/100 ({metrics.quality_status})",
         },
         {
             "Metric": "Avg Age (days)",
-            "Value": f"{metrics.avg_age_days:.1f}" if metrics.avg_age_days else "N/A"
+            "Value": f"{metrics.avg_age_days:.1f}" if metrics.avg_age_days else "N/A",
         },
         {
             "Metric": "Oldest Price (days)",
-            "Value": format_count(metrics.oldest_price_days) if metrics.oldest_price_days else "N/A"
+            "Value": format_count(metrics.oldest_price_days)
+            if metrics.oldest_price_days
+            else "N/A",
         },
         {
             "Metric": "Updated Last 30 Days",
-            "Value": format_count(metrics.prices_updated_last_30_days)
+            "Value": format_count(metrics.prices_updated_last_30_days),
         },
         {
             "Metric": "Updated Last 90 Days",
-            "Value": format_count(metrics.prices_updated_last_90_days)
+            "Value": format_count(metrics.prices_updated_last_90_days),
         },
         {
             "Metric": "Stale Prices (>1 year)",
-            "Value": format_count(metrics.stale_prices_count)
+            "Value": format_count(metrics.stale_prices_count),
         },
         {
             "Metric": "VAT Specified Count",
-            "Value": format_count(metrics.vat_specified_count)
+            "Value": format_count(metrics.vat_specified_count),
         },
         {
             "Metric": "VAT Unspecified Count",
-            "Value": format_count(metrics.vat_unspecified_count)
-        }
+            "Value": format_count(metrics.vat_unspecified_count),
+        },
     ]
     exporter.add_kpi_sheet("Price Summary", summary_data)
 
@@ -743,11 +730,11 @@ def export_prices_to_excel(metrics, org_id: str) -> bytes:
     if metrics.top_classifications:
         class_data = [
             {
-                "Classification Code": cls.get('code', 'N/A'),
-                "Count": format_count(cls.get('count', 0)),
-                "Avg Price": format_currency(cls.get('avg_price', 0), metrics.currency),
-                "Min Price": format_currency(cls.get('min_price', 0), metrics.currency),
-                "Max Price": format_currency(cls.get('max_price', 0), metrics.currency)
+                "Classification Code": cls.get("code", "N/A"),
+                "Count": format_count(cls.get("count", 0)),
+                "Avg Price": format_currency(cls.get("avg_price", 0), metrics.currency),
+                "Min Price": format_currency(cls.get("min_price", 0), metrics.currency),
+                "Max Price": format_currency(cls.get("max_price", 0), metrics.currency),
             }
             for cls in metrics.top_classifications
         ]
@@ -757,11 +744,13 @@ def export_prices_to_excel(metrics, org_id: str) -> bytes:
     if metrics.top_10_expensive:
         expensive_data = [
             {
-                "Item Code": item.get('code', 'N/A'),
-                "Description": item.get('description', 'N/A')[:100],
-                "Unit Price": format_currency(item.get('unit_price', 0), metrics.currency),
-                "Vendor": item.get('vendor', 'Unknown'),
-                "Last Updated": item.get('updated', 'N/A')
+                "Item Code": item.get("code", "N/A"),
+                "Description": item.get("description", "N/A")[:100],
+                "Unit Price": format_currency(
+                    item.get("unit_price", 0), metrics.currency
+                ),
+                "Vendor": item.get("vendor", "Unknown"),
+                "Last Updated": item.get("updated", "N/A"),
             }
             for item in metrics.top_10_expensive
         ]
@@ -771,9 +760,11 @@ def export_prices_to_excel(metrics, org_id: str) -> bytes:
     if metrics.top_vendors:
         vendor_data = [
             {
-                "Vendor": vendor.get('vendor', 'N/A'),
-                "Price Items": format_count(vendor.get('count', 0)),
-                "Avg Unit Price": format_currency(vendor.get('avg_price', 0), metrics.currency)
+                "Vendor": vendor.get("vendor", "N/A"),
+                "Price Items": format_count(vendor.get("count", 0)),
+                "Avg Unit Price": format_currency(
+                    vendor.get("avg_price", 0), metrics.currency
+                ),
             }
             for vendor in metrics.top_vendors
         ]
@@ -794,11 +785,12 @@ def export_to_csv(data: list[dict[str, Any]], title: str) -> str:
 
     return output.getvalue()
 
+
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4, landscape
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
-from reportlab.lib.units import inch
+
 
 class PDFExporter:
     """PDF report exporter using ReportLab."""
@@ -811,41 +803,54 @@ class PDFExporter:
             rightMargin=30,
             leftMargin=30,
             topMargin=30,
-            bottomMargin=30
+            bottomMargin=30,
         )
         self.elements = []
         self.styles = getSampleStyleSheet()
         self.title = title
         self.org_id = org_id
         self.project_id = project_id
-        
+
         # Custom styles
-        self.styles.add(ParagraphStyle(
-            name='ReportTitle',
-            parent=self.styles['Heading1'],
-            fontSize=24,
-            spaceAfter=20,
-            textColor=colors.HexColor('#2c5282')
-        ))
-        self.styles.add(ParagraphStyle(
-            name='SectionHeader',
-            parent=self.styles['Heading2'],
-            fontSize=16,
-            spaceBefore=15,
-            spaceAfter=10,
-            textColor=colors.HexColor('#4a5568')
-        ))
+        self.styles.add(
+            ParagraphStyle(
+                name="ReportTitle",
+                parent=self.styles["Heading1"],
+                fontSize=24,
+                spaceAfter=20,
+                textColor=colors.HexColor("#2c5282"),
+            )
+        )
+        self.styles.add(
+            ParagraphStyle(
+                name="SectionHeader",
+                parent=self.styles["Heading2"],
+                fontSize=16,
+                spaceBefore=15,
+                spaceAfter=10,
+                textColor=colors.HexColor("#4a5568"),
+            )
+        )
 
         self._add_header()
 
     def _add_header(self):
         """Add report header."""
-        self.elements.append(Paragraph(self.title, self.styles['ReportTitle']))
-        
-        meta_style = self.styles['Normal']
-        self.elements.append(Paragraph(f"<b>Organization:</b> {self.org_id}", meta_style))
-        self.elements.append(Paragraph(f"<b>Project:</b> {self.project_id}", meta_style))
-        self.elements.append(Paragraph(f"<b>Generated:</b> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", meta_style))
+        self.elements.append(Paragraph(self.title, self.styles["ReportTitle"]))
+
+        meta_style = self.styles["Normal"]
+        self.elements.append(
+            Paragraph(f"<b>Organization:</b> {self.org_id}", meta_style)
+        )
+        self.elements.append(
+            Paragraph(f"<b>Project:</b> {self.project_id}", meta_style)
+        )
+        self.elements.append(
+            Paragraph(
+                f"<b>Generated:</b> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+                meta_style,
+            )
+        )
         self.elements.append(Spacer(1, 20))
 
     def add_section(self, title: str, data: list[dict[str, Any]]):
@@ -853,35 +858,39 @@ class PDFExporter:
         if not data:
             return
 
-        self.elements.append(Paragraph(title, self.styles['SectionHeader']))
+        self.elements.append(Paragraph(title, self.styles["SectionHeader"]))
 
         # Prepare table data
         headers = list(data[0].keys())
         table_data = [headers]
-        
+
         for row in data:
-            table_data.append([str(row.get(h, '')) for h in headers])
+            table_data.append([str(row.get(h, "")) for h in headers])
 
         # Create table
         # Calculate column widths based on content (simple heuristic)
         col_widths = [None] * len(headers)
-        
+
         t = Table(table_data, colWidths=col_widths)
-        t.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#ebf8ff')),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.HexColor('#2c5282')),
-            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('FONTSIZE', (0, 0), (-1, 0), 10),
-            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-            ('BACKGROUND', (0, 1), (-1, -1), colors.white),
-            ('TEXTCOLOR', (0, 1), (-1, -1), colors.black),
-            ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
-            ('FONTSIZE', (0, 1), (-1, -1), 9),
-            ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
-            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        ]))
-        
+        t.setStyle(
+            TableStyle(
+                [
+                    ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#ebf8ff")),
+                    ("TEXTCOLOR", (0, 0), (-1, 0), colors.HexColor("#2c5282")),
+                    ("ALIGN", (0, 0), (-1, -1), "LEFT"),
+                    ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                    ("FONTSIZE", (0, 0), (-1, 0), 10),
+                    ("BOTTOMPADDING", (0, 0), (-1, 0), 12),
+                    ("BACKGROUND", (0, 1), (-1, -1), colors.white),
+                    ("TEXTCOLOR", (0, 1), (-1, -1), colors.black),
+                    ("FONTNAME", (0, 1), (-1, -1), "Helvetica"),
+                    ("FONTSIZE", (0, 1), (-1, -1), 9),
+                    ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+                    ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                ]
+            )
+        )
+
         self.elements.append(t)
         self.elements.append(Spacer(1, 20))
 
@@ -891,35 +900,60 @@ class PDFExporter:
         self.buffer.seek(0)
         return self.buffer.getvalue()
 
+
 def export_reports_to_pdf(metrics, org_id: str, project_id: str) -> bytes:
     """Export financial reports to PDF."""
     exporter = PDFExporter("Financial Report", org_id, project_id)
-    
+
     # Financial Summary
     vat_amount = metrics.total_cost_gross - metrics.total_cost_net
-    cost_at_risk_pct = (metrics.high_risk_total_cost / metrics.total_cost_net * 100) if metrics.total_cost_net > 0 else 0
+    cost_at_risk_pct = (
+        (metrics.high_risk_total_cost / metrics.total_cost_net * 100)
+        if metrics.total_cost_net > 0
+        else 0
+    )
 
     summary_data = [
-        {"Metric": "Total Cost (Net)", "Value": format_currency(metrics.total_cost_net, metrics.currency)},
-        {"Metric": "Total Cost (Gross)", "Value": format_currency(metrics.total_cost_gross, metrics.currency)},
-        {"Metric": "VAT Amount", "Value": format_currency(vat_amount, metrics.currency)},
-        {"Metric": "High Risk Total Cost", "Value": format_currency(metrics.high_risk_total_cost, metrics.currency)},
+        {
+            "Metric": "Total Cost (Net)",
+            "Value": format_currency(metrics.total_cost_net, metrics.currency),
+        },
+        {
+            "Metric": "Total Cost (Gross)",
+            "Value": format_currency(metrics.total_cost_gross, metrics.currency),
+        },
+        {
+            "Metric": "VAT Amount",
+            "Value": format_currency(vat_amount, metrics.currency),
+        },
+        {
+            "Metric": "High Risk Total Cost",
+            "Value": format_currency(metrics.high_risk_total_cost, metrics.currency),
+        },
         {"Metric": "Cost at Risk %", "Value": format_percentage(cost_at_risk_pct)},
         {"Metric": "Total Items", "Value": format_count(metrics.total_items)},
         {"Metric": "Matched Items", "Value": format_count(metrics.matched_items)},
-        {"Metric": "Match Coverage", "Value": format_percentage(metrics.match_percentage)},
+        {
+            "Metric": "Match Coverage",
+            "Value": format_percentage(metrics.match_percentage),
+        },
     ]
     exporter.add_section("Financial Summary", summary_data)
 
     # Classification Cost Breakdown
-    if hasattr(metrics, 'classification_cost_breakdown') and metrics.classification_cost_breakdown:
+    if (
+        hasattr(metrics, "classification_cost_breakdown")
+        and metrics.classification_cost_breakdown
+    ):
         class_cost_data = [
             {
-                "Classification": cls.get('code', 'N/A'),
-                "Name": cls.get('name', 'N/A'),
-                "Items": format_count(cls.get('count', 0)),
-                "Net Cost": format_currency(cls.get('net_cost', 0), metrics.currency),
-                "Gross Cost": format_currency(cls.get('gross_cost', 0), metrics.currency),
+                "Classification": cls.get("code", "N/A"),
+                "Name": cls.get("name", "N/A"),
+                "Items": format_count(cls.get("count", 0)),
+                "Net Cost": format_currency(cls.get("net_cost", 0), metrics.currency),
+                "Gross Cost": format_currency(
+                    cls.get("gross_cost", 0), metrics.currency
+                ),
             }
             for cls in metrics.classification_cost_breakdown
         ]
@@ -929,11 +963,13 @@ def export_reports_to_pdf(metrics, org_id: str, project_id: str) -> bytes:
     if metrics.top_10_expensive:
         top_items_data = [
             {
-                "Family": item.get('family', 'N/A')[:30],
-                "Type": item.get('type', 'N/A')[:30] if item.get('type') else "N/A",
-                "Unit Cost": format_currency(item.get('unit_price', 0), metrics.currency),
-                "Total Cost": format_currency(item.get('cost', 0), metrics.currency),
-                "Conf": format_percentage(item.get('confidence', 0))
+                "Family": item.get("family", "N/A")[:30],
+                "Type": item.get("type", "N/A")[:30] if item.get("type") else "N/A",
+                "Unit Cost": format_currency(
+                    item.get("unit_price", 0), metrics.currency
+                ),
+                "Total Cost": format_currency(item.get("cost", 0), metrics.currency),
+                "Conf": format_percentage(item.get("confidence", 0)),
             }
             for item in metrics.top_10_expensive
         ]

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
 from uuid import uuid4
 
@@ -48,11 +47,13 @@ from bimcalc.web.routes import (
 configure_logging()
 logger = structlog.get_logger()
 
-templates = Jinja2Templates(directory=[
-    str(Path(__file__).parent / "templates"),
-    str(Path(__file__).parent.parent / "ingestion" / "templates"),
-    str(Path(__file__).parent.parent / "reporting" / "templates"),
-])
+templates = Jinja2Templates(
+    directory=[
+        str(Path(__file__).parent / "templates"),
+        str(Path(__file__).parent.parent / "ingestion" / "templates"),
+        str(Path(__file__).parent.parent / "reporting" / "templates"),
+    ]
+)
 
 app = FastAPI(
     title="BIMCalc Management Console",
@@ -62,31 +63,35 @@ app = FastAPI(
     redoc_url="/redoc",
 )
 
+
 # Request Logging Middleware
 class RequestLoggingMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         structlog.contextvars.clear_contextvars()
-        
+
         request_id = request.headers.get("X-Request-ID", str(uuid4()))
         structlog.contextvars.bind_contextvars(request_id=request_id)
-        
-        logger.info("request_started", 
-            method=request.method, 
+
+        logger.info(
+            "request_started",
+            method=request.method,
             path=request.url.path,
-            client_ip=request.client.host
+            client_ip=request.client.host,
         )
-        
+
         try:
             response = await call_next(request)
-            
-            logger.info("request_completed",
+
+            logger.info(
+                "request_completed",
                 status_code=response.status_code,
             )
             return response
-            
+
         except Exception as exc:
             logger.error("request_failed", error=str(exc))
             raise
+
 
 app.add_middleware(RequestLoggingMiddleware)
 
@@ -98,16 +103,24 @@ static_dir = Path(__file__).parent / "static"
 if static_dir.exists():
     app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
 
+
 # Exception Handlers
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
     """Handle HTTP exceptions, specifically for redirects."""
-    if exc.status_code in [301, 302, 303, 307, 308] and exc.headers and "Location" in exc.headers:
-        return RedirectResponse(url=exc.headers["Location"], status_code=exc.status_code)
+    if (
+        exc.status_code in [301, 302, 303, 307, 308]
+        and exc.headers
+        and "Location" in exc.headers
+    ):
+        return RedirectResponse(
+            url=exc.headers["Location"], status_code=exc.status_code
+        )
     return JSONResponse(
         status_code=exc.status_code,
         content={"detail": exc.detail},
     )
+
 
 # Include Routers
 app.include_router(auth.router)
@@ -133,11 +146,13 @@ app.include_router(classifications.router)
 app.include_router(analytics.router)
 app.include_router(risk_dashboard.router)
 
+
 # Legacy Redirects
 @app.get("/crail4-config")
 async def redirect_crail4_config():
     """Redirect legacy Crail4 config route to new Price Scout route."""
     return RedirectResponse(url="/price-scout")
+
 
 # Intelligence Features (Conditional)
 config = get_config()

@@ -100,7 +100,9 @@ class TrustHierarchyClassifier:
             raise ValueError("item.family is required for classification")
 
         # Apply trust hierarchy in priority order
-        for level in sorted(self._trust_levels, key=lambda x: x.get("priority", 0), reverse=True):
+        for level in sorted(
+            self._trust_levels, key=lambda x: x.get("priority", 0), reverse=True
+        ):
             name = level.get("name")
 
             if name == "ExplicitOverride":
@@ -153,7 +155,9 @@ class TrustHierarchyClassifier:
 
         return None
 
-    def _check_revit_category_system(self, item: Item, level: dict[str, Any]) -> str | None:
+    def _check_revit_category_system(
+        self, item: Item, level: dict[str, Any]
+    ) -> str | None:
         """Check Revit Category + System Type heuristics."""
         rules = level.get("rules", [])
         for rule in rules:
@@ -172,7 +176,9 @@ class TrustHierarchyClassifier:
 
         return None
 
-    def _check_fallback_heuristics(self, item: Item, level: dict[str, Any]) -> str | None:
+    def _check_fallback_heuristics(
+        self, item: Item, level: dict[str, Any]
+    ) -> str | None:
         """Check keyword pattern matching in family/type names."""
         rules = level.get("rules", [])
 

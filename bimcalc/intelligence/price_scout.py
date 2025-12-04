@@ -7,14 +7,16 @@ import hashlib
 import json
 import logging
 import os
-import re
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from typing import Any
 
 from redis.asyncio import Redis
 
 from openai import AsyncOpenAI
-from playwright.async_api import async_playwright, TimeoutError as PlaywrightTimeoutError
+from playwright.async_api import (
+    async_playwright,
+    TimeoutError as PlaywrightTimeoutError,
+)
 from tenacity import (
     retry,
     stop_after_attempt,
@@ -41,7 +43,11 @@ class SmartPriceScout:
 
     def __init__(self):
         self.config = get_config()
-        self.api_key = os.getenv("PRICE_SCOUT_API_KEY") or self.config.llm.api_key or os.getenv("OPENAI_API_KEY")
+        self.api_key = (
+            os.getenv("PRICE_SCOUT_API_KEY")
+            or self.config.llm.api_key
+            or os.getenv("OPENAI_API_KEY")
+        )
 
         if not self.api_key:
             raise ValueError("OPENAI_API_KEY is required for Smart Price Scout")
@@ -56,7 +62,7 @@ class SmartPriceScout:
         self.rate_limiter = DomainRateLimiter(
             default_delay=self.config.price_scout.default_rate_limit_seconds
         )
-        
+
         # Initialize Redis cache
         redis_url = os.getenv("REDIS_URL", "redis://redis:6379/0")
         self.redis = Redis.from_url(redis_url, decode_responses=True)
@@ -110,9 +116,12 @@ class SmartPriceScout:
         recommended_delay = self.compliance_checker.get_recommended_delay(url)
         if recommended_delay > self.rate_limiter.default_delay:
             import urllib.parse
+
             domain = urllib.parse.urlparse(url).netloc
             self.rate_limiter.set_domain_delay(domain, recommended_delay)
-            logger.info(f"Updated rate limit for {domain} to {recommended_delay}s (from robots.txt)")
+            logger.info(
+                f"Updated rate limit for {domain} to {recommended_delay}s (from robots.txt)"
+            )
 
         # 4. Fetch with retry
         content = await self._fetch_page_content_with_retry(url)
@@ -121,15 +130,19 @@ class SmartPriceScout:
         logger.info(f"Fetched content length: {len(content)} chars")
         extracted_data = await self._analyze_content(content, url)
 
-        # 6. Validate extracted data
+        # 6. Check for error page type
+        if extracted_data.get("page_type") == "error":
+            error_msg = extracted_data.get("error_message", "Unknown error on page")
+            logger.warning(f"Page error detected: {error_msg}")
+            raise ValueError(f"Page error: {error_msg}")
+
+        # 7. Validate extracted data
         self._validate_extraction(extracted_data)
 
-        # 7. Save to Cache
+        # 8. Save to Cache
         try:
             await self.redis.setex(
-                cache_key,
-                self.cache_ttl,
-                json.dumps(extracted_data)
+                cache_key, self.cache_ttl, json.dumps(extracted_data)
             )
         except Exception as e:
             logger.warning(f"Failed to save to cache: {e}")
@@ -139,7 +152,9 @@ class SmartPriceScout:
     @retry(
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=1, min=2, max=10),
-        retry=retry_if_exception_type((PlaywrightTimeoutError, asyncio.TimeoutError, Exception)),
+        retry=retry_if_exception_type(
+            (PlaywrightTimeoutError, asyncio.TimeoutError, Exception)
+        ),
     )
     async def _fetch_page_content_with_retry(self, url: str) -> str:
         """Fetch page content with retry logic.
@@ -164,29 +179,35 @@ class SmartPriceScout:
         async with async_playwright() as p:
             # Connect to existing browser service if available, else launch local
             cdp_url = os.getenv("PLAYWRIGHT_CDP_URL", "ws://browser:3000")
-            
+
             try:
                 browser = await p.chromium.connect_over_cdp(cdp_url)
                 logger.info(f"Connected to remote browser at {cdp_url}")
             except Exception:
-                logger.warning("Could not connect to remote browser, launching local instance")
+                logger.warning(
+                    "Could not connect to remote browser, launching local instance"
+                )
                 browser = await p.chromium.launch(headless=True)
 
             try:
                 context = await browser.new_context(
                     viewport={"width": 1920, "height": 1080},
-                    user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+                    user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
                 )
                 page = await context.new_page()
-                
+
                 # Block resources to speed up loading
-                await page.route("**/*", lambda route: route.continue_() 
-                               if route.request.resource_type in ["document", "script", "xhr", "fetch"] 
-                               else route.abort())
+                await page.route(
+                    "**/*",
+                    lambda route: route.continue_()
+                    if route.request.resource_type
+                    in ["document", "script", "xhr", "fetch"]
+                    else route.abort(),
+                )
 
                 logger.info(f"Navigating to {url}...")
                 await page.goto(url, wait_until="domcontentloaded", timeout=60000)
-                
+
                 # Wait a bit for dynamic content
                 await page.wait_for_timeout(2000)
 
@@ -200,20 +221,27 @@ class SmartPriceScout:
                     // Get text content with some structure preservation
                     return document.body.innerText;
                 }""")
-                
-                return content[:50000] # Limit context window usage
+
+                return content[:50000]  # Limit context window usage
 
             finally:
                 await browser.close()
 
     async def _analyze_content(self, content: str, url: str) -> dict[str, Any]:
         """Use LLM to extract structured data from text content."""
-        
+
         system_prompt = """You are an expert procurement agent. Your job is to extract precise product pricing and specification data from raw website text.
         
         First, determine if the page is a "product_detail" (single item) or a "product_list" (category/search results).
+        
+        CRITICAL: If the page content indicates an error (e.g., "Page Not Found", "404", "Access Denied", "Captcha"), return:
+        {
+            "page_type": "error",
+            "error_message": "Description of the error found on page",
+            "products": []
+        }
 
-        Return a JSON object with the following structure:
+        Otherwise, return a JSON object with the following structure:
         {
             "page_type": "product_detail" | "product_list",
             "products": [
@@ -247,16 +275,16 @@ class SmartPriceScout:
             model=self.model,
             messages=[
                 {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt}
+                {"role": "user", "content": user_prompt},
             ],
             response_format={"type": "json_object"},
-            temperature=0.1
+            temperature=0.1,
         )
 
         result = response.choices[0].message.content
         if not result:
             raise ValueError("Empty response from LLM")
-            
+
         return json.loads(result)
 
     def _validate_extraction(self, data: dict) -> None:
@@ -312,7 +340,7 @@ class SmartPriceScout:
                     logger.error(f"Product {idx}: Negative price detected: {price}")
                     product["unit_price"] = None  # Invalidate
 
-            except (ValueError, TypeError) as e:
+            except (ValueError, TypeError, InvalidOperation) as e:
                 logger.error(f"Product {idx}: Invalid price format: {price} - {e}")
                 product["unit_price"] = None
 

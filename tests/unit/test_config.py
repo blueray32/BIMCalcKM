@@ -240,7 +240,7 @@ class TestDBConfig:
             pool_size=25,
             pool_max_overflow=50,
             pool_timeout=60,
-            echo=True
+            echo=True,
         )
 
         assert db_config.url == "postgresql://localhost/bimcalc"

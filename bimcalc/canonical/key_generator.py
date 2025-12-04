@@ -105,7 +105,7 @@ def round_mm(value: float | None, tolerance: int = 5) -> int | None:
     """
     if value is None:
         return None
-    
+
     if value >= 0:
         return int((value / tolerance) + 0.5) * tolerance
     else:
@@ -126,7 +126,7 @@ def round_deg(value: float | None, tolerance: int = 5) -> int | None:
     """
     if value is None:
         return None
-        
+
     if value >= 0:
         return int((value / tolerance) + 0.5) * tolerance
     else:
@@ -151,7 +151,9 @@ def canonical_key(item: Item) -> str:
     """
     # Required fields
     if item.classification_code is None:
-        raise ValueError("item.classification_code is required for canonical_key generation")
+        raise ValueError(
+            "item.classification_code is required for canonical_key generation"
+        )
 
     if not item.family or not item.family.strip():
         raise ValueError("item.family is required for canonical_key generation")

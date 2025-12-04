@@ -19,8 +19,12 @@ console = Console()
 @agent_cli.command("ingest")
 def ingest_cmd(
     file_path: Path = typer.Argument(..., help="Path to text/markdown file"),
-    title: str | None = typer.Option(None, help="Document title (defaults to filename)"),
-    doc_type: str = typer.Option("general", help="Document type (e.g., guide, adr, prp)"),
+    title: str | None = typer.Option(
+        None, help="Document title (defaults to filename)"
+    ),
+    doc_type: str = typer.Option(
+        "general", help="Document type (e.g., guide, adr, prp)"
+    ),
 ):
     """Ingest a document into the knowledge base."""
     if not file_path.exists():
@@ -51,18 +55,21 @@ def search_cmd(
     limit: int = typer.Option(5, help="Number of results"),
 ):
     """Search the knowledge base."""
+
     async def _search():
         async with get_session() as session:
             service = RAGService(session)
             results = await service.search(query, limit=limit)
-            
+
             if not results:
                 console.print("[yellow]No results found.[/yellow]")
                 return
 
             console.print(f"[bold]Found {len(results)} results:[/bold]\n")
             for i, doc in enumerate(results, 1):
-                console.print(f"{i}. [bold cyan]{doc.title}[/bold cyan] ({doc.doc_type})")
+                console.print(
+                    f"{i}. [bold cyan]{doc.title}[/bold cyan] ({doc.doc_type})"
+                )
                 console.print(f"   {doc.content[:150]}...")
                 console.print()
 
@@ -73,16 +80,16 @@ def search_cmd(
 def chat_cmd():
     """Interactive chat with the agent."""
     console.print("[bold green]BIMCalc Agent[/bold green] (type 'exit' to quit)")
-    
+
     async def _chat_loop():
         async with get_session() as session:
             service = RAGService(session)
-            
+
             while True:
                 query = typer.prompt("You")
                 if query.lower() in ("exit", "quit"):
                     break
-                
+
                 response = await service.chat(query)
                 console.print("\n[bold blue]Agent:[/bold blue]")
                 console.print(Markdown(response))

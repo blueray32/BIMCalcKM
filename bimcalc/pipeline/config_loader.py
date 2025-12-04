@@ -68,7 +68,9 @@ def load_pipeline_config(config_path: Path) -> list[BaseImporter]:
         try:
             importer = _create_importer(source_config)
             importers.append(importer)
-            logger.info(f"Loaded importer: {importer.source_name} ({source_config['type']})")
+            logger.info(
+                f"Loaded importer: {importer.source_name} ({source_config['type']})"
+            )
 
         except Exception as e:
             logger.error(f"Failed to load source {source_config.get('name')}: {e}")

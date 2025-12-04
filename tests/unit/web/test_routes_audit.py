@@ -80,7 +80,9 @@ def mock_audit_metrics():
 class TestAuditTrail:
     """Tests for GET /audit route."""
 
-    @pytest.mark.skip(reason="Audit template requires complex records - better in integration")
+    @pytest.mark.skip(
+        reason="Audit template requires complex records - better in integration"
+    )
     @patch("bimcalc.web.routes.audit.get_session")
     @patch("bimcalc.web.dependencies.get_config")
     def test_audit_trail_default_view(
@@ -140,7 +142,9 @@ class TestAuditTrail:
         response = client.get("/audit?page=2")
         assert response.status_code == 200
 
-    @pytest.mark.skip(reason="Executive template requires complex metrics - better in integration")
+    @pytest.mark.skip(
+        reason="Executive template requires complex metrics - better in integration"
+    )
     @patch("bimcalc.reporting.audit_metrics.compute_audit_metrics")
     @patch("bimcalc.web.routes.audit.get_session")
     @patch("bimcalc.web.dependencies.get_config")

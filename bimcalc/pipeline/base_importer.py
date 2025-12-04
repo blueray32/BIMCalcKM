@@ -111,6 +111,8 @@ class BaseImporter(ABC):
         value = self.config.get(key, default)
 
         if required and value is None:
-            raise ValueError(f"Required config key '{key}' missing for {self.source_name}")
+            raise ValueError(
+                f"Required config key '{key}' missing for {self.source_name}"
+            )
 
         return value

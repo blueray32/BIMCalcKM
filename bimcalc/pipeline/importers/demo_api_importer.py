@@ -116,7 +116,9 @@ class DemoAPIImporter(BaseImporter):
 
         # Get configuration
         regions = self._get_config_value("regions", ["UK"])
-        items_per_region = self._get_config_value("items_per_region", len(self.SAMPLE_PRODUCTS))
+        items_per_region = self._get_config_value(
+            "items_per_region", len(self.SAMPLE_PRODUCTS)
+        )
         simulate_delay = self._get_config_value("simulate_delay", 0.1)
         simulate_pagination = self._get_config_value("simulate_pagination", True)
         page_size = self._get_config_value("page_size", 5)

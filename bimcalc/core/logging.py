@@ -9,7 +9,7 @@ from pathlib import Path
 
 def configure_logging() -> None:
     """Configure structured logging for the application."""
-    
+
     shared_processors: list[Any] = [
         structlog.contextvars.merge_contextvars,
         structlog.stdlib.add_logger_name,
@@ -23,14 +23,10 @@ def configure_logging() -> None:
 
     if os.getenv("JSON_LOGS", "false").lower() == "true":
         # Production: JSON logs
-        processors = shared_processors + [
-            structlog.processors.JSONRenderer()
-        ]
+        processors = shared_processors + [structlog.processors.JSONRenderer()]
     else:
         # Development: Pretty console logs
-        processors = shared_processors + [
-            structlog.dev.ConsoleRenderer()
-        ]
+        processors = shared_processors + [structlog.dev.ConsoleRenderer()]
 
     structlog.configure(
         processors=processors,
@@ -41,7 +37,7 @@ def configure_logging() -> None:
 
     # Configure standard library logging to use structlog
     handlers = [logging.StreamHandler(sys.stdout)]
-    
+
     # Add FileHandler if logs directory exists
     log_file = Path("logs/bimcalc.log")
     if log_file.parent.exists():

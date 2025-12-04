@@ -23,6 +23,7 @@ router = APIRouter(tags=["integrations"])
 # ACC (Autodesk Construction Cloud) Integration Routes
 # ============================================================================
 
+
 @router.get("/api/integrations/acc/connect")
 async def acc_connect():
     """Initiate ACC OAuth flow.
@@ -33,6 +34,7 @@ async def acc_connect():
     Extracted from: app_enhanced.py:575
     """
     from bimcalc.integrations.acc import get_acc_client
+
     client = get_acc_client()
     return RedirectResponse(client.get_auth_url())
 
@@ -47,12 +49,15 @@ async def acc_callback(code: str, request: Request):
     Extracted from: app_enhanced.py:582
     """
     from bimcalc.integrations.acc import get_acc_client
+
     client = get_acc_client()
     tokens = await client.exchange_code(code)
 
     # Store token in session or cookie (simplified for MVP)
     response = RedirectResponse("/integrations/acc/browser")
-    response.set_cookie("acc_token", tokens["access_token"], max_age=3600, httponly=True)
+    response.set_cookie(
+        "acc_token", tokens["access_token"], max_age=3600, httponly=True
+    )
     return response
 
 
@@ -72,20 +77,29 @@ async def acc_browser(request: Request):
         return RedirectResponse("/api/integrations/acc/connect")
 
     from bimcalc.integrations.acc import get_acc_client
+
     client = get_acc_client()
     projects = await client.list_projects(token)
 
     # Simple HTML for file browsing
-    project_list = "".join([f"<li><a href='?project_id={p['id']}'>{p['name']}</a></li>" for p in projects])
+    project_list = "".join(
+        [f"<li><a href='?project_id={p['id']}'>{p['name']}</a></li>" for p in projects]
+    )
 
     files_html = ""
     project_id = request.query_params.get("project_id")
     if project_id:
         files = await client.list_files(token, project_id)
-        files_html = "<h3>Files</h3><ul>" + "".join([
-            f"<li>{f.name} (v{f.version}) - <button onclick='importFile(\"{f.id}\")'>Import</button></li>"
-            for f in files
-        ]) + "</ul>"
+        files_html = (
+            "<h3>Files</h3><ul>"
+            + "".join(
+                [
+                    f"<li>{f.name} (v{f.version}) - <button onclick='importFile(\"{f.id}\")'>Import</button></li>"
+                    for f in files
+                ]
+            )
+            + "</ul>"
+        )
 
     return f"""
     <html>

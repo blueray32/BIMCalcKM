@@ -1,6 +1,5 @@
 """Unit tests for enhanced normalizer with synonym expansion."""
 
-
 import pytest
 
 from bimcalc.canonical.enhanced_normalizer import (
@@ -38,9 +37,7 @@ class TestSynonymExpander:
             result = expander.expand_material(f"Duct {variant}")
             assert "galvanized_steel" in result.lower()
 
-    def test_expand_material_case_insensitive(
-        self, expander: SynonymExpander
-    ) -> None:
+    def test_expand_material_case_insensitive(self, expander: SynonymExpander) -> None:
         """Test material expansion is case insensitive."""
         result_upper = expander.expand_material("STAINLESS STEEL")
         result_lower = expander.expand_material("stainless steel")
@@ -261,9 +258,7 @@ class TestEnhancedNormalizer:
 class TestSynonymExpansionIntegration:
     """Integration tests for synonym expansion in full workflow."""
 
-    def test_full_normalization_pipeline(
-        self, normalizer: EnhancedNormalizer
-    ) -> None:
+    def test_full_normalization_pipeline(self, normalizer: EnhancedNormalizer) -> None:
         """Test complete normalization pipeline with all features."""
         text = "Pipe Elbow 90° DN100 SS Victaulic Project2024-Rev3"
         result = normalizer.normalize(text, expand_synonyms=True)

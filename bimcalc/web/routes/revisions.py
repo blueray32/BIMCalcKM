@@ -27,6 +27,7 @@ router = APIRouter(tags=["revisions"])
 # Revisions Routes
 # ============================================================================
 
+
 @router.get("/revisions", response_class=HTMLResponse)
 async def revisions_page(
     request: Request,
@@ -104,9 +105,11 @@ async def get_revisions(
             for row in results
         ]
 
-        return JSONResponse(content={
-            "org_id": org,
-            "project_id": project,
-            "count": len(revisions),
-            "revisions": revisions,
-        })
+        return JSONResponse(
+            content={
+                "org_id": org,
+                "project_id": project,
+                "count": len(revisions),
+                "revisions": revisions,
+            }
+        )

@@ -29,7 +29,9 @@ class CandidateGenerator:
         self.session = session
         self.config = get_config()
 
-    async def generate(self, item: Item, limit: int | None = None, region: str = "EU") -> list[PriceItem]:
+    async def generate(
+        self, item: Item, limit: int | None = None, region: str = "EU"
+    ) -> list[PriceItem]:
         """Generate candidates using classification-first blocking.
 
         Filter logic (applied in order):
@@ -50,10 +52,14 @@ class CandidateGenerator:
             SQLAlchemyError: If database query fails
         """
         if item.classification_code is None:
-            raise ValueError("item.classification_code is required for candidate generation")
+            raise ValueError(
+                "item.classification_code is required for candidate generation"
+            )
 
         if item.org_id is None:
-            raise ValueError("item.org_id is required for multi-tenant candidate filtering")
+            raise ValueError(
+                "item.org_id is required for multi-tenant candidate filtering"
+            )
 
         if limit is None:
             limit = self.config.matching.max_candidates_per_item
@@ -151,7 +157,6 @@ class CandidateGenerator:
             for row in rows
         ]
 
-
     async def generate_with_escape_hatch(
         self, item: Item, max_escape_hatch: int = 2, region: str = "EU"
     ) -> tuple[list[PriceItem], bool]:
@@ -189,7 +194,9 @@ class CandidateGenerator:
         )
 
         if item.org_id is None:
-            raise ValueError("item.org_id is required for multi-tenant candidate filtering")
+            raise ValueError(
+                "item.org_id is required for multi-tenant candidate filtering"
+            )
 
         # Relaxed query: Remove classification blocking, keep all other filters
         # BUT keep region filter!

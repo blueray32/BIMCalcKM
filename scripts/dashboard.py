@@ -46,9 +46,7 @@ def get_db_stats():
     stats["mappings"] = cursor.fetchone()[0]
 
     # Active mappings
-    cursor.execute(
-        "SELECT COUNT(*) FROM item_mapping WHERE end_ts IS NULL"
-    )
+    cursor.execute("SELECT COUNT(*) FROM item_mapping WHERE end_ts IS NULL")
     stats["mappings_active"] = cursor.fetchone()[0]
 
     # Price items by region
@@ -182,7 +180,7 @@ def format_duration(seconds):
     if seconds is None:
         return "N/A"
     if seconds < 1:
-        return f"{seconds*1000:.0f}ms"
+        return f"{seconds * 1000:.0f}ms"
     if seconds < 60:
         return f"{seconds:.1f}s"
     minutes = int(seconds / 60)
@@ -329,7 +327,9 @@ def print_dashboard():
     # Quick action suggestions
     print("💡 QUICK ACTIONS")
     print("-" * 70)
-    print("  View pipeline history:     python -m bimcalc.cli pipeline-status --last 10")
+    print(
+        "  View pipeline history:     python -m bimcalc.cli pipeline-status --last 10"
+    )
     print("  Run pipeline:              python -m bimcalc.cli sync-prices")
     print("  Check configuration:       python scripts/validate_config.py")
     print("  Create backup:             ./scripts/backup_database.sh")

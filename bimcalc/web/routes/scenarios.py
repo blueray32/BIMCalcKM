@@ -28,6 +28,7 @@ router = APIRouter(tags=["scenarios"])
 # Scenarios Routes
 # ============================================================================
 
+
 @router.get("/scenarios", response_class=HTMLResponse)
 async def scenario_page(
     request: Request,
@@ -66,7 +67,10 @@ async def compare_scenarios(
 
     Extracted from: app_enhanced.py:709
     """
-    from bimcalc.reporting.scenario import compute_vendor_scenario, get_available_vendors
+    from bimcalc.reporting.scenario import (
+        compute_vendor_scenario,
+        get_available_vendors,
+    )
 
     async with get_session() as session:
         # If no vendors specified, fetch top 3 available
@@ -78,17 +82,19 @@ async def compare_scenarios(
         scenarios = []
         for vendor in target_vendors:
             scenario = await compute_vendor_scenario(session, org, project, vendor)
-            scenarios.append({
-                "vendor": scenario.vendor_name,
-                "total_cost": scenario.total_cost,
-                "coverage": scenario.coverage_percent,
-                "matched": scenario.matched_items,
-                "missing": scenario.missing_items
-            })
+            scenarios.append(
+                {
+                    "vendor": scenario.vendor_name,
+                    "total_cost": scenario.total_cost,
+                    "coverage": scenario.coverage_percent,
+                    "matched": scenario.matched_items,
+                    "missing": scenario.missing_items,
+                }
+            )
 
         return {
             "scenarios": scenarios,
-            "all_vendors": await get_available_vendors(session, org)
+            "all_vendors": await get_available_vendors(session, org),
         }
 
 
@@ -109,7 +115,10 @@ async def export_scenarios(
     Extracted from: app_enhanced.py:627
     """
     from bimcalc.reporting.export import export_scenario_to_excel
-    from bimcalc.reporting.scenario import compute_vendor_scenario, get_available_vendors
+    from bimcalc.reporting.scenario import (
+        compute_vendor_scenario,
+        get_available_vendors,
+    )
 
     async with get_session() as session:
         # Reuse logic from compare endpoint
@@ -125,31 +134,38 @@ async def export_scenarios(
         # Convert dataclasses to dict for export
         dict_comparisons = []
         for c in comparisons:
-            dict_comparisons.append({
-                "vendor_name": c.vendor_name,
-                "total_cost": c.total_cost,
-                "coverage_percent": c.coverage_percent,
-                "matched_items_count": c.matched_items_count,
-                "missing_items_count": c.missing_items_count,
-                "details": [
-                    {
-                        "item_family": m.item.family,
-                        "item_type": m.item.type_name,
-                        "quantity": float(m.item.quantity) if m.item.quantity else 0,
-                        "unit": m.item.unit,
-                        "unit_price": float(m.price.unit_price) if m.price else 0,
-                        "line_total": float(m.line_total),
-                        "status": "matched"
-                    } for m in c.matched_items
-                ]
-            })
+            dict_comparisons.append(
+                {
+                    "vendor_name": c.vendor_name,
+                    "total_cost": c.total_cost,
+                    "coverage_percent": c.coverage_percent,
+                    "matched_items_count": c.matched_items_count,
+                    "missing_items_count": c.missing_items_count,
+                    "details": [
+                        {
+                            "item_family": m.item.family,
+                            "item_type": m.item.type_name,
+                            "quantity": float(m.item.quantity)
+                            if m.item.quantity
+                            else 0,
+                            "unit": m.item.unit,
+                            "unit_price": float(m.price.unit_price) if m.price else 0,
+                            "line_total": float(m.line_total),
+                            "status": "matched",
+                        }
+                        for m in c.matched_items
+                    ],
+                }
+            )
 
-        excel_file = export_scenario_to_excel({"comparisons": dict_comparisons}, org, project)
+        excel_file = export_scenario_to_excel(
+            {"comparisons": dict_comparisons}, org, project
+        )
 
         filename = f"scenario_comparison_{org}_{project}_{datetime.now().strftime('%Y%m%d')}.xlsx"
 
         return Response(
             content=excel_file.getvalue(),
             media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            headers={"Content-Disposition": f"attachment; filename={filename}"}
+            headers={"Content-Disposition": f"attachment; filename={filename}"},
         )

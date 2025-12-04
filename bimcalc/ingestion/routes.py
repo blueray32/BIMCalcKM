@@ -14,7 +14,16 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, Query
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    Form,
+    HTTPException,
+    Request,
+    UploadFile,
+    Query,
+)
 from fastapi.responses import HTMLResponse, JSONResponse
 
 from bimcalc.db.connection import get_session
@@ -31,12 +40,13 @@ router = APIRouter(tags=["ingestion"])
 # Ingestion Dashboard Routes
 # ============================================================================
 
+
 @router.get("/ingest/history", response_class=HTMLResponse)
 async def ingest_history_page(
     request: Request,
     org: str | None = None,
     project: str | None = None,
-    templates = Depends(get_templates),
+    templates=Depends(get_templates),
 ):
     """Ingest history dashboard.
 
@@ -60,7 +70,7 @@ async def ingest_page(
     request: Request,
     org: str | None = None,
     project: str | None = None,
-    templates = Depends(get_templates),
+    templates=Depends(get_templates),
 ):
     """File upload page for schedules and price books.
 
@@ -84,6 +94,7 @@ async def ingest_page(
 # File Upload & Ingestion Routes
 # ============================================================================
 
+
 @router.post("/ingest/schedules")
 async def ingest_schedules(
     file: UploadFile = File(...),
@@ -106,7 +117,9 @@ async def ingest_schedules(
     # Ingest
     try:
         async with get_session() as session:
-            success_count, errors = await ingest_schedule(session, temp_path, org, project)
+            success_count, errors = await ingest_schedule(
+                session, temp_path, org, project
+            )
 
         # Clean up
         temp_path.unlink()
@@ -132,12 +145,10 @@ async def ingest_schedules(
                 recipients=["admin@bimcalc.com"],  # TODO: Configure recipients
                 filename=file.filename,
                 error_message=error_msg,
-                org_id=org
+                org_id=org,
             )
             await slack_notifier.post_ingestion_failure_alert(
-                filename=file.filename,
-                error_message=error_msg,
-                org_id=org
+                filename=file.filename, error_message=error_msg, org_id=org
             )
         except Exception as alert_err:
             print(f"Failed to send alerts: {alert_err}")
@@ -197,12 +208,12 @@ async def ingest_prices(
                 recipients=["admin@bimcalc.com"],
                 filename=file.filename,
                 error_message=error_msg,
-                org_id=f"Vendor: {vendor}"
+                org_id=f"Vendor: {vendor}",
             )
             await slack_notifier.post_ingestion_failure_alert(
                 filename=file.filename,
                 error_message=error_msg,
-                org_id=f"Vendor: {vendor}"
+                org_id=f"Vendor: {vendor}",
             )
         except Exception as alert_err:
             print(f"Failed to send alerts: {alert_err}")
@@ -270,15 +281,19 @@ async def get_ingest_history(
                 "error_details": log.error_details if log.errors > 0 else None,
                 "processing_time_ms": log.processing_time_ms,
                 "status": log.status,
-                "completed_at": log.completed_at.isoformat() if log.completed_at else None,
+                "completed_at": log.completed_at.isoformat()
+                if log.completed_at
+                else None,
                 "created_by": log.created_by,
             }
             for log in results
         ]
 
-        return JSONResponse(content={
-            "org_id": org,
-            "project_id": project,
-            "total_imports": len(history),
-            "history": history,
-        })
+        return JSONResponse(
+            content={
+                "org_id": org,
+                "project_id": project,
+                "total_imports": len(history),
+                "history": history,
+            }
+        )

@@ -118,7 +118,9 @@ class TestPriceHistory:
 class TestPricesList:
     """Tests for GET /prices-legacy route."""
 
-    @pytest.mark.skip(reason="Prices template requires complex context - better in integration")
+    @pytest.mark.skip(
+        reason="Prices template requires complex context - better in integration"
+    )
     @patch("bimcalc.web.routes.prices.get_session")
     @patch("bimcalc.web.routes.prices.get_org_project")
     def test_prices_list_default_view(
@@ -165,7 +167,9 @@ class TestPricesList:
         assert response.status_code == 200
         assert "text/html" in response.headers["content-type"]
 
-    @pytest.mark.skip(reason="Executive view requires price_metrics module - better in integration")
+    @pytest.mark.skip(
+        reason="Executive view requires price_metrics module - better in integration"
+    )
     @patch("bimcalc.web.routes.prices.compute_price_metrics")
     @patch("bimcalc.web.routes.prices.get_session")
     @patch("bimcalc.web.routes.prices.get_org_project")
@@ -253,7 +257,10 @@ class TestPricesExport:
 
         response = client.get("/prices/export")
         assert response.status_code == 200
-        assert "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" in response.headers["content-type"]
+        assert (
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            in response.headers["content-type"]
+        )
         assert "attachment" in response.headers["content-disposition"]
         assert "prices_test-org" in response.headers["content-disposition"]
 
@@ -287,7 +294,9 @@ class TestPricesExport:
 class TestPriceDetail:
     """Tests for GET /prices/{price_id} route."""
 
-    @pytest.mark.skip(reason="Price detail template requires complex context - better in integration")
+    @pytest.mark.skip(
+        reason="Price detail template requires complex context - better in integration"
+    )
     @patch("bimcalc.web.routes.prices.get_session")
     @patch("bimcalc.web.routes.prices.get_org_project")
     def test_price_detail_success(
@@ -348,13 +357,14 @@ def test_router_has_correct_routes():
     """Test that prices router has all expected routes."""
     routes = [route.path for route in prices.router.routes]
 
+    assert "/prices" in routes
     assert "/prices/history/{item_code}" in routes
     assert "/prices-legacy" in routes
     assert "/prices/export" in routes
     assert "/prices/{price_id}" in routes
 
-    # Should have 4 routes total
-    assert len(prices.router.routes) == 4
+    # Should have 5 routes total
+    assert len(prices.router.routes) == 5
 
 
 def test_router_has_prices_tag():

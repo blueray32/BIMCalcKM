@@ -29,16 +29,24 @@ def client(app):
 def mock_acc_client():
     """Mock ACC client."""
     client = MagicMock()
-    client.get_auth_url = MagicMock(return_value="https://acc.autodesk.com/oauth?client_id=test")
-    client.exchange_code = AsyncMock(return_value={"access_token": "test-token-123", "expires_in": 3600})
-    client.list_projects = AsyncMock(return_value=[
-        {"id": "proj-1", "name": "Project Alpha"},
-        {"id": "proj-2", "name": "Project Beta"},
-    ])
-    client.list_files = AsyncMock(return_value=[
-        MagicMock(id="file-1", name="Building A.rvt", version=5),
-        MagicMock(id="file-2", name="MEP Systems.rvt", version=3),
-    ])
+    client.get_auth_url = MagicMock(
+        return_value="https://acc.autodesk.com/oauth?client_id=test"
+    )
+    client.exchange_code = AsyncMock(
+        return_value={"access_token": "test-token-123", "expires_in": 3600}
+    )
+    client.list_projects = AsyncMock(
+        return_value=[
+            {"id": "proj-1", "name": "Project Alpha"},
+            {"id": "proj-2", "name": "Project Beta"},
+        ]
+    )
+    client.list_files = AsyncMock(
+        return_value=[
+            MagicMock(id="file-1", name="Building A.rvt", version=5),
+            MagicMock(id="file-2", name="MEP Systems.rvt", version=3),
+        ]
+    )
     return client
 
 
@@ -46,7 +54,9 @@ class TestAccConnect:
     """Tests for GET /api/integrations/acc/connect route."""
 
     @patch("bimcalc.integrations.acc.get_acc_client")
-    def test_acc_connect_redirects_to_auth(self, mock_get_client, client, mock_acc_client):
+    def test_acc_connect_redirects_to_auth(
+        self, mock_get_client, client, mock_acc_client
+    ):
         """Test ACC connect initiates OAuth flow."""
         mock_get_client.return_value = mock_acc_client
 
@@ -66,8 +76,7 @@ class TestAccCallback:
         mock_get_client.return_value = mock_acc_client
 
         response = client.get(
-            "/api/integrations/acc/callback?code=test-auth-code",
-            follow_redirects=False
+            "/api/integrations/acc/callback?code=test-auth-code", follow_redirects=False
         )
 
         assert response.status_code == 307  # Redirect
@@ -82,13 +91,14 @@ class TestAccCallback:
         mock_acc_client.exchange_code.assert_called_once_with("test-auth-code")
 
     @patch("bimcalc.integrations.acc.get_acc_client")
-    def test_acc_callback_sets_httponly_cookie(self, mock_get_client, client, mock_acc_client):
+    def test_acc_callback_sets_httponly_cookie(
+        self, mock_get_client, client, mock_acc_client
+    ):
         """Test callback sets httponly cookie for security."""
         mock_get_client.return_value = mock_acc_client
 
         response = client.get(
-            "/api/integrations/acc/callback?code=test-code",
-            follow_redirects=False
+            "/api/integrations/acc/callback?code=test-code", follow_redirects=False
         )
 
         # Check cookie attributes
@@ -96,7 +106,9 @@ class TestAccCallback:
         assert "httponly" in set_cookie_header.lower()
 
     @patch("bimcalc.integrations.acc.get_acc_client")
-    def test_acc_callback_exchange_error(self, mock_get_client, client, mock_acc_client):
+    def test_acc_callback_exchange_error(
+        self, mock_get_client, client, mock_acc_client
+    ):
         """Test callback handles token exchange errors."""
         mock_acc_client.exchange_code = AsyncMock(side_effect=Exception("Invalid code"))
         mock_get_client.return_value = mock_acc_client
@@ -109,7 +121,9 @@ class TestAccBrowser:
     """Tests for GET /integrations/acc/browser route."""
 
     @patch("bimcalc.integrations.acc.get_acc_client")
-    def test_acc_browser_without_token_redirects(self, mock_get_client, client, mock_acc_client):
+    def test_acc_browser_without_token_redirects(
+        self, mock_get_client, client, mock_acc_client
+    ):
         """Test browser redirects to connect when no token present."""
         mock_get_client.return_value = mock_acc_client
 
@@ -138,7 +152,9 @@ class TestAccBrowser:
         mock_acc_client.list_projects.assert_called_once_with("valid-token")
 
     @patch("bimcalc.integrations.acc.get_acc_client")
-    def test_acc_browser_shows_files_for_project(self, mock_get_client, client, mock_acc_client):
+    def test_acc_browser_shows_files_for_project(
+        self, mock_get_client, client, mock_acc_client
+    ):
         """Test browser displays files when project selected."""
         mock_get_client.return_value = mock_acc_client
 
@@ -157,7 +173,9 @@ class TestAccBrowser:
         mock_acc_client.list_files.assert_called_once_with("valid-token", "proj-1")
 
     @patch("bimcalc.integrations.acc.get_acc_client")
-    def test_acc_browser_includes_import_buttons(self, mock_get_client, client, mock_acc_client):
+    def test_acc_browser_includes_import_buttons(
+        self, mock_get_client, client, mock_acc_client
+    ):
         """Test browser includes import buttons for files."""
         mock_get_client.return_value = mock_acc_client
 
@@ -170,7 +188,9 @@ class TestAccBrowser:
         assert "importFile" in response.text  # JavaScript function
 
     @patch("bimcalc.integrations.acc.get_acc_client")
-    def test_acc_browser_without_project_shows_only_projects(self, mock_get_client, client, mock_acc_client):
+    def test_acc_browser_without_project_shows_only_projects(
+        self, mock_get_client, client, mock_acc_client
+    ):
         """Test browser without project_id shows only projects."""
         mock_get_client.return_value = mock_acc_client
 
@@ -186,7 +206,9 @@ class TestAccBrowser:
         mock_acc_client.list_files.assert_not_called()
 
     @patch("bimcalc.integrations.acc.get_acc_client")
-    def test_acc_browser_handles_empty_projects(self, mock_get_client, client, mock_acc_client):
+    def test_acc_browser_handles_empty_projects(
+        self, mock_get_client, client, mock_acc_client
+    ):
         """Test browser handles case with no projects."""
         mock_acc_client.list_projects = AsyncMock(return_value=[])
         mock_get_client.return_value = mock_acc_client
@@ -199,7 +221,9 @@ class TestAccBrowser:
         assert "Projects" in response.text
 
     @patch("bimcalc.integrations.acc.get_acc_client")
-    def test_acc_browser_handles_api_error(self, mock_get_client, client, mock_acc_client):
+    def test_acc_browser_handles_api_error(
+        self, mock_get_client, client, mock_acc_client
+    ):
         """Test browser handles ACC API errors."""
         mock_acc_client.list_projects = AsyncMock(side_effect=Exception("API Error"))
         mock_get_client.return_value = mock_acc_client

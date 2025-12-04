@@ -39,13 +39,15 @@ def get_engine() -> AsyncEngine:
 
         # SQLite doesn't support connection pooling parameters
         if "sqlite" not in db_config.url.lower():
-            engine_kwargs.update({
-                "pool_size": db_config.pool_size,
-                "max_overflow": db_config.pool_max_overflow,
-                "pool_timeout": db_config.pool_timeout,
-                "pool_pre_ping": True,  # Verify connections before using
-                "pool_recycle": 3600,  # Recycle connections after 1 hour
-            })
+            engine_kwargs.update(
+                {
+                    "pool_size": db_config.pool_size,
+                    "max_overflow": db_config.pool_max_overflow,
+                    "pool_timeout": db_config.pool_timeout,
+                    "pool_pre_ping": True,  # Verify connections before using
+                    "pool_recycle": 3600,  # Recycle connections after 1 hour
+                }
+            )
 
         # Create async engine
         _engine = create_async_engine(db_config.url, **engine_kwargs)
@@ -54,11 +56,13 @@ def get_engine() -> AsyncEngine:
         if "sqlite" in db_config.url.lower():
             from sqlalchemy import event
             from datetime import datetime
-            
+
             @event.listens_for(_engine.sync_engine, "connect")
             def connect(dbapi_connection, connection_record):
                 try:
-                    dbapi_connection.create_function("now", 0, lambda: datetime.utcnow().isoformat(" "))
+                    dbapi_connection.create_function(
+                        "now", 0, lambda: datetime.utcnow().isoformat(" ")
+                    )
                 except Exception:
                     pass
 
@@ -116,6 +120,7 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
     """Get async database session (FastAPI dependency)."""
     async with get_session() as session:
         yield session
+
 
 async def init_db() -> None:
     """Initialize database (create all tables).

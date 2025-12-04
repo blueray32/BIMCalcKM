@@ -29,10 +29,9 @@ from bimcalc.config import get_config
 from bimcalc.db.connection import get_session
 from bimcalc.db.models import ClassificationMappingModel
 from bimcalc.web.auth import require_auth
-from bimcalc.web.dependencies import get_org_project, get_templates
+from bimcalc.web.dependencies import get_templates
 
 # Create router with crail4 tag
-
 
 
 # ============================================================================
@@ -40,6 +39,7 @@ from bimcalc.web.dependencies import get_org_project, get_templates
 # ============================================================================
 
 router = APIRouter(prefix="/price-scout", tags=["price-scout"])
+
 
 @router.get("", response_class=HTMLResponse)
 async def price_scout_page(
@@ -51,11 +51,11 @@ async def price_scout_page(
     # Get current config
     config = get_config()
     org_id = config.org_id
-    
+
     # Check connection status
     connection_status = "unknown"
     connection_error = None
-    
+
     if os.getenv("PRICE_SCOUT_API_KEY"):
         connection_status = "connected"
     else:
@@ -91,8 +91,10 @@ async def price_scout_page(
 
         # Get mappings count
         try:
-            mappings_count_stmt = select(func.count()).select_from(ClassificationMappingModel).where(
-                ClassificationMappingModel.org_id == org_id
+            mappings_count_stmt = (
+                select(func.count())
+                .select_from(ClassificationMappingModel)
+                .where(ClassificationMappingModel.org_id == org_id)
             )
             mappings_result = await session.execute(mappings_count_stmt)
             stats["mappings_count"] = mappings_result.scalar_one()
@@ -103,11 +105,14 @@ async def price_scout_page(
         # Get import runs history
         try:
             from bimcalc.db.models import PriceImportRunModel
+
             import_runs_stmt = (
                 select(PriceImportRunModel)
                 .where(
                     PriceImportRunModel.org_id == org_id,
-                    (PriceImportRunModel.source == "crail4") | (PriceImportRunModel.source == "crail4_api") | (PriceImportRunModel.source == "price_scout_api")
+                    (PriceImportRunModel.source == "crail4")
+                    | (PriceImportRunModel.source == "crail4_api")
+                    | (PriceImportRunModel.source == "price_scout_api"),
                 )
                 .order_by(PriceImportRunModel.started_at.desc())
                 .limit(20)
@@ -124,7 +129,10 @@ async def price_scout_page(
             mappings_stmt = (
                 select(ClassificationMappingModel)
                 .where(ClassificationMappingModel.org_id == org_id)
-                .order_by(ClassificationMappingModel.source_scheme, ClassificationMappingModel.source_code)
+                .order_by(
+                    ClassificationMappingModel.source_scheme,
+                    ClassificationMappingModel.source_code,
+                )
             )
             mappings_result = await session.execute(mappings_stmt)
             mappings = mappings_result.scalars().all()
@@ -194,7 +202,9 @@ async def save_price_scout_config(
     os.environ["PRICE_SCOUT_API_KEY"] = api_key
     os.environ["PRICE_SCOUT_SOURCE_URL"] = source_url
 
-    return JSONResponse({"status": "success", "message": "Configuration saved successfully"})
+    return JSONResponse(
+        {"status": "success", "message": "Configuration saved successfully"}
+    )
 
 
 @router.post("/test")
@@ -207,17 +217,19 @@ async def test_price_scout_connection(
     """
     try:
         from bimcalc.intelligence.price_scout import SmartPriceScout
-        
+
         # Simple test with a dummy URL to check LLM instantiation
         # We don't actually fetch to save time/tokens, just check init
         async with SmartPriceScout() as scout:
             pass
-            
-        return JSONResponse({"status": "success", "message": "Smart Price Scout (OpenAI) Connected"})
+
+        return JSONResponse(
+            {"status": "success", "message": "Smart Price Scout (OpenAI) Connected"}
+        )
     except Exception as e:
         return JSONResponse(
             {"status": "error", "message": f"Connection failed: {str(e)}"},
-            status_code=500
+            status_code=500,
         )
 
 
@@ -244,9 +256,7 @@ async def trigger_price_scout_sync(
         # Enqueue the job
         redis = await get_queue()
         job = await redis.enqueue_job(
-            "run_price_scout_sync",
-            org_id=org_id,
-            full_sync=full_sync
+            "run_price_scout_sync", org_id=org_id, full_sync=full_sync
         )
         print(f"Enqueued Price Scout sync job: {job.job_id} for org {org_id}")
 
@@ -280,14 +290,14 @@ async def trigger_quick_scout(
     """
     try:
         from bimcalc.intelligence.price_scout import SmartPriceScout
-        
+
         async with SmartPriceScout() as scout:
             result = await scout.extract(url, force_refresh=force_refresh)
-            
+
         # Handle new schema (v2) or legacy flat dict (v1 fallback)
         products = result.get("products", [])
         page_type = result.get("page_type", "product_detail")
-        
+
         # Fallback for legacy flat structure
         if not products and "description" in result:
             products = [result]
@@ -299,10 +309,10 @@ async def trigger_quick_scout(
             for p in products:
                 rows += f"""
                 <tr style="border-bottom: 1px solid #e2e8f0;">
-                    <td style="padding: 0.75rem;">{p.get('vendor_code', 'N/A')}</td>
-                    <td style="padding: 0.75rem;">{p.get('description', 'N/A')}</td>
+                    <td style="padding: 0.75rem;">{p.get("vendor_code", "N/A")}</td>
+                    <td style="padding: 0.75rem;">{p.get("description", "N/A")}</td>
                     <td style="padding: 0.75rem; font-weight: 600; color: #059669;">
-                        {p.get('currency', '')} {p.get('unit_price', 'N/A')}
+                        {p.get("currency", "")} {p.get("unit_price", "N/A")}
                     </td>
                     <td style="padding: 0.75rem;">
                          <button class="btn btn-sm" style="background: #edf2f7; color: #4a5568; padding: 0.25rem 0.5rem; border-radius: 4px; border: none;">
@@ -311,7 +321,7 @@ async def trigger_quick_scout(
                     </td>
                 </tr>
                 """
-            
+
             html = f"""
             <div style="margin-top: 1.5rem; border: 1px solid #cbd5e1; border-radius: 8px; overflow: hidden;">
                 <div style="background: #f8fafc; padding: 0.75rem 1rem; border-bottom: 1px solid #cbd5e1; font-weight: 600; display: flex; justify-content: space-between; align-items: center;">
@@ -338,7 +348,7 @@ async def trigger_quick_scout(
         else:
             # Render Single Card (take first product)
             product = products[0] if products else {}
-            
+
             html = f"""
             <div style="margin-top: 1.5rem; border: 1px solid #cbd5e1; border-radius: 8px; overflow: hidden;">
                 <div style="background: #f8fafc; padding: 0.75rem 1rem; border-bottom: 1px solid #cbd5e1; font-weight: 600; display: flex; justify-content: space-between;">
@@ -349,20 +359,20 @@ async def trigger_quick_scout(
                     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
                         <div>
                             <div style="font-size: 0.75rem; color: #64748b; text-transform: uppercase;">Vendor Code</div>
-                            <div style="font-weight: 600; font-size: 1.1rem;">{product.get('vendor_code', 'N/A')}</div>
+                            <div style="font-weight: 600; font-size: 1.1rem;">{product.get("vendor_code", "N/A")}</div>
                         </div>
                         <div>
                             <div style="font-size: 0.75rem; color: #64748b; text-transform: uppercase;">Price</div>
                             <div style="font-weight: 600; font-size: 1.1rem; color: #059669;">
-                                {product.get('currency', '')} {product.get('unit_price', 'N/A')}
-                                <span style="font-size: 0.8rem; color: #64748b; font-weight: normal;">/ {product.get('unit', 'ea')}</span>
+                                {product.get("currency", "")} {product.get("unit_price", "N/A")}
+                                <span style="font-size: 0.8rem; color: #64748b; font-weight: normal;">/ {product.get("unit", "ea")}</span>
                             </div>
                         </div>
                     </div>
                     
                     <div style="margin-bottom: 1rem;">
                         <div style="font-size: 0.75rem; color: #64748b; text-transform: uppercase;">Description</div>
-                        <div style="font-size: 1rem;">{product.get('description', 'N/A')}</div>
+                        <div style="font-size: 1rem;">{product.get("description", "N/A")}</div>
                     </div>
 
                     <div style="background: #f1f5f9; padding: 0.75rem; border-radius: 6px; font-family: monospace; font-size: 0.85rem; overflow-x: auto;">
@@ -378,36 +388,6 @@ async def trigger_quick_scout(
         return HTMLResponse(f"""
             <div class="message message-error" style="margin-top: 1rem;">
                 <strong>Extraction Failed:</strong> {str(e)}
-            </div>
-        """)
-
-    org_id = get_config().org_id
-
-    try:
-        from bimcalc.core.queue import get_queue
-
-        # Enqueue the job
-        redis = await get_queue()
-        job = await redis.enqueue_job(
-            "run_price_scout_sync",
-            org_id=org_id,
-            full_sync=full_sync
-        )
-        print(f"Enqueued Price Scout sync job: {job.job_id} for org {org_id}")
-
-        # Return HTML fragment for HTMX
-        return HTMLResponse(f"""
-            <div class="message message-info" hx-get="/crail4-config/status/{job.job_id}" hx-trigger="load delay:2s" hx-swap="outerHTML">
-                <strong>Sync Started!</strong><br>
-                Job ID: {job.job_id}<br>
-                <small>Checking status...</small>
-            </div>
-        """)
-
-    except Exception as e:
-        return HTMLResponse(f"""
-            <div class="message message-error">
-                <strong>Error:</strong> {str(e)}
             </div>
         """)
 
@@ -446,7 +426,7 @@ async def get_sync_status(job_id: str, current_user: str = Depends(require_auth)
             """)
 
         elif status == "in_progress":
-             return HTMLResponse(f"""
+            return HTMLResponse(f"""
                 <div class="message message-info" hx-get="/crail4-config/status/{job_id}" hx-trigger="load delay:2s" hx-swap="outerHTML">
                     <strong>Syncing...</strong><br>
                     Job is running in background.
@@ -458,7 +438,7 @@ async def get_sync_status(job_id: str, current_user: str = Depends(require_auth)
             """)
 
         elif status == "failed":
-             return HTMLResponse("""
+            return HTMLResponse("""
                 <div class="message message-error">
                     <strong>Job Failed</strong><br>
                     The background job encountered an error.
@@ -466,7 +446,7 @@ async def get_sync_status(job_id: str, current_user: str = Depends(require_auth)
             """)
 
         else:  # queued or not_found
-             return HTMLResponse(f"""
+            return HTMLResponse(f"""
                 <div class="message message-info" hx-get="/crail4-config/status/{job_id}" hx-trigger="load delay:2s" hx-swap="outerHTML">
                     <strong>Queued...</strong><br>
                     Waiting for worker...
@@ -514,7 +494,7 @@ async def add_classification_mapping(
         if existing:
             return JSONResponse(
                 {"status": "error", "message": "Mapping already exists"},
-                status_code=400
+                status_code=400,
             )
 
         # Create new mapping
@@ -532,10 +512,12 @@ async def add_classification_mapping(
         session.add(mapping)
         await session.commit()
 
-        return JSONResponse({
-            "status": "success",
-            "message": "Classification mapping added successfully"
-        })
+        return JSONResponse(
+            {
+                "status": "success",
+                "message": "Classification mapping added successfully",
+            }
+        )
 
 
 @router.get("/price-imports/{run_id}", response_class=HTMLResponse)
@@ -563,8 +545,8 @@ async def get_price_import_details(
                 {
                     "request": request,
                     "message": "Import run not found",
-                    "org_id": "default", # Fallback
-                    "project_id": "default", # Fallback
+                    "org_id": "default",  # Fallback
+                    "project_id": "default",  # Fallback
                 },
                 status_code=404,
             )
@@ -580,6 +562,7 @@ async def get_price_import_details(
 
 
 from fastapi.responses import RedirectResponse
+
 
 @router.get("/api/price-imports/{run_id}")
 async def redirect_price_import_details(run_id: str):
@@ -597,20 +580,21 @@ async def redirect_crail4_config():
 # Bulk Import Logic
 # ============================================================================
 
+
 async def process_bulk_import_task(
     urls: list[str],
     org_id: str,
     project_id: str,
     user_id: str,
-    force_refresh: bool = False
+    force_refresh: bool = False,
 ):
     """Background task to process bulk imported URLs."""
     logger = logging.getLogger(__name__)
     logger.info(f"Starting bulk import for {len(urls)} URLs")
-    
+
     from bimcalc.intelligence.price_scout import SmartPriceScout
     from bimcalc.db.models import PriceImportItemModel, PriceImportModel
-    
+
     # Create import record
     async with get_session() as session:
         import_record = PriceImportModel(
@@ -620,7 +604,7 @@ async def process_bulk_import_task(
             source="bulk_scout",
             filename="bulk_import.csv",
             status="processing",
-            created_by=user_id
+            created_by=user_id,
         )
         session.add(import_record)
         await session.commit()
@@ -629,18 +613,18 @@ async def process_bulk_import_task(
     # Process URLs
     success_count = 0
     fail_count = 0
-    
+
     async with SmartPriceScout() as scout:
         for url in urls:
             try:
                 # Extract data
                 result = await scout.extract(url, force_refresh=force_refresh)
-                
+
                 # Handle both single and multi-product results
                 products = result.get("products", [])
                 if not products and "description" in result:
                     products = [result]
-                
+
                 async with get_session() as session:
                     for p in products:
                         item = PriceImportItemModel(
@@ -653,17 +637,34 @@ async def process_bulk_import_task(
                             unit_price=p.get("unit_price"),
                             currency=p.get("currency"),
                             unit=p.get("unit"),
-                            status="pending"
+                            status="imported" if p.get("unit_price") else "failed",
+                            error_message="Extraction failed"
+                            if not p.get("unit_price")
+                            else None,
                         )
                         session.add(item)
                     await session.commit()
-                
+
                 success_count += 1
-                
+
             except Exception as e:
                 logger.error(f"Failed to scout {url}: {e}")
                 fail_count += 1
-                
+
+                # Record failure
+                async with get_session() as session:
+                    item = PriceImportItemModel(
+                        id=uuid4(),
+                        import_id=import_id,
+                        org_id=org_id,
+                        raw_data={"url": url, "error": str(e)},
+                        description=f"Failed to scout: {url}",
+                        status="failed",
+                        error_message=str(e),
+                    )
+                    session.add(item)
+                    await session.commit()
+
     # Update status
     async with get_session() as session:
         record = await session.get(PriceImportModel, import_id)
@@ -671,7 +672,7 @@ async def process_bulk_import_task(
             record.status = "completed"
             record.notes = f"Processed {len(urls)} URLs. Success: {success_count}, Failed: {fail_count}"
             await session.commit()
-            
+
     logger.info(f"Bulk import finished. Success: {success_count}, Failed: {fail_count}")
 
 
@@ -684,45 +685,40 @@ async def bulk_import_upload(
     current_user: str = Depends(require_auth),
 ):
     """Handle bulk import CSV upload."""
-    if not file.filename.endswith('.csv'):
+    if not file.filename.endswith(".csv"):
         return HTMLResponse(
             '<div class="message message-error">Invalid file type. Please upload a CSV.</div>'
         )
-        
+
     content = await file.read()
-    text_content = content.decode('utf-8')
-    
+    text_content = content.decode("utf-8")
+
     urls = []
     try:
         csv_reader = csv.DictReader(io.StringIO(text_content))
         for row in csv_reader:
-            if 'url' in row and row['url'].strip():
-                urls.append(row['url'].strip())
+            if "url" in row and row["url"].strip():
+                urls.append(row["url"].strip())
     except Exception as e:
         return HTMLResponse(
             f'<div class="message message-error">Failed to parse CSV: {str(e)}</div>'
         )
-        
+
     if not urls:
         return HTMLResponse(
             '<div class="message message-error">No URLs found in CSV. Ensure "url" column exists.</div>'
         )
-        
+
     # Get context
     config = get_config()
     org_id = config.org_id or "default"
-    project_id = "default" # TODO: Get from request if needed
-    
+    project_id = "default"  # TODO: Get from request if needed
+
     # Launch background task
     background_tasks.add_task(
-        process_bulk_import_task,
-        urls,
-        org_id,
-        project_id,
-        current_user,
-        force_refresh
+        process_bulk_import_task, urls, org_id, project_id, current_user, force_refresh
     )
-    
+
     return HTMLResponse(f"""
         <div class="message message-success">
             <strong>Import Started!</strong><br>

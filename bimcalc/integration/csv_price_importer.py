@@ -23,12 +23,48 @@ class CSVPriceImporter:
 
     # Common column name variations for auto-detection
     COLUMN_MAPPINGS = {
-        "code": ["code", "product code", "product_code", "item_code", "item code", "sku", "part_number", "part number", "part_no", "part no"],
-        "description": ["description", "product_description", "product description", "item_description", "item description", "product_name", "product name", "name"],
-        "unit_price": ["price", "unit price", "unit_price", "unitprice", "cost", "unit_cost", "unit cost", "list_price", "list price"],
+        "code": [
+            "code",
+            "product code",
+            "product_code",
+            "item_code",
+            "item code",
+            "sku",
+            "part_number",
+            "part number",
+            "part_no",
+            "part no",
+        ],
+        "description": [
+            "description",
+            "product_description",
+            "product description",
+            "item_description",
+            "item description",
+            "product_name",
+            "product name",
+            "name",
+        ],
+        "unit_price": [
+            "price",
+            "unit price",
+            "unit_price",
+            "unitprice",
+            "cost",
+            "unit_cost",
+            "unit cost",
+            "list_price",
+            "list price",
+        ],
         "unit": ["unit", "uom", "unit_of_measure", "unit of measure", "measure"],
         "manufacturer": ["manufacturer", "brand", "make"],
-        "category": ["category", "product_category", "product category", "type", "classification"],
+        "category": [
+            "category",
+            "product_category",
+            "product category",
+            "type",
+            "classification",
+        ],
         "currency": ["currency", "curr"],
     }
 
@@ -113,7 +149,9 @@ class CSVPriceImporter:
                         items_loaded += 1
                     else:
                         items_rejected += 1
-                        rejection_reasons["validation_failed"] = rejection_reasons.get("validation_failed", 0) + 1
+                        rejection_reasons["validation_failed"] = (
+                            rejection_reasons.get("validation_failed", 0) + 1
+                        )
                 except Exception as e:
                     items_rejected += 1
                     reason = type(e).__name__
@@ -174,7 +212,12 @@ class CSVPriceImporter:
         # Parse unit price
         try:
             # Remove currency symbols and whitespace
-            unit_price_clean = unit_price_str.replace("€", "").replace("£", "").replace(",", "").strip()
+            unit_price_clean = (
+                unit_price_str.replace("€", "")
+                .replace("£", "")
+                .replace(",", "")
+                .strip()
+            )
             unit_price = float(unit_price_clean)
         except (ValueError, TypeError):
             logger.warning(f"Invalid unit price: {unit_price_str}")
@@ -182,9 +225,13 @@ class CSVPriceImporter:
 
         # Extract optional fields
         unit = str(row.get(column_mapping.get("unit", ""), "ea")).strip() or "ea"
-        manufacturer = str(row.get(column_mapping.get("manufacturer", ""), "")).strip() or None
+        manufacturer = (
+            str(row.get(column_mapping.get("manufacturer", ""), "")).strip() or None
+        )
         category = str(row.get(column_mapping.get("category", ""), "")).strip() or None
-        currency = str(row.get(column_mapping.get("currency", ""), "EUR")).strip() or "EUR"
+        currency = (
+            str(row.get(column_mapping.get("currency", ""), "EUR")).strip() or "EUR"
+        )
 
         # Normalize unit
         unit = self._normalize_unit(unit)
@@ -245,7 +292,9 @@ class CSVPriceImporter:
 
         return unit_map.get(unit_lower, unit)
 
-    def _extract_classification(self, category: str | None, description: str) -> str | None:
+    def _extract_classification(
+        self, category: str | None, description: str
+    ) -> str | None:
         """Try to extract classification code from category or description."""
         # Common electrical classifications (UniClass2015)
         classification_keywords = {

@@ -185,9 +185,7 @@ def demo_enhanced_fuzzy_with_flags() -> None:
     result = calculator.calculate(item, price)
 
     print(f"Item: {item.type_name} (unit: {item.unit}, material: {item.material})")
-    print(
-        f"Price: {price.type_name} (unit: {price.unit}, material: {price.material})"
-    )
+    print(f"Price: {price.type_name} (unit: {price.unit}, material: {price.material})")
     print(f"Confidence: {result.score}")
     print(f"Method: {result.method.value}")
     print("\nField Scores:")
@@ -312,9 +310,7 @@ def demo_complete_pipeline() -> None:
 
     # Count candidates after blocking
     candidates = [
-        p
-        for p in price_catalog
-        if p.classification_code == item.classification_code
+        p for p in price_catalog if p.classification_code == item.classification_code
     ]
     print(f"Candidates after classification blocking: {len(candidates)} items")
     print(f"→ Reduction: {len(price_catalog) - len(candidates)} items filtered out")

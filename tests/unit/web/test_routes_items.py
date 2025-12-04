@@ -77,7 +77,9 @@ def mock_item():
 class TestItemsList:
     """Tests for GET /items route."""
 
-    @pytest.mark.skip(reason="Template requires complex items object - better tested in integration")
+    @pytest.mark.skip(
+        reason="Template requires complex items object - better tested in integration"
+    )
     @patch("bimcalc.web.routes.items.get_session")
     @patch("bimcalc.web.dependencies.get_config")
     def test_items_list_default(
@@ -111,7 +113,11 @@ class TestItemsList:
         mock_categories_result.scalars.return_value.all.return_value = ["Pipes"]
 
         # Setup side_effect to return different results for different queries
-        session.execute.side_effect = [mock_count_result, mock_items_result, mock_categories_result]
+        session.execute.side_effect = [
+            mock_count_result,
+            mock_items_result,
+            mock_categories_result,
+        ]
 
         response = client.get("/items")
         assert response.status_code == 200
@@ -232,7 +238,10 @@ class TestItemsExport:
         assert response.status_code == 200
 
         # Verify Excel MIME type
-        assert response.headers["content-type"] == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        assert (
+            response.headers["content-type"]
+            == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
 
         # Verify Content-Disposition header for download
         assert "attachment" in response.headers["content-disposition"]
@@ -299,7 +308,9 @@ class TestItemsExport:
 class TestItemDetail:
     """Tests for GET /items/{item_id} route."""
 
-    @pytest.mark.skip(reason="Template requires complex item object - better tested in integration")
+    @pytest.mark.skip(
+        reason="Template requires complex item object - better tested in integration"
+    )
     @patch("bimcalc.web.routes.items.get_session")
     @patch("bimcalc.web.dependencies.get_config")
     def test_item_detail_found(
@@ -329,7 +340,9 @@ class TestItemDetail:
         assert response.status_code == 200
         assert "text/html" in response.headers["content-type"]
 
-    @pytest.mark.skip(reason="Template error page requires testing - better in integration")
+    @pytest.mark.skip(
+        reason="Template error page requires testing - better in integration"
+    )
     @patch("bimcalc.web.routes.items.get_session")
     @patch("bimcalc.web.dependencies.get_config")
     def test_item_detail_not_found(

@@ -41,7 +41,9 @@ class TestCriticalFlags:
         assert _has_flag(flags, "Material Conflict", FlagSeverity.CRITICAL_VETO)
 
     def test_class_mismatch(self):
-        flags = compute_flags({"classification_code": 2301}, {"classification_code": 2215})
+        flags = compute_flags(
+            {"classification_code": 2301}, {"classification_code": 2215}
+        )
         assert _has_flag(flags, "Class Mismatch", FlagSeverity.CRITICAL_VETO)
 
 

@@ -6,7 +6,6 @@ Tests per-domain rate limiting and delay enforcement.
 import asyncio
 import pytest
 import time
-from unittest.mock import Mock, patch
 
 from bimcalc.intelligence.rate_limiter import RateLimiter, DomainRateLimiter
 
@@ -86,9 +85,7 @@ class TestRateLimiter:
 
         # Start 3 concurrent requests
         start = time.time()
-        results = await asyncio.gather(
-            make_request(), make_request(), make_request()
-        )
+        results = await asyncio.gather(make_request(), make_request(), make_request())
 
         total_elapsed = time.time() - start
 

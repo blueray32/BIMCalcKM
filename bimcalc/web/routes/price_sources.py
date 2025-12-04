@@ -17,7 +17,6 @@ from urllib.parse import urlparse
 from fastapi import APIRouter, Request, Form, HTTPException, Depends
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy import select, update, delete
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from bimcalc.db.connection import get_session
 from bimcalc.db.models import PriceSourceModel
@@ -27,18 +26,17 @@ router = APIRouter(prefix="/price-sources", tags=["price_sources"])
 
 
 @router.get("", response_class=HTMLResponse)
-async def list_price_sources(
-    request: Request,
-    templates=Depends(get_templates)
-):
+async def list_price_sources(request: Request, templates=Depends(get_templates)):
     """Display list of configured price sources."""
     async with get_session() as session:
         # For now, hardcode org_id (TODO: get from session/auth)
         org_id = "acme-construction"
 
-        stmt = select(PriceSourceModel).where(
-            PriceSourceModel.org_id == org_id
-        ).order_by(PriceSourceModel.name)
+        stmt = (
+            select(PriceSourceModel)
+            .where(PriceSourceModel.org_id == org_id)
+            .order_by(PriceSourceModel.name)
+        )
 
         result = await session.execute(stmt)
         sources = result.scalars().all()
@@ -49,15 +47,12 @@ async def list_price_sources(
                 "request": request,
                 "sources": sources,
                 "org_id": org_id,
-            }
+            },
         )
 
 
 @router.get("/new", response_class=HTMLResponse)
-async def new_price_source_form(
-    request: Request,
-    templates=Depends(get_templates)
-):
+async def new_price_source_form(request: Request, templates=Depends(get_templates)):
     """Display form for adding new price source."""
     return templates.TemplateResponse(
         "price_source_form.html",
@@ -66,7 +61,7 @@ async def new_price_source_form(
             "source": None,  # New source
             "action": "/price-sources",
             "method": "POST",
-        }
+        },
     )
 
 
@@ -94,16 +89,14 @@ async def create_price_source(
 
         # Check for duplicate domain
         stmt = select(PriceSourceModel).where(
-            PriceSourceModel.org_id == org_id,
-            PriceSourceModel.domain == domain
+            PriceSourceModel.org_id == org_id, PriceSourceModel.domain == domain
         )
         result = await session.execute(stmt)
         existing = result.scalars().first()
 
         if existing:
             raise HTTPException(
-                status_code=400,
-                detail=f"Source with domain '{domain}' already exists"
+                status_code=400, detail=f"Source with domain '{domain}' already exists"
             )
 
         # Create new source
@@ -129,9 +122,7 @@ async def create_price_source(
 
 @router.get("/{source_id}/edit", response_class=HTMLResponse)
 async def edit_price_source_form(
-    request: Request, 
-    source_id: UUID,
-    templates=Depends(get_templates)
+    request: Request, source_id: UUID, templates=Depends(get_templates)
 ):
     """Display form for editing existing price source."""
     async with get_session() as session:
@@ -149,7 +140,7 @@ async def edit_price_source_form(
                 "source": source,
                 "action": f"/price-sources/{source_id}",
                 "method": "POST",
-            }
+            },
         )
 
 

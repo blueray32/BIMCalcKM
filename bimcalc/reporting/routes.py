@@ -15,22 +15,25 @@ This appears to be a bug that needs resolution.
 
 from __future__ import annotations
 
-import io
 from datetime import datetime
 
-import pandas as pd
-from fastapi import APIRouter, HTTPException, Query, Request, Response
-from fastapi.responses import HTMLResponse, StreamingResponse
+from fastapi import APIRouter, Query, Request, Response
+from fastapi.responses import HTMLResponse
 
 from bimcalc.db.connection import get_session
 from bimcalc.db.models import ItemModel, MatchResultModel
 from bimcalc.reporting.builder import generate_report
 from bimcalc.web.dependencies import get_org_project, get_templates
 from sqlalchemy import func, select
-from fastapi import Depends, Body
+from fastapi import Depends
 from pydantic import BaseModel
 from typing import List
-from bimcalc.reporting.export_utils import PDFExporter, format_currency, format_count, format_percentage
+from bimcalc.reporting.export_utils import (
+    PDFExporter,
+    format_currency,
+    format_count,
+    format_percentage,
+)
 
 # Create router with reports tag
 router = APIRouter(tags=["reports"])
@@ -39,6 +42,7 @@ router = APIRouter(tags=["reports"])
 # ============================================================================
 # Reports Routes
 # ============================================================================
+
 
 @router.get("/reports", response_class=HTMLResponse)
 async def reports_page(
@@ -99,7 +103,10 @@ async def generate_report_download(
     Extracted from: app_enhanced.py:802
     """
     from bimcalc.reporting.financial_metrics import compute_financial_metrics
-    from bimcalc.reporting.export_utils import export_reports_to_excel, export_reports_to_pdf
+    from bimcalc.reporting.export_utils import (
+        export_reports_to_excel,
+        export_reports_to_pdf,
+    )
 
     org_id, project_id = get_org_project(request, org, project)
 
@@ -118,9 +125,7 @@ async def generate_report_download(
         media_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         filename = f"financial_report_{org_id}_{project_id}_{datetime.now().strftime('%Y%m%d')}.xlsx"
 
-    headers = {
-        "Content-Disposition": f"attachment; filename={filename}"
-    }
+    headers = {"Content-Disposition": f"attachment; filename={filename}"}
 
     return Response(content=content, media_type=media_type, headers=headers)
 
@@ -242,24 +247,33 @@ async def generate_custom_report(
 ):
     """Generate a custom PDF report based on selected sections."""
     from bimcalc.reporting.analytics import AnalyticsEngine
-    
+
     async with get_session() as session:
         analytics = AnalyticsEngine(session)
-        
+
         # Initialize PDF Exporter
         title = request.name or "Custom Project Report"
         exporter = PDFExporter(title, request.org_id, request.project_id)
-        
+
         # 1. Executive Summary
         if "executive_summary" in request.sections:
             # Fetch high-level metrics
             from bimcalc.reporting.financial_metrics import compute_financial_metrics
-            metrics = await compute_financial_metrics(session, request.org_id, request.project_id)
-            
+
+            metrics = await compute_financial_metrics(
+                session, request.org_id, request.project_id
+            )
+
             summary_data = [
-                {"Metric": "Total Cost (Net)", "Value": format_currency(metrics.total_cost_net, metrics.currency)},
+                {
+                    "Metric": "Total Cost (Net)",
+                    "Value": format_currency(metrics.total_cost_net, metrics.currency),
+                },
                 {"Metric": "Total Items", "Value": format_count(metrics.total_items)},
-                {"Metric": "Match Coverage", "Value": format_percentage(metrics.match_percentage)},
+                {
+                    "Metric": "Match Coverage",
+                    "Value": format_percentage(metrics.match_percentage),
+                },
             ]
             exporter.add_section("Executive Summary", summary_data)
 
@@ -268,83 +282,86 @@ async def generate_custom_report(
             # For PDF, we'll show a summary of cost over time or similar if available
             # Since get_cost_trends returns time-series data, we can show a table
             trends = await analytics.get_cost_trends(request.project_id)
-            
+
             labels = trends.get("labels", [])
             datasets = trends.get("datasets", [])
-            
+
             if labels and datasets and datasets[0].get("data"):
                 data_points = datasets[0]["data"]
-                
+
                 # Zip labels and data, take last 10
-                combined = list(zip(labels, data_points))[-10:]
-                
+                combined = list(zip(labels, data_points, strict=False))[-10:]
+
                 # Format trends for table
                 trend_data = [
-                    {
-                        "Date": date,
-                        "Cumulative Cost": format_currency(cost)
-                    }
+                    {"Date": date, "Cumulative Cost": format_currency(cost)}
                     for date, cost in combined
                 ]
                 exporter.add_section("Cost Trends (Last 10 Snapshots)", trend_data)
             else:
-                exporter.add_section("Cost Trends", [{"Message": "No trend data available"}])
+                exporter.add_section(
+                    "Cost Trends", [{"Message": "No trend data available"}]
+                )
 
         # 3. Category Breakdown
         if "category_distribution" in request.sections:
             dist = await analytics.get_category_distribution(request.project_id)
-            
+
             labels = dist.get("labels", [])
             datasets = dist.get("datasets", [])
-            
+
             if labels and datasets and datasets[0].get("data"):
                 data_points = datasets[0]["data"]
                 total_cost = sum(data_points)
-                
+
                 cat_data = [
                     {
                         "Category": label,
                         "Cost": format_currency(cost),
-                        "Percentage": format_percentage((cost / total_cost * 100) if total_cost > 0 else 0)
+                        "Percentage": format_percentage(
+                            (cost / total_cost * 100) if total_cost > 0 else 0
+                        ),
                     }
-                    for label, cost in zip(labels, data_points)
+                    for label, cost in zip(labels, data_points, strict=False)
                 ]
                 exporter.add_section("Category Breakdown", cat_data)
             else:
-                exporter.add_section("Category Breakdown", [{"Message": "No category data available"}])
+                exporter.add_section(
+                    "Category Breakdown", [{"Message": "No category data available"}]
+                )
 
         # 4. Resource Usage
         if "resource_utilization" in request.sections:
             resources = await analytics.get_resource_utilization(request.project_id)
-            
+
             labels = resources.get("labels", [])
             datasets = resources.get("datasets", [])
-            
+
             if labels and datasets and datasets[0].get("data"):
                 data_points = datasets[0]["data"]
                 total_count = sum(data_points)
-                
+
                 res_data = [
                     {
                         "Resource Type": label,
                         "Count": format_count(count),
-                        "Utilization": format_percentage((count / total_count * 100) if total_count > 0 else 0)
+                        "Utilization": format_percentage(
+                            (count / total_count * 100) if total_count > 0 else 0
+                        ),
                     }
-                    for label, count in zip(labels, data_points)
+                    for label, count in zip(labels, data_points, strict=False)
                 ]
                 exporter.add_section("Resource Utilization", res_data)
             else:
-                exporter.add_section("Resource Utilization", [{"Message": "No resource data available"}])
+                exporter.add_section(
+                    "Resource Utilization", [{"Message": "No resource data available"}]
+                )
 
         pdf_content = exporter.save()
-        
+
         filename = f"custom_report_{request.project_id}_{datetime.now().strftime('%Y%m%d%H%M')}.pdf"
-        headers = {
-            "Content-Disposition": f"attachment; filename={filename}"
-        }
+        headers = {"Content-Disposition": f"attachment; filename={filename}"}
 
         return Response(
-            content=pdf_content,
-            media_type="application/pdf",
-            headers=headers
+            content=pdf_content, media_type="application/pdf", headers=headers
         )

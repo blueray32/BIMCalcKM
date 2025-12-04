@@ -9,8 +9,9 @@ _MATERIAL_SYNONYMS = {
     "galvanized": "galv",
     "galv.": "galv",
     "stainless": "ss",
-    "stainless steel": "ss"
+    "stainless steel": "ss",
 }
+
 
 def normalize_name(text: str) -> str:
     s = unicodedata.normalize("NFKD", text).lower()
@@ -24,6 +25,7 @@ def normalize_name(text: str) -> str:
     s = re.sub(r"[^\w]+", " ", s)
     s = re.sub(r"\s+", " ", s).strip()
     return s
+
 
 def parse_attributes(text: str) -> dict[str, Any]:
     """Extract structured attributes from normalized text."""
@@ -60,6 +62,7 @@ def parse_attributes(text: str) -> dict[str, Any]:
         "unit": unit,
         "normalized": s,
     }
+
 
 def canonicalize(name: str) -> str:
     attrs = parse_attributes(name)

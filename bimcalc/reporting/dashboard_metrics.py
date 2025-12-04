@@ -92,24 +92,29 @@ async def compute_dashboard_metrics(
     Returns:
         DashboardMetrics with comprehensive project health indicators
     """
-    
+
     # Fetch project settings for labor rate and markup
     project_query = select(ProjectModel).where(
-        ProjectModel.org_id == org_id,
-        ProjectModel.project_id == project_id
+        ProjectModel.org_id == org_id, ProjectModel.project_id == project_id
     )
     project_result = (await session.execute(project_query)).scalar_one_or_none()
-    
+
     # Default settings (can be overridden in project settings)
     DEFAULT_LABOR_RATE = 50.0
     DEFAULT_MARKUP_PERCENTAGE = 0.0  # No markup by default
-    
+
     blended_labor_rate = DEFAULT_LABOR_RATE
     markup_percentage = DEFAULT_MARKUP_PERCENTAGE
-    
+
     if project_result and project_result.settings:
-        blended_labor_rate = float(project_result.settings.get("blended_labor_rate", DEFAULT_LABOR_RATE))
-        markup_percentage = float(project_result.settings.get("default_markup_percentage", DEFAULT_MARKUP_PERCENTAGE))
+        blended_labor_rate = float(
+            project_result.settings.get("blended_labor_rate", DEFAULT_LABOR_RATE)
+        )
+        markup_percentage = float(
+            project_result.settings.get(
+                "default_markup_percentage", DEFAULT_MARKUP_PERCENTAGE
+            )
+        )
 
     # Main overview query
     overview_query = text("""
@@ -200,26 +205,31 @@ async def compute_dashboard_metrics(
         FROM item_costs
     """)
 
-    result = (await session.execute(
-        overview_query, {"org_id": org_id, "project_id": project_id}
-    )).first()
+    result = (
+        await session.execute(
+            overview_query, {"org_id": org_id, "project_id": project_id}
+        )
+    ).first()
 
     # Extract metrics
     total_cost_net = float(result.total_cost_net) if result.total_cost_net else 0.0
-    total_cost_gross = float(result.total_cost_gross) if result.total_cost_gross else 0.0
+    total_cost_gross = (
+        float(result.total_cost_gross) if result.total_cost_gross else 0.0
+    )
     high_risk_cost = float(result.high_risk_cost) if result.high_risk_cost else 0.0
-    currency = result.currency or 'EUR'
-    
+    currency = result.currency or "EUR"
+
     # Apply markup to material costs
     markup_multiplier = 1.0 + (markup_percentage / 100.0)
     total_cost_net_with_markup = total_cost_net * markup_multiplier
     total_cost_gross_with_markup = total_cost_gross * markup_multiplier
-    
+
     # Calculate labor cost using category-specific rates
     # Fetch labor rate overrides for this project
     from bimcalc.db.models import LaborRateOverride
+
     labor_rate_map = {None: blended_labor_rate}  # Default for uncategorized
-    
+
     if project_result:
         overrides_query = select(LaborRateOverride).where(
             LaborRateOverride.project_id == project_result.id
@@ -227,7 +237,7 @@ async def compute_dashboard_metrics(
         overrides_result = await session.execute(overrides_query)
         for override in overrides_result.scalars():
             labor_rate_map[override.category] = float(override.rate)
-    
+
     # Query labor hours by category
     category_hours_query = text("""
         WITH latest_matches AS (
@@ -264,25 +274,25 @@ async def compute_dashboard_metrics(
           AND i.project_id = :project_id
         GROUP BY i.category
     """)
-    
+
     category_hours_result = await session.execute(
         category_hours_query, {"org_id": org_id, "project_id": project_id}
     )
-    
+
     # Calculate total labor cost using category-specific rates
     total_labor_hours = 0.0
     total_labor_cost = 0.0
-    
+
     for row in category_hours_result:
         category = row.category
         hours = float(row.total_hours) if row.total_hours else 0.0
-        
+
         # Get rate for this category (fallback to base rate)
         rate = labor_rate_map.get(category, blended_labor_rate)
-        
+
         total_labor_hours += hours
         total_labor_cost += hours * rate
-    
+
     # Total installed cost = material (with markup) + labor
     total_installed_cost = total_cost_net_with_markup + total_labor_cost
 
@@ -299,8 +309,12 @@ async def compute_dashboard_metrics(
 
     # Calculate percentages
     match_percentage = (matched_items / total_items * 100) if total_items > 0 else 0.0
-    auto_approval_rate = (auto_approved_count / matched_items * 100) if matched_items > 0 else 0.0
-    high_confidence_percentage = (high_confidence_count / total_items * 100) if total_items > 0 else 0.0
+    auto_approval_rate = (
+        (auto_approved_count / matched_items * 100) if matched_items > 0 else 0.0
+    )
+    high_confidence_percentage = (
+        (high_confidence_count / total_items * 100) if total_items > 0 else 0.0
+    )
 
     # Recent activity (last 7 days)
     seven_days_ago = datetime.now() - timedelta(days=7)
@@ -327,10 +341,12 @@ async def compute_dashboard_metrics(
         FROM latest_matches
     """)
 
-    activity_result = (await session.execute(
-        recent_activity_query,
-        {"org_id": org_id, "project_id": project_id, "since": seven_days_ago}
-    )).first()
+    activity_result = (
+        await session.execute(
+            recent_activity_query,
+            {"org_id": org_id, "project_id": project_id, "since": seven_days_ago},
+        )
+    ).first()
 
     recent_matches = activity_result.recent_matches or 0
     recent_approvals = activity_result.recent_approvals or 0
@@ -340,7 +356,7 @@ async def compute_dashboard_metrics(
         and_(
             ItemModel.org_id == org_id,
             ItemModel.project_id == project_id,
-            ItemModel.created_at >= seven_days_ago
+            ItemModel.created_at >= seven_days_ago,
         )
     )
     recent_ingestions = (await session.execute(ingestion_query)).scalar() or 0
@@ -396,24 +412,32 @@ async def compute_dashboard_metrics(
         LIMIT 6
     """)
 
-    class_rows = (await session.execute(
-        classification_query, {"org_id": org_id, "project_id": project_id}
-    )).fetchall()
+    class_rows = (
+        await session.execute(
+            classification_query, {"org_id": org_id, "project_id": project_id}
+        )
+    ).fetchall()
 
     classification_distribution: list[dict] = []
     for row in class_rows:
-        code = str(row.classification_code) if row.classification_code else "Unclassified"
+        code = (
+            str(row.classification_code) if row.classification_code else "Unclassified"
+        )
         matched_cost = float(row.matched_cost) if row.matched_cost else 0.0
         avg_conf = float(row.avg_confidence) if row.avg_confidence else None
-        classification_distribution.append({
-            "code": code,
-            "name": CLASSIFICATION_NAMES.get(code, f"Class {code}"),
-            "items": row.total_items or 0,
-            "matched": row.matched_items or 0,
-            "matched_cost": matched_cost,
-            "cost_share": (matched_cost / total_cost_net * 100) if total_cost_net > 0 else 0.0,
-            "avg_confidence": avg_conf,
-        })
+        classification_distribution.append(
+            {
+                "code": code,
+                "name": CLASSIFICATION_NAMES.get(code, f"Class {code}"),
+                "items": row.total_items or 0,
+                "matched": row.matched_items or 0,
+                "matched_cost": matched_cost,
+                "cost_share": (matched_cost / total_cost_net * 100)
+                if total_cost_net > 0
+                else 0.0,
+                "avg_confidence": avg_conf,
+            }
+        )
 
     # Risk Analysis Aggregation
     # Calculate date thresholds in Python for DB-agnostic queries
@@ -485,15 +509,17 @@ async def compute_dashboard_metrics(
         FROM risk_scores
     """)
 
-    risk_result = (await session.execute(
-        risk_query, 
-        {
-            "org_id": org_id, 
-            "project_id": project_id,
-            "ninety_days_ago": ninety_days_ago,
-            "sixty_days_ago": sixty_days_ago
-        }
-    )).first()
+    risk_result = (
+        await session.execute(
+            risk_query,
+            {
+                "org_id": org_id,
+                "project_id": project_id,
+                "ninety_days_ago": ninety_days_ago,
+                "sixty_days_ago": sixty_days_ago,
+            },
+        )
+    ).first()
 
     risk_distribution = {
         "High": risk_result.high_risk or 0,
@@ -597,6 +623,6 @@ def _calculate_health_score(
             score -= 20  # Too many critical issues
         if pending_review / total_items > 0.25:
             score -= 10  # Review backlog
-    
+
     # Clamp to 0-100
     return max(0, min(100, int(score)))

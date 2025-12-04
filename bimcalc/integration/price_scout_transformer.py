@@ -14,14 +14,18 @@ logger = logging.getLogger(__name__)
 class PriceScoutTransformer:
     """Transforms raw Price Scout data into BIMCalc-compatible format."""
 
-    def __init__(self, mapper: ClassificationMapper, target_scheme: str = "UniClass2015"):
+    def __init__(
+        self, mapper: ClassificationMapper, target_scheme: str = "UniClass2015"
+    ):
         self.mapper = mapper
         self.target_scheme = target_scheme
 
     async def transform_item(self, raw_item: dict) -> dict | None:
         """Transform a single Price Scout item."""
         try:
-            source_snapshot = raw_item.get("source_data") if isinstance(raw_item, dict) else None
+            source_snapshot = (
+                raw_item.get("source_data") if isinstance(raw_item, dict) else None
+            )
             source_snapshot = source_snapshot or raw_item
 
             source_code = raw_item.get("classification_code")
@@ -36,7 +40,8 @@ class PriceScoutTransformer:
 
             if not all([source_code, description, unit, unit_price]):
                 logger.warning(
-                    "Skipping item with missing mandatory fields: %s", raw_item.get("id")
+                    "Skipping item with missing mandatory fields: %s",
+                    raw_item.get("id"),
                 )
                 return None
 
@@ -49,7 +54,10 @@ class PriceScoutTransformer:
 
             if not target_code:
                 logger.warning(
-                    "No mapping for %s %s → %s", source_scheme, source_code, self.target_scheme
+                    "No mapping for %s %s → %s",
+                    source_scheme,
+                    source_code,
+                    self.target_scheme,
                 )
                 return None
 
@@ -95,7 +103,9 @@ class PriceScoutTransformer:
             if transformed:
                 valid.append(transformed)
             else:
-                if not all([raw_item.get("classification_code"), raw_item.get("unit_price")]):
+                if not all(
+                    [raw_item.get("classification_code"), raw_item.get("unit_price")]
+                ):
                     rejections["missing_fields"] += 1
                 else:
                     rejections["no_classification_mapping"] += 1

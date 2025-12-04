@@ -29,6 +29,7 @@ router = APIRouter(tags=["mappings"])
 # Mappings Management Routes
 # ============================================================================
 
+
 @router.get("/mappings", response_class=HTMLResponse)
 async def mappings_list(
     request: Request,
@@ -67,7 +68,9 @@ async def mappings_list(
 
         # Get total count
         count_result = await session.execute(
-            select(func.count()).select_from(ItemMappingModel).where(
+            select(func.count())
+            .select_from(ItemMappingModel)
+            .where(
                 ItemMappingModel.org_id == org_id,
                 ItemMappingModel.end_ts.is_(None),
             )

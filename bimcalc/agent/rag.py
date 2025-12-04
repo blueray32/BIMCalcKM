@@ -5,15 +5,13 @@ Handles document ingestion (embedding generation) and semantic search using pgve
 
 from __future__ import annotations
 
-import json
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import select, text
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bimcalc.config import get_config
-from bimcalc.db.connection import get_session
 from bimcalc.db.models import DocumentModel
 
 # Optional dependency for OpenAI
@@ -30,7 +28,7 @@ class RAGService:
         self.session = session
         self.config = get_config()
         self.client = None
-        
+
         if self.config.llm.provider == "openai" and self.config.llm.api_key:
             if AsyncOpenAI:
                 self.client = AsyncOpenAI(api_key=self.config.llm.api_key)
@@ -48,7 +46,7 @@ class RAGService:
         response = await self.client.embeddings.create(
             input=text_content,
             model=self.config.llm.embeddings_model,
-            dimensions=1536  # Force 1536 dimensions to match DB schema
+            dimensions=1536,  # Force 1536 dimensions to match DB schema
         )
         return response.data[0].embedding
 
@@ -80,15 +78,17 @@ class RAGService:
     async def search(self, query: str, limit: int = 5) -> list[DocumentModel]:
         """Perform semantic search for documents."""
         query_embedding = await self.get_embedding(query)
-        
+
         # Check dialect
         dialect = self.session.bind.dialect.name if self.session.bind else "sqlite"
-        
+
         if dialect == "postgresql":
             # pgvector cosine distance operator: <=>
-            stmt = select(DocumentModel).order_by(
-                DocumentModel.embedding.cosine_distance(query_embedding)
-            ).limit(limit)
+            stmt = (
+                select(DocumentModel)
+                .order_by(DocumentModel.embedding.cosine_distance(query_embedding))
+                .limit(limit)
+            )
             result = await self.session.execute(stmt)
             return result.scalars().all()
         else:
@@ -97,13 +97,14 @@ class RAGService:
             stmt = select(DocumentModel)
             result = await self.session.execute(stmt)
             docs = result.scalars().all()
-            
+
             if not docs:
                 return []
 
             def cosine_similarity(v1, v2):
-                if v1 is None or v2 is None or len(v1) == 0 or len(v2) == 0: return 0.0
-                dot_product = sum(a * b for a, b in zip(v1, v2))
+                if v1 is None or v2 is None or len(v1) == 0 or len(v2) == 0:
+                    return 0.0
+                dot_product = sum(a * b for a, b in zip(v1, v2, strict=False))
                 norm_a = sum(a * a for a in v1) ** 0.5
                 norm_b = sum(b * b for b in v2) ** 0.5
                 return dot_product / (norm_a * norm_b) if norm_a and norm_b else 0.0
@@ -115,14 +116,15 @@ class RAGService:
                 embedding = doc.embedding
                 if isinstance(embedding, str):
                     import json
+
                     try:
                         embedding = json.loads(embedding)
-                    except:
+                    except Exception:
                         embedding = []
-                
+
                 score = cosine_similarity(query_embedding, embedding)
                 scored_docs.append((score, doc))
-            
+
             # Sort by score descending
             scored_docs.sort(key=lambda x: x[0], reverse=True)
             return [doc for _, doc in scored_docs[:limit]]
@@ -130,7 +132,7 @@ class RAGService:
     async def chat(self, query: str) -> str:
         """Simple RAG chat: Search + Generate (Mock generation for MVP)."""
         docs = await self.search(query, limit=3)
-        
+
         if not docs:
             return "I couldn't find any relevant information in my knowledge base."
 
@@ -139,5 +141,5 @@ class RAGService:
         response = "Here's what I found:\n\n"
         for doc in docs:
             response += f"**{doc.title}**\n{doc.content[:200]}...\n\n"
-            
+
         return response

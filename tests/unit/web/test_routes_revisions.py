@@ -59,7 +59,9 @@ def mock_db_session():
 class TestRevisionsPage:
     """Tests for GET /revisions route."""
 
-    @pytest.mark.skip(reason="Revisions template requires complex context - better in integration")
+    @pytest.mark.skip(
+        reason="Revisions template requires complex context - better in integration"
+    )
     @patch("bimcalc.web.routes.revisions.get_org_project")
     def test_revisions_page_renders(
         self,
@@ -153,7 +155,9 @@ class TestGetRevisions:
         session.execute.return_value = mock_result
 
         item_id = str(uuid4())
-        response = client.get(f"/api/revisions?org=test-org&project=test-project&item_id={item_id}")
+        response = client.get(
+            f"/api/revisions?org=test-org&project=test-project&item_id={item_id}"
+        )
         assert response.status_code == 200
 
         data = response.json()
@@ -216,7 +220,9 @@ class TestGetRevisions:
         mock_result.all.return_value = mock_rows
         session.execute.return_value = mock_result
 
-        response = client.get("/api/revisions?org=test-org&project=test-project&limit=10")
+        response = client.get(
+            "/api/revisions?org=test-org&project=test-project&limit=10"
+        )
         assert response.status_code == 200
 
         data = response.json()
@@ -234,10 +240,14 @@ class TestGetRevisions:
 
     def test_get_revisions_invalid_limit(self, client):
         """Test API validates limit parameter."""
-        response = client.get("/api/revisions?org=test-org&project=test-project&limit=0")
+        response = client.get(
+            "/api/revisions?org=test-org&project=test-project&limit=0"
+        )
         assert response.status_code == 422  # Validation error
 
-        response = client.get("/api/revisions?org=test-org&project=test-project&limit=101")
+        response = client.get(
+            "/api/revisions?org=test-org&project=test-project&limit=101"
+        )
         assert response.status_code == 422  # Validation error
 
 

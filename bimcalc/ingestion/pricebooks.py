@@ -87,16 +87,16 @@ async def ingest_pricebook(
     # Check row count limit
     MAX_ROWS = 50000
     if len(df) > MAX_ROWS:
-        raise ValueError(
-            f"Too many rows ({len(df):,}). Maximum allowed: {MAX_ROWS:,}"
-        )
+        raise ValueError(f"Too many rows ({len(df):,}). Maximum allowed: {MAX_ROWS:,}")
 
     # Initialize CMM translator if enabled
     translator = None
     if use_cmm:
         translator = VendorTranslator(vendor_id, config_dir)
         if translator.loader:
-            logger.info(f"CMM enabled for vendor '{vendor_id}' with {len(translator.loader.rules)} rules")
+            logger.info(
+                f"CMM enabled for vendor '{vendor_id}' with {len(translator.loader.rules)} rules"
+            )
         else:
             logger.info(f"CMM enabled but no mapping file found for '{vendor_id}'")
 
@@ -137,15 +137,20 @@ async def ingest_pricebook(
 
             # Required fields
             sku = str(row_dict["SKU"]).strip()
-            description = str(row_dict.get("Description", row_dict.get("Description1", ""))).strip()
+            description = str(
+                row_dict.get("Description", row_dict.get("Description1", ""))
+            ).strip()
             unit_price = Decimal(str(row_dict["Unit Price"]))
-            unit = _get_str_from_dict(row_dict, [
-                "Unit",
-                "unit",
-                "Units",
-                "units",
-                "Unit Type",
-            ])
+            unit = _get_str_from_dict(
+                row_dict,
+                [
+                    "Unit",
+                    "unit",
+                    "Units",
+                    "units",
+                    "Unit Type",
+                ],
+            )
             unit = unit.lower() if unit else "ea"
 
             if not sku or not description:
@@ -165,14 +170,20 @@ async def ingest_pricebook(
                     classification_code = str(row_dict["classification_code"]).strip()
                 else:
                     # Try to parse from canonical_code or use a default
-                    logger.warning(f"Row {idx}: CMM mapped but no classification_code in map_to, using fallback")
+                    logger.warning(
+                        f"Row {idx}: CMM mapped but no classification_code in map_to, using fallback"
+                    )
                     classification_code = "Unclassified"  # Fallback/unknown code
             else:
                 # Direct from column (old path)
-                if "Classification Code" in row_dict and pd.notna(row_dict["Classification Code"]):
+                if "Classification Code" in row_dict and pd.notna(
+                    row_dict["Classification Code"]
+                ):
                     classification_code = str(row_dict["Classification Code"]).strip()
                 else:
-                    errors.append(f"Row {idx}: No classification code (CMM unmapped, no Classification Code column)")
+                    errors.append(
+                        f"Row {idx}: No classification code (CMM unmapped, no Classification Code column)"
+                    )
                     continue
 
             # Optional fields
@@ -187,7 +198,9 @@ async def ingest_pricebook(
             dn_mm = _get_float_from_dict(row_dict, ["DN", "Diameter", "D"])
             angle_deg = _get_float_from_dict(row_dict, ["Angle", "Angle (deg)"])
             material = _get_str_from_dict(row_dict, "Material")
-            vendor_note = _get_str_from_dict(row_dict, ["Vendor Note", "Note", "Comments"])
+            vendor_note = _get_str_from_dict(
+                row_dict, ["Vendor Note", "Note", "Comments"]
+            )
 
             # Add CMM metadata to vendor_note if mapped
             if translation_result and translation_result.was_mapped:
@@ -195,8 +208,12 @@ async def ingest_pricebook(
                 vendor_note = f"{cmm_note}; {vendor_note}" if vendor_note else cmm_note
 
             # Labor Estimation
-            labor_hours = _get_float_from_dict(row_dict, ["Labor Hours", "Install Time", "Mhrs", "Hours"])
-            labor_code = _get_str_from_dict(row_dict, ["Labor Code", "Install Code", "NECA Code"])
+            labor_hours = _get_float_from_dict(
+                row_dict, ["Labor Hours", "Install Time", "Mhrs", "Hours"]
+            )
+            labor_code = _get_str_from_dict(
+                row_dict, ["Labor Code", "Install Code", "NECA Code"]
+            )
 
             # Create PriceItem model with required SCD2 and multi-tenant fields
             price_model = PriceItemModel(
@@ -211,7 +228,9 @@ async def ingest_pricebook(
                 unit_price=unit_price,
                 currency=currency,
                 vat_rate=vat_rate,
-                labor_hours=Decimal(str(labor_hours)) if labor_hours is not None else None,
+                labor_hours=Decimal(str(labor_hours))
+                if labor_hours is not None
+                else None,
                 labor_code=labor_code,
                 width_mm=width_mm,
                 height_mm=height_mm,
@@ -236,9 +255,13 @@ async def ingest_pricebook(
     # Add CMM statistics to errors (informational)
     if translator and translator.loader:
         stats = translator.get_stats()
-        logger.info(f"CMM Stats: {stats['mapped']} mapped, {stats['unmapped']} unmapped, {stats['total']} total")
-        if stats['unmapped'] > 0:
-            errors.append(f"ℹ️  CMM: {stats['mapped']}/{stats['total']} items mapped, {stats['unmapped']} unmapped (using direct classification)")
+        logger.info(
+            f"CMM Stats: {stats['mapped']} mapped, {stats['unmapped']} unmapped, {stats['total']} total"
+        )
+        if stats["unmapped"] > 0:
+            errors.append(
+                f"ℹ️  CMM: {stats['mapped']}/{stats['total']} items mapped, {stats['unmapped']} unmapped (using direct classification)"
+            )
 
     return success_count, errors
 

@@ -170,9 +170,13 @@ class ReviewUIApp(App[None]):
         table.clear(rows=True, columns=False)
         self.record_index = {}
         for idx, record in enumerate(self.records):
-            flags = ", ".join(flag.type for flag in record.flags) if record.flags else "—"
+            flags = (
+                ", ".join(flag.type for flag in record.flags) if record.flags else "—"
+            )
             updated = self._format_ts(record.timestamp)
-            reason = record.reason if len(record.reason) < 60 else record.reason[:57] + "…"
+            reason = (
+                record.reason if len(record.reason) < 60 else record.reason[:57] + "…"
+            )
             style = "bold red" if record.has_critical_flags else ""
             row_key = str(record.match_result_id)
             self.record_index[row_key] = idx
@@ -230,7 +234,9 @@ class ReviewUIApp(App[None]):
             lines.append("\n[b]Flags[/b]:")
             for flag in record.flags:
                 severity = "Critical" if flag.is_critical else "Advisory"
-                lines.append(f"• [{ 'red' if flag.is_critical else 'yellow' }] {severity}: {flag.type}[/] — {flag.message}")
+                lines.append(
+                    f"• [{'red' if flag.is_critical else 'yellow'}] {severity}: {flag.type}[/] — {flag.message}"
+                )
         else:
             lines.append("\n[b]Flags[/b]: None")
 
@@ -295,7 +301,9 @@ class ReviewUIApp(App[None]):
         return ts.strftime("%Y-%m-%d %H:%M")
 
 
-def run_review_ui(org_id: str | None, project_id: str | None, reviewer: str | None) -> None:
+def run_review_ui(
+    org_id: str | None, project_id: str | None, reviewer: str | None
+) -> None:
     config = get_config()
     org_val = org_id or config.org_id
     project_val = project_id or "default"

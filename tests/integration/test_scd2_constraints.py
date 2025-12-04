@@ -36,7 +36,9 @@ async def db_session() -> AsyncSession:
 
 
 @pytest.mark.asyncio
-async def test_price_unique_constraint_prevents_duplicate_active_records(db_session: AsyncSession):
+async def test_price_unique_constraint_prevents_duplicate_active_records(
+    db_session: AsyncSession,
+):
     """Test that database prevents multiple active prices for same (org_id, item_code, region).
 
     Per CLAUDE.md: "Enforce one active record per (org_id, item_code, region)"
@@ -155,7 +157,9 @@ async def test_price_allows_multiple_inactive_records(db_session: AsyncSession):
 
 
 @pytest.mark.asyncio
-async def test_price_scd2_temporal_integrity_with_valid_period(db_session: AsyncSession):
+async def test_price_scd2_temporal_integrity_with_valid_period(
+    db_session: AsyncSession,
+):
     """Test SCD2 temporal integrity: valid_to > valid_from.
 
     Scenario:
@@ -191,7 +195,9 @@ async def test_price_scd2_temporal_integrity_with_valid_period(db_session: Async
 
 
 @pytest.mark.asyncio
-async def test_mapping_unique_constraint_prevents_duplicate_active_records(db_session: AsyncSession):
+async def test_mapping_unique_constraint_prevents_duplicate_active_records(
+    db_session: AsyncSession,
+):
     """Test that database prevents multiple active mappings for same (org_id, canonical_key).
 
     Per CLAUDE.md: "One active row per (org_id, canonical_key)"
@@ -283,7 +289,9 @@ async def test_mapping_allows_multiple_inactive_records(db_session: AsyncSession
 
 
 @pytest.mark.asyncio
-async def test_mapping_temporal_integrity_with_end_after_start(db_session: AsyncSession):
+async def test_mapping_temporal_integrity_with_end_after_start(
+    db_session: AsyncSession,
+):
     """Test mapping temporal integrity: end_ts > start_ts.
 
     Scenario:

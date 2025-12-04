@@ -1,4 +1,4 @@
-"""Tests for bimcalc.web.routes.ingestion - Ingestion routes.
+"""Tests for bimcalc.ingestion.routes - Ingestion routes.
 
 Tests the ingestion router module extracted in Phase 3.3.
 """
@@ -9,7 +9,7 @@ from fastapi.testclient import TestClient
 from unittest.mock import patch, MagicMock, AsyncMock, mock_open
 from io import BytesIO
 
-from bimcalc.web.routes import ingestion
+from bimcalc.ingestion import routes as ingestion
 
 
 @pytest.fixture
@@ -47,7 +47,9 @@ class TestIngestHistoryPage:
         assert "text/html" in response.headers["content-type"]
 
     @patch("bimcalc.web.dependencies.get_config")
-    def test_ingest_history_with_org_project(self, mock_get_config, client, mock_config):
+    def test_ingest_history_with_org_project(
+        self, mock_get_config, client, mock_config
+    ):
         """Test ingest history accepts org and project parameters."""
         mock_get_config.return_value = mock_config
 
@@ -79,17 +81,17 @@ class TestIngestPage:
 class TestIngestSchedules:
     """Tests for POST /ingest/schedules route."""
 
-    @patch("bimcalc.web.routes.ingestion.ingest_schedule")
-    @patch("bimcalc.web.routes.ingestion.get_session")
+    @patch("bimcalc.ingestion.routes.ingest_schedule")
+    @patch("bimcalc.ingestion.routes.get_session")
     @patch("builtins.open", new_callable=mock_open)
-    @patch("bimcalc.web.routes.ingestion.Path")
+    @patch("bimcalc.ingestion.routes.Path")
     def test_ingest_schedules_success(
         self,
         mock_path_class,
         mock_file_open,
         mock_get_session,
         mock_ingest_schedule,
-        client
+        client,
     ):
         """Test successful schedule ingestion."""
         # Mock file operations
@@ -125,12 +127,12 @@ class TestIngestSchedules:
         mock_file_open.assert_called_once()
         mock_path.unlink.assert_called_once()
 
-    @patch("bimcalc.web.routes.ingestion.ingest_schedule")
-    @patch("bimcalc.web.routes.ingestion.get_session")
-    @patch("bimcalc.web.routes.ingestion.get_email_notifier")
-    @patch("bimcalc.web.routes.ingestion.get_slack_notifier")
+    @patch("bimcalc.ingestion.routes.ingest_schedule")
+    @patch("bimcalc.ingestion.routes.get_session")
+    @patch("bimcalc.ingestion.routes.get_email_notifier")
+    @patch("bimcalc.ingestion.routes.get_slack_notifier")
     @patch("builtins.open", new_callable=mock_open)
-    @patch("bimcalc.web.routes.ingestion.Path")
+    @patch("bimcalc.ingestion.routes.Path")
     def test_ingest_schedules_failure_sends_alerts(
         self,
         mock_path_class,
@@ -139,7 +141,7 @@ class TestIngestSchedules:
         mock_get_email,
         mock_get_session,
         mock_ingest_schedule,
-        client
+        client,
     ):
         """Test failed schedule ingestion sends alerts."""
         # Mock file operations
@@ -182,8 +184,10 @@ class TestIngestSchedules:
         mock_path.unlink.assert_called_once()
 
     @patch("builtins.open", new_callable=mock_open)
-    @patch("bimcalc.web.routes.ingestion.Path")
-    def test_ingest_schedules_requires_file(self, mock_path_class, mock_file_open, client):
+    @patch("bimcalc.ingestion.routes.Path")
+    def test_ingest_schedules_requires_file(
+        self, mock_path_class, mock_file_open, client
+    ):
         """Test that file upload is required."""
         data = {"org": "test-org", "project": "test-project"}
 
@@ -194,17 +198,17 @@ class TestIngestSchedules:
 class TestIngestPrices:
     """Tests for POST /ingest/prices route."""
 
-    @patch("bimcalc.web.routes.ingestion.ingest_pricebook")
-    @patch("bimcalc.web.routes.ingestion.get_session")
+    @patch("bimcalc.ingestion.routes.ingest_pricebook")
+    @patch("bimcalc.ingestion.routes.get_session")
     @patch("builtins.open", new_callable=mock_open)
-    @patch("bimcalc.web.routes.ingestion.Path")
+    @patch("bimcalc.ingestion.routes.Path")
     def test_ingest_prices_success_with_cmm(
         self,
         mock_path_class,
         mock_file_open,
         mock_get_session,
         mock_ingest_pricebook,
-        client
+        client,
     ):
         """Test successful price ingestion with CMM enabled."""
         # Mock file operations
@@ -240,17 +244,17 @@ class TestIngestPrices:
         # Verify file cleanup
         mock_path.unlink.assert_called_once()
 
-    @patch("bimcalc.web.routes.ingestion.ingest_pricebook")
-    @patch("bimcalc.web.routes.ingestion.get_session")
+    @patch("bimcalc.ingestion.routes.ingest_pricebook")
+    @patch("bimcalc.ingestion.routes.get_session")
     @patch("builtins.open", new_callable=mock_open)
-    @patch("bimcalc.web.routes.ingestion.Path")
+    @patch("bimcalc.ingestion.routes.Path")
     def test_ingest_prices_success_without_cmm(
         self,
         mock_path_class,
         mock_file_open,
         mock_get_session,
         mock_ingest_pricebook,
-        client
+        client,
     ):
         """Test successful price ingestion without CMM."""
         # Mock file operations
@@ -283,17 +287,17 @@ class TestIngestPrices:
         assert "without CMM" in json_response["message"]
         assert len(json_response["errors"]) == 1
 
-    @patch("bimcalc.web.routes.ingestion.ingest_pricebook")
-    @patch("bimcalc.web.routes.ingestion.get_session")
+    @patch("bimcalc.ingestion.routes.ingest_pricebook")
+    @patch("bimcalc.ingestion.routes.get_session")
     @patch("builtins.open", new_callable=mock_open)
-    @patch("bimcalc.web.routes.ingestion.Path")
+    @patch("bimcalc.ingestion.routes.Path")
     def test_ingest_prices_validation_error(
         self,
         mock_path_class,
         mock_file_open,
         mock_get_session,
         mock_ingest_pricebook,
-        client
+        client,
     ):
         """Test price ingestion with validation error returns 400."""
         # Mock file operations
@@ -327,12 +331,12 @@ class TestIngestPrices:
         # Verify cleanup
         mock_path.unlink.assert_called_once()
 
-    @patch("bimcalc.web.routes.ingestion.ingest_pricebook")
-    @patch("bimcalc.web.routes.ingestion.get_session")
-    @patch("bimcalc.web.routes.ingestion.get_email_notifier")
-    @patch("bimcalc.web.routes.ingestion.get_slack_notifier")
+    @patch("bimcalc.ingestion.routes.ingest_pricebook")
+    @patch("bimcalc.ingestion.routes.get_session")
+    @patch("bimcalc.ingestion.routes.get_email_notifier")
+    @patch("bimcalc.ingestion.routes.get_slack_notifier")
     @patch("builtins.open", new_callable=mock_open)
-    @patch("bimcalc.web.routes.ingestion.Path")
+    @patch("bimcalc.ingestion.routes.Path")
     def test_ingest_prices_server_error_sends_alerts(
         self,
         mock_path_class,
@@ -341,7 +345,7 @@ class TestIngestPrices:
         mock_get_email,
         mock_get_session,
         mock_ingest_pricebook,
-        client
+        client,
     ):
         """Test price ingestion server error sends alerts."""
         # Mock file operations

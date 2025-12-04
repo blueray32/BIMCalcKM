@@ -34,6 +34,7 @@ router = APIRouter(tags=["prices"])
 # Prices Routes
 # ============================================================================
 
+
 @router.get("/prices/history/{item_code}", response_class=HTMLResponse)
 async def price_history(
     request: Request,
@@ -63,7 +64,7 @@ async def price_history(
         if not price_history_list:
             raise HTTPException(
                 status_code=404,
-                detail=f"No price history found for {item_code} in {region}"
+                detail=f"No price history found for {item_code} in {region}",
             )
 
     return templates.TemplateResponse(
@@ -175,8 +176,10 @@ async def prices_list(
             stmt = stmt.where(PriceItemModel.region == region)
 
         # Get total count with filters
-        count_stmt = select(func.count()).select_from(PriceItemModel).where(
-            PriceItemModel.org_id == org_id
+        count_stmt = (
+            select(func.count())
+            .select_from(PriceItemModel)
+            .where(PriceItemModel.org_id == org_id)
         )
         if current_only:
             count_stmt = count_stmt.where(PriceItemModel.is_current == True)
@@ -190,7 +193,9 @@ async def prices_list(
         if vendor:
             count_stmt = count_stmt.where(PriceItemModel.vendor_id == vendor)
         if classification:
-            count_stmt = count_stmt.where(PriceItemModel.classification_code == classification)
+            count_stmt = count_stmt.where(
+                PriceItemModel.classification_code == classification
+            )
         if region:
             count_stmt = count_stmt.where(PriceItemModel.region == region)
 
@@ -199,10 +204,14 @@ async def prices_list(
         total_pages = (total + per_page - 1) // per_page
 
         # Apply pagination and ordering
-        stmt = stmt.order_by(
-            PriceItemModel.item_code,
-            PriceItemModel.valid_from.desc(),
-        ).limit(per_page).offset(offset)
+        stmt = (
+            stmt.order_by(
+                PriceItemModel.item_code,
+                PriceItemModel.valid_from.desc(),
+            )
+            .limit(per_page)
+            .offset(offset)
+        )
 
         result = await session.execute(stmt)
         prices = result.scalars().all()
@@ -262,11 +271,15 @@ async def prices_list(
             "vendors": vendors,
             "classifications": classifications,
             "regions": regions,
-            "request_url": str(request.url).replace("/prices-legacy", "/prices"), # Ensure correct URL in template
+            "request_url": str(request.url).replace(
+                "/prices-legacy", "/prices"
+            ),  # Ensure correct URL in template
         },
     )
 
+
 from fastapi.responses import RedirectResponse
+
 
 @router.get("/prices-legacy")
 async def prices_legacy_redirect(request: Request):
@@ -382,7 +395,9 @@ async def prices_export(
                 price.valid_to.strftime("%Y-%m-%d") if price.valid_to else "",
                 "Yes" if price.is_current else "No",
                 price.source_name,
-                price.last_updated.strftime("%Y-%m-%d %H:%M") if price.last_updated else "",
+                price.last_updated.strftime("%Y-%m-%d %H:%M")
+                if price.last_updated
+                else "",
             ]
         )
 
@@ -406,7 +421,9 @@ async def prices_export(
         filters_str += f"_search-{search[:10]}"
     if vendor:
         filters_str += f"_vendor-{vendor}"
-    filename = f"prices_{org_id}{filters_str}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+    filename = (
+        f"prices_{org_id}{filters_str}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+    )
     return StreamingResponse(
         output,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",

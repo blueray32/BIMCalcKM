@@ -5,9 +5,7 @@ for multi-source price intelligence.
 """
 
 import pytest
-import asyncio
-from datetime import datetime
-from unittest.mock import Mock, AsyncMock, patch
+from unittest.mock import Mock, AsyncMock
 from uuid import uuid4
 
 from bimcalc.intelligence.multi_source_orchestrator import (
@@ -125,21 +123,23 @@ class TestMultiSourceOrchestrator:
         orchestrator.scout = AsyncMock()
 
         # Mock scout.extract to return products
-        orchestrator.scout.extract = AsyncMock(return_value={
-            "page_type": "product_list",
-            "products": [
-                {
-                    "vendor_code": "ABC123",
-                    "unit_price": 10.50,
-                    "description": "Product 1",
-                },
-                {
-                    "vendor_code": "XYZ789",
-                    "unit_price": 25.00,
-                    "description": "Product 2",
-                },
-            ]
-        })
+        orchestrator.scout.extract = AsyncMock(
+            return_value={
+                "page_type": "product_list",
+                "products": [
+                    {
+                        "vendor_code": "ABC123",
+                        "unit_price": 10.50,
+                        "description": "Product 1",
+                    },
+                    {
+                        "vendor_code": "XYZ789",
+                        "unit_price": 25.00,
+                        "description": "Product 2",
+                    },
+                ],
+            }
+        )
 
         source = sample_sources[0]
         result = await orchestrator.fetch_from_source(source)
@@ -161,7 +161,9 @@ class TestMultiSourceOrchestrator:
         assert result["duration_ms"] >= 0
 
     @pytest.mark.asyncio
-    async def test_fetch_from_source_compliance_error(self, mock_session, sample_sources):
+    async def test_fetch_from_source_compliance_error(
+        self, mock_session, sample_sources
+    ):
         """Test fetch handles compliance errors gracefully."""
         orchestrator = MultiSourceOrchestrator(org_id="test-org", session=mock_session)
         orchestrator.scout = AsyncMock()
@@ -336,7 +338,7 @@ class TestMultiSourceOrchestrator:
         )
 
         # Mock fetch_from_source for each source
-        async def mock_fetch(source):
+        async def mock_fetch(source, **kwargs):
             if source.name == "Supplier A":
                 return {
                     "success": True,
@@ -395,7 +397,7 @@ class TestMultiSourceOrchestrator:
         )
 
         # Mock fetch_from_source: one success, one failure
-        async def mock_fetch(source):
+        async def mock_fetch(source, **kwargs):
             if source.name == "Supplier A":
                 return {
                     "success": True,
@@ -450,7 +452,7 @@ class TestMultiSourceOrchestrator:
         )
 
         # Mock fetch_from_source: both return same vendor_code, different prices
-        async def mock_fetch(source):
+        async def mock_fetch(source, **kwargs):
             if source.name == "Supplier A":
                 return {
                     "success": True,

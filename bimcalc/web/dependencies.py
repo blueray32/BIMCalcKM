@@ -52,19 +52,19 @@ def get_templates() -> Jinja2Templates:
         # Templates are in bimcalc/web/templates/ and feature directories
         base_dir = Path(__file__).parent
         root_dir = base_dir.parent
-        
-        _templates = Jinja2Templates(directory=[
-            str(base_dir / "templates"),
-            str(root_dir / "ingestion" / "templates"),
-            str(root_dir / "reporting" / "templates"),
-        ])
+
+        _templates = Jinja2Templates(
+            directory=[
+                str(base_dir / "templates"),
+                str(root_dir / "ingestion" / "templates"),
+                str(root_dir / "reporting" / "templates"),
+            ]
+        )
     return _templates
 
 
 def get_org_project(
-    request: Request,
-    org: str | None = None,
-    project: str | None = None
+    request: Request, org: str | None = None, project: str | None = None
 ) -> tuple[str, str]:
     """Get organization and project IDs with fallbacks to config defaults.
 

@@ -132,15 +132,17 @@ async def compute_audit_metrics(
         FROM latest_matches
     """)
 
-    result = (await session.execute(
-        audit_query,
-        {
-            "org_id": org_id,
-            "project_id": project_id,
-            "seven_days_ago": seven_days_ago,
-            "thirty_days_ago": thirty_days_ago,
-        },
-    )).first()
+    result = (
+        await session.execute(
+            audit_query,
+            {
+                "org_id": org_id,
+                "project_id": project_id,
+                "seven_days_ago": seven_days_ago,
+                "thirty_days_ago": thirty_days_ago,
+            },
+        )
+    ).first()
 
     # Extract metrics
     total_decisions = result.total_decisions or 0
@@ -163,7 +165,9 @@ async def compute_audit_metrics(
     review_ui_count = result.review_ui_count or 0
 
     # Calculate velocity
-    avg_decisions_per_day = decisions_last_30_days / 30.0 if decisions_last_30_days > 0 else 0.0
+    avg_decisions_per_day = (
+        decisions_last_30_days / 30.0 if decisions_last_30_days > 0 else 0.0
+    )
 
     # Peak decision day (last 30 days)
     peak_query = text("""
@@ -188,14 +192,16 @@ async def compute_audit_metrics(
         LIMIT 1
     """)
 
-    peak_result = (await session.execute(
-        peak_query,
-        {
-            "org_id": org_id,
-            "project_id": project_id,
-            "thirty_days_ago": thirty_days_ago,
-        },
-    )).first()
+    peak_result = (
+        await session.execute(
+            peak_query,
+            {
+                "org_id": org_id,
+                "project_id": project_id,
+                "thirty_days_ago": thirty_days_ago,
+            },
+        )
+    ).first()
 
     peak_decision_day = _format_date(peak_result.decision_date) if peak_result else None
     peak_decision_count = peak_result.decision_count if peak_result else 0
@@ -203,7 +209,9 @@ async def compute_audit_metrics(
     # Actor attribution
     system_decisions = auto_approved_count
     manual_decisions = user_approved_count + review_ui_count
-    system_percentage = (system_decisions / total_decisions * 100) if total_decisions > 0 else 0.0
+    system_percentage = (
+        (system_decisions / total_decisions * 100) if total_decisions > 0 else 0.0
+    )
 
     # Daily timeline (last 10 days)
     timeline_query = text("""
@@ -230,14 +238,16 @@ async def compute_audit_metrics(
         LIMIT 10
     """)
 
-    timeline_results = (await session.execute(
-        timeline_query,
-        {
-            "org_id": org_id,
-            "project_id": project_id,
-            "ten_days_ago": ten_days_ago,
-        },
-    )).fetchall()
+    timeline_results = (
+        await session.execute(
+            timeline_query,
+            {
+                "org_id": org_id,
+                "project_id": project_id,
+                "ten_days_ago": ten_days_ago,
+            },
+        )
+    ).fetchall()
 
     daily_timeline = [
         {
@@ -274,9 +284,11 @@ async def compute_audit_metrics(
         LIMIT 5
     """)
 
-    reviewer_results = (await session.execute(
-        reviewers_query, {"org_id": org_id, "project_id": project_id}
-    )).fetchall()
+    reviewer_results = (
+        await session.execute(
+            reviewers_query, {"org_id": org_id, "project_id": project_id}
+        )
+    ).fetchall()
 
     top_reviewers = [
         {
@@ -290,7 +302,9 @@ async def compute_audit_metrics(
     # Calculate compliance score (0-100)
     compliance_score = _calculate_compliance_score(
         total_decisions=total_decisions,
-        high_confidence_percentage=(high_confidence_count / total_decisions * 100) if total_decisions > 0 else 0,
+        high_confidence_percentage=(high_confidence_count / total_decisions * 100)
+        if total_decisions > 0
+        else 0,
         system_percentage=system_percentage,
         decisions_last_7_days=decisions_last_7_days,
         avg_decisions_per_day=avg_decisions_per_day,

@@ -9,7 +9,6 @@ from fastapi.testclient import TestClient
 from unittest.mock import patch, MagicMock, AsyncMock
 from types import SimpleNamespace
 from uuid import uuid4
-from datetime import datetime
 
 from bimcalc.web.routes import review
 from bimcalc.models import FlagSeverity
@@ -89,6 +88,7 @@ class TestHelperFunctions:
     def test_parse_severity_filter_invalid(self):
         """Test parsing invalid severity raises HTTPException."""
         from fastapi import HTTPException
+
         with pytest.raises(HTTPException) as exc_info:
             review._parse_severity_filter("invalid")
         assert exc_info.value.status_code == 400
@@ -98,7 +98,9 @@ class TestHelperFunctions:
 class TestReviewDashboard:
     """Tests for GET /review route."""
 
-    @pytest.mark.skip(reason="Template requires complex records object with many attributes - better tested in integration")
+    @pytest.mark.skip(
+        reason="Template requires complex records object with many attributes - better tested in integration"
+    )
     @patch("bimcalc.web.routes.review.fetch_pending_reviews")
     @patch("bimcalc.web.routes.review.fetch_available_classifications")
     @patch("bimcalc.web.routes.review.get_session")
@@ -141,7 +143,9 @@ class TestReviewDashboard:
         mock_fetch_reviews.assert_called_once()
         mock_fetch_classifications.assert_called_once()
 
-    @pytest.mark.skip(reason="Executive template requires complex metrics object with many attributes - better tested in integration")
+    @pytest.mark.skip(
+        reason="Executive template requires complex metrics object with many attributes - better tested in integration"
+    )
     @patch("bimcalc.reporting.review_metrics.compute_review_metrics")
     @patch("bimcalc.web.routes.review.get_session")
     @patch("bimcalc.web.dependencies.get_config")
@@ -286,7 +290,7 @@ class TestApproveItem:
             mock_db_session.__aenter__.return_value,
             mock_record,
             created_by="web-ui",
-            annotation="Looks good"
+            annotation="Looks good",
         )
 
     @patch("bimcalc.web.routes.review.fetch_review_record")

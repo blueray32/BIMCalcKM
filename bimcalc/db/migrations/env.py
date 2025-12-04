@@ -20,8 +20,6 @@ if config.config_file_name is not None:
 # from myapp import mymodel
 # target_metadata = mymodel.Base.metadata
 from bimcalc.db.models import Base
-import bimcalc.db.models_documents  # Register document models
-import bimcalc.db.models_reporting  # Register reporting models
 
 target_metadata = Base.metadata
 
@@ -44,12 +42,15 @@ def run_migrations_offline() -> None:
 
     """
     import os
+
     url = config.get_main_option("sqlalchemy.url")
     if not url:
         url = os.environ.get("DATABASE_URL")
-    
+
     if not url:
-        raise ValueError("DATABASE_URL environment variable not set and sqlalchemy.url not in alembic.ini")
+        raise ValueError(
+            "DATABASE_URL environment variable not set and sqlalchemy.url not in alembic.ini"
+        )
 
     context.configure(
         url=url,
@@ -76,15 +77,18 @@ async def run_async_migrations() -> None:
     """
 
     import os
+
     configuration = config.get_section(config.config_ini_section, {})
     url = configuration.get("sqlalchemy.url")
     if not url:
         url = os.environ.get("DATABASE_URL")
         if url:
             configuration["sqlalchemy.url"] = url
-    
+
     if not configuration.get("sqlalchemy.url"):
-        raise ValueError("DATABASE_URL environment variable not set and sqlalchemy.url not in alembic.ini")
+        raise ValueError(
+            "DATABASE_URL environment variable not set and sqlalchemy.url not in alembic.ini"
+        )
 
     connectable = async_engine_from_config(
         configuration,

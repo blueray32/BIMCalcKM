@@ -130,7 +130,7 @@ class AppConfig:
     db: DBConfig  # Required, moved before defaults
     log_level: str = "INFO"
     log_format: str = "json"  # json or text
-    
+
     # Feature Flags
     enable_rag: bool = False
     enable_risk_scoring: bool = False
@@ -171,7 +171,8 @@ class AppConfig:
             log_level=os.getenv("LOG_LEVEL", "INFO"),
             log_format=os.getenv("LOG_FORMAT", "json"),
             enable_rag=os.getenv("ENABLE_RAG", "false").lower() == "true",
-            enable_risk_scoring=os.getenv("ENABLE_RISK_SCORING", "false").lower() == "true",
+            enable_risk_scoring=os.getenv("ENABLE_RISK_SCORING", "false").lower()
+            == "true",
             db=DBConfig(
                 url=database_url,
                 pool_size=int(os.getenv("DB_POOL_SIZE", "10")),
@@ -181,12 +182,16 @@ class AppConfig:
             ),
             matching=MatchingConfig(
                 fuzzy_min_score=int(os.getenv("FUZZY_MIN_SCORE", "70")),
-                auto_accept_min_confidence=int(os.getenv("AUTO_ACCEPT_MIN_CONFIDENCE", "85")),
+                auto_accept_min_confidence=int(
+                    os.getenv("AUTO_ACCEPT_MIN_CONFIDENCE", "85")
+                ),
                 size_tolerance_mm=int(os.getenv("SIZE_TOLERANCE_MM", "10")),
                 angle_tolerance_deg=int(os.getenv("ANGLE_TOLERANCE_DEG", "5")),
                 dn_tolerance_mm=int(os.getenv("DN_TOLERANCE_MM", "5")),
                 max_candidates_per_item=int(os.getenv("MAX_CANDIDATES_PER_ITEM", "50")),
-                class_blocking_enabled=os.getenv("CLASS_BLOCKING_ENABLED", "true").lower()
+                class_blocking_enabled=os.getenv(
+                    "CLASS_BLOCKING_ENABLED", "true"
+                ).lower()
                 == "true",
             ),
             eu=EUConfig(
@@ -197,10 +202,14 @@ class AppConfig:
             llm=LLMConfig(
                 provider=os.getenv("LLM_PROVIDER", "openai"),
                 api_key=os.getenv("OPENAI_API_KEY"),
-                embeddings_model=os.getenv("EMBEDDINGS_MODEL", "text-embedding-3-large"),
+                embeddings_model=os.getenv(
+                    "EMBEDDINGS_MODEL", "text-embedding-3-large"
+                ),
                 llm_model=os.getenv("LLM_MODEL", "gpt-4-1106-preview"),
                 azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT"),
-                azure_api_version=os.getenv("AZURE_OPENAI_API_VERSION", "2024-02-15-preview"),
+                azure_api_version=os.getenv(
+                    "AZURE_OPENAI_API_VERSION", "2024-02-15-preview"
+                ),
             ),
             vector=VectorConfig(
                 index_type=os.getenv("VECTOR_INDEX_TYPE", "ivfflat"),
@@ -214,7 +223,9 @@ class AppConfig:
                 database=os.getenv("NEO4J_DATABASE", "neo4j"),
             ),
             price_scout=PriceScoutConfig(
-                respect_robots_txt=os.getenv("PRICE_SCOUT_RESPECT_ROBOTS", "true").lower()
+                respect_robots_txt=os.getenv(
+                    "PRICE_SCOUT_RESPECT_ROBOTS", "true"
+                ).lower()
                 == "true",
                 user_agent=os.getenv(
                     "PRICE_SCOUT_USER_AGENT",
@@ -227,9 +238,7 @@ class AppConfig:
                 retry_attempts=int(os.getenv("PRICE_SCOUT_RETRY_ATTEMPTS", "3")),
                 browser_cdp_url=os.getenv("PLAYWRIGHT_CDP_URL"),
                 browser_timeout_ms=int(os.getenv("PRICE_SCOUT_TIMEOUT_MS", "60000")),
-                min_price_threshold=Decimal(
-                    os.getenv("PRICE_SCOUT_MIN_PRICE", "0.01")
-                ),
+                min_price_threshold=Decimal(os.getenv("PRICE_SCOUT_MIN_PRICE", "0.01")),
                 max_price_threshold=Decimal(
                     os.getenv("PRICE_SCOUT_MAX_PRICE", "100000.00")
                 ),

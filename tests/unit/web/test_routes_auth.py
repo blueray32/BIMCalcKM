@@ -6,7 +6,7 @@ Tests the auth router module extracted in Phase 3.1.
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 from bimcalc.web.routes import auth
 
@@ -56,7 +56,7 @@ class TestLoginPost:
         response = client.post(
             "/login",
             data={"username": "testuser", "password": "testpass"},
-            follow_redirects=False
+            follow_redirects=False,
         )
 
         # Should redirect to dashboard
@@ -80,7 +80,7 @@ class TestLoginPost:
         response = client.post(
             "/login",
             data={"username": "baduser", "password": "badpass"},
-            follow_redirects=False
+            follow_redirects=False,
         )
 
         # Should redirect to login with error

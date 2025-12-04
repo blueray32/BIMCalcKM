@@ -246,7 +246,9 @@ class TestClassificationBlocking:
         reduction_factor = unblocked_candidates / blocked_candidates
 
         assert reduction_factor == 20.0  # 20× reduction
-        pytest.skip("Full implementation requires database with indexed classification_code")
+        pytest.skip(
+            "Full implementation requires database with indexed classification_code"
+        )
 
 
 class TestSCD2AsOfReproducibility:
@@ -300,7 +302,9 @@ class TestAutoRoutingLogic:
         ]
 
         # Decision logic
-        has_critical_flags = any(flag.severity == FlagSeverity.CRITICAL_VETO for flag in flags)
+        has_critical_flags = any(
+            flag.severity == FlagSeverity.CRITICAL_VETO for flag in flags
+        )
 
         if has_critical_flags:
             decision = "manual-review"
@@ -357,7 +361,9 @@ class TestValidationGates:
             )
         ]
 
-        has_critical_flags = any(flag.severity == FlagSeverity.CRITICAL_VETO for flag in flags)
+        has_critical_flags = any(
+            flag.severity == FlagSeverity.CRITICAL_VETO for flag in flags
+        )
 
         # Auto-accept should be blocked
         can_auto_accept = not has_critical_flags

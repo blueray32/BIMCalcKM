@@ -38,6 +38,7 @@ router = APIRouter(tags=["review"])
 # Helper Functions
 # ============================================================================
 
+
 def _parse_flag_filter(flag: str | None) -> list[str] | None:
     """Parse flag filter parameter.
 
@@ -64,6 +65,7 @@ def _parse_severity_filter(severity: str | None) -> FlagSeverity | None:
 # ============================================================================
 # Review Workflow Routes
 # ============================================================================
+
 
 @router.get("/review", response_class=HTMLResponse)
 async def review_dashboard(
@@ -109,7 +111,9 @@ async def review_dashboard(
 
     async with get_session() as session:
         # Fetch available classifications for filter dropdown
-        classifications = await fetch_available_classifications(session, org_id, project_id)
+        classifications = await fetch_available_classifications(
+            session, org_id, project_id
+        )
 
         # Fetch pending reviews with filters
         records = await fetch_pending_reviews(
@@ -159,7 +163,9 @@ async def approve_item(
         record = await fetch_review_record(session, match_result_id)
         if record is None:
             raise HTTPException(status_code=404, detail="Review item not found")
-        await approve_review_record(session, record, created_by="web-ui", annotation=annotation)
+        await approve_review_record(
+            session, record, created_by="web-ui", annotation=annotation
+        )
 
     # Preserve filter state in redirect
     redirect_url = f"/review?org={org_id}&project={project_id}"
@@ -222,14 +228,12 @@ async def reject_review(
     # Remove None values
     query_string = "&".join(f"{k}={v}" for k, v in params.items() if v and v != "None")
 
-    return RedirectResponse(
-        url=f"/review?{query_string}",
-        status_code=303
-    )
+    return RedirectResponse(url=f"/review?{query_string}", status_code=303)
 
 
 from pydantic import BaseModel
 from typing import List, Optional
+
 
 class BulkUpdateRequest(BaseModel):
     match_result_ids: List[UUID]
@@ -237,6 +241,7 @@ class BulkUpdateRequest(BaseModel):
     annotation: Optional[str] = None
     org_id: str
     project_id: str
+
 
 @router.post("/api/matches/bulk-update")
 async def bulk_update_matches(
@@ -251,23 +256,29 @@ async def bulk_update_matches(
 
     async with get_session() as session:
         # Verify all match results exist and belong to org/project
-        stmt = select(MatchResultModel).join(ItemModel).where(
-            MatchResultModel.id.in_(request.match_result_ids),
-            ItemModel.org_id == request.org_id,
-            ItemModel.project_id == request.project_id
+        stmt = (
+            select(MatchResultModel)
+            .join(ItemModel)
+            .where(
+                MatchResultModel.id.in_(request.match_result_ids),
+                ItemModel.org_id == request.org_id,
+                ItemModel.project_id == request.project_id,
+            )
         )
         results = (await session.execute(stmt)).scalars().all()
-        
+
         if len(results) != len(request.match_result_ids):
             found_ids = {r.id for r in results}
             missing = set(request.match_result_ids) - found_ids
             raise HTTPException(
-                status_code=400, 
-                detail=f"Some match results not found or access denied: {missing}"
+                status_code=400,
+                detail=f"Some match results not found or access denied: {missing}",
             )
 
         processed_count = 0
-        username = "web-ui" # Placeholder until auth dependency is fully integrated in router
+        username = (
+            "web-ui"  # Placeholder until auth dependency is fully integrated in router
+        )
 
         for match_result in results:
             if request.action == "approve":
@@ -275,19 +286,19 @@ async def bulk_update_matches(
                 record = await fetch_review_record(session, match_result.id)
                 if record:
                     await approve_review_record(
-                        session, 
-                        record, 
-                        created_by=username, 
-                        annotation=request.annotation
+                        session,
+                        record,
+                        created_by=username,
+                        annotation=request.annotation,
                     )
                     processed_count += 1
-            
+
             elif request.action == "reject":
                 match_result.decision = "rejected"
                 match_result.reason = request.annotation or "Bulk rejection via web UI"
                 match_result.created_by = username
                 processed_count += 1
-        
+
         await session.commit()
-        
+
         return {"processed": processed_count, "action": request.action}

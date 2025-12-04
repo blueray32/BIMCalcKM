@@ -113,7 +113,7 @@ async def compute_progress_metrics(
     # Use raw SQL with CTE to get latest match result per item (more efficient)
     from sqlalchemy.sql import text
 
-    matching_stats_query = text('''
+    matching_stats_query = text("""
         WITH ranked_results AS (
             SELECT 
                 mr.item_id,
@@ -137,12 +137,13 @@ async def compute_progress_metrics(
             COUNT(*) FILTER (WHERE decision IN ('auto-accepted', 'manual-review', 'accepted') AND confidence_score >= 70 AND confidence_score < 85) as conf_medium,
             COUNT(*) FILTER (WHERE decision IN ('auto-accepted', 'manual-review', 'accepted') AND confidence_score < 70) as conf_low
         FROM latest_results;
-    ''')
+    """)
 
-    stats = (await session.execute(
-        matching_stats_query,
-        {"org_id": org_id, "project_id": project_id}
-    )).first()
+    stats = (
+        await session.execute(
+            matching_stats_query, {"org_id": org_id, "project_id": project_id}
+        )
+    ).first()
 
     matched_items = stats.matched or 0
     auto_approved = stats.auto_approved or 0
@@ -178,7 +179,7 @@ async def compute_progress_metrics(
     # 5. Classification Coverage (top 5 codes)
     # ========================================================================
     # Count items per classification code, and how many are successfully matched
-    class_coverage_query = text('''
+    class_coverage_query = text("""
         WITH ranked_results AS (
             SELECT 
                 mr.item_id,
@@ -205,12 +206,13 @@ async def compute_progress_metrics(
         GROUP BY i.classification_code
         ORDER BY COUNT(i.id) DESC
         LIMIT 5;
-    ''')
+    """)
 
-    class_results = (await session.execute(
-        class_coverage_query,
-        {"org_id": org_id, "project_id": project_id}
-    )).all()
+    class_results = (
+        await session.execute(
+            class_coverage_query, {"org_id": org_id, "project_id": project_id}
+        )
+    ).all()
 
     classification_coverage = [
         {
@@ -244,7 +246,9 @@ async def compute_progress_metrics(
     )
 
     # Stage 2: Classification
-    classification_pct = (classified_items / total_items * 100) if total_items > 0 else 0
+    classification_pct = (
+        (classified_items / total_items * 100) if total_items > 0 else 0
+    )
     stage_classification = WorkflowStage(
         name="Classification Assignment",
         status="completed" if classified_items == total_items else "in_progress",

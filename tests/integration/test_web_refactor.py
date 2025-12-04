@@ -36,15 +36,16 @@ class TestWebRefactorCompatibility:
         for route in routes_to_test:
             response = client.get(route, follow_redirects=False)
             # Should redirect to login (302) or show page (200), not 404
-            assert response.status_code in [200, 302], f"Route {route} returned {response.status_code}"
+            assert response.status_code in [200, 302], (
+                f"Route {route} returned {response.status_code}"
+            )
 
     def test_auth_flow_works(self, client: TestClient):
         """Test login/logout flow still works."""
         # Login
-        response = client.post("/login", data={
-            "username": "test_user",
-            "password": "test_password"
-        })
+        response = client.post(
+            "/login", data={"username": "test_user", "password": "test_password"}
+        )
         assert response.status_code in [200, 302]
 
         # Logout
@@ -71,4 +72,5 @@ class TestWebRefactorCompatibility:
 def client():
     """Create FastAPI test client."""
     from bimcalc.web.app_enhanced import app
+
     return TestClient(app)
