@@ -153,11 +153,14 @@ class TestTestCrail4Connection:
     """Tests for POST /crail4-config/test route."""
 
     @patch("bimcalc.intelligence.price_scout.SmartPriceScout")
-    @patch.dict("os.environ", {"CRAIL4_API_KEY": "", "OPENAI_API_KEY": "", "PRICE_SCOUT_API_KEY": ""})
+    @patch.dict(
+        "os.environ",
+        {"CRAIL4_API_KEY": "", "OPENAI_API_KEY": "", "PRICE_SCOUT_API_KEY": ""},
+    )
     def test_test_connection_missing_api_key(self, mock_scout_class, client):
         """Test connection test fails when API key not configured."""
         mock_scout_class.side_effect = ValueError("OPENAI_API_KEY is required")
-        
+
         response = client.post("/price-scout/test")
         # Expect 500 if API key is missing and validation is strict
         assert response.status_code == 500
