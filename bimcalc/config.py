@@ -117,6 +117,14 @@ class PriceScoutConfig:
     # Caching (future)
     cache_enabled: bool = False
     cache_ttl_seconds: int = 86400  # 24 hours
+    
+    
+@dataclass
+class NotificationsConfig:
+    """Notification settings (Slack, Email)."""
+    
+    slack_webhook_url: str | None = None
+    enabled: bool = False
 
 
 @dataclass
@@ -142,6 +150,7 @@ class AppConfig:
     vector: VectorConfig = field(default_factory=VectorConfig)
     graph: GraphConfig = field(default_factory=GraphConfig)
     price_scout: PriceScoutConfig = field(default_factory=PriceScoutConfig)
+    notifications: NotificationsConfig = field(default_factory=NotificationsConfig)
 
     @classmethod
     def from_env(cls) -> AppConfig:
@@ -165,6 +174,14 @@ class AppConfig:
                 "DATABASE_URL environment variable is required. "
                 "Example: postgresql+asyncpg://user:pass@localhost:5432/bimcalc"
             )
+
+        # Production Validation
+        environment = os.getenv("ENVIRONMENT", "development")
+        if environment == "production":
+            secret_key = os.getenv("SECRET_KEY")
+            if not secret_key:
+                raise KeyError("SECRET_KEY environment variable is required in production.")
+
 
         return cls(
             org_id=os.getenv("DEFAULT_ORG_ID", "default"),
@@ -245,6 +262,11 @@ class AppConfig:
                 cache_enabled=os.getenv("PRICE_SCOUT_CACHE_ENABLED", "false").lower()
                 == "true",
                 cache_ttl_seconds=int(os.getenv("PRICE_SCOUT_CACHE_TTL", "86400")),
+            ),
+            notifications=NotificationsConfig(
+                slack_webhook_url=os.getenv("SLACK_WEBHOOK_URL"),
+                enabled=os.getenv("SLACK_NOTIFICATIONS_ENABLED", "false").lower()
+                == "true",
             ),
         )
 

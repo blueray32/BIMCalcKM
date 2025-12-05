@@ -20,6 +20,7 @@ from bimcalc.db.models import ItemModel
 from bimcalc.matching.orchestrator import MatchOrchestrator
 from bimcalc.models import Item
 from bimcalc.web.dependencies import get_org_project, get_templates
+from bimcalc.matching.smart_matcher import get_smart_suggestions
 
 # Create router with matching tag
 router = APIRouter(tags=["matching"])
@@ -147,3 +148,24 @@ async def run_matching(
             "message": f"Matched {len(results)} items",
             "results": results,
         }
+
+
+@router.get("/api/match/{item_id}/suggestions", response_class=HTMLResponse)
+async def match_suggestions(
+    request: Request,
+    item_id: str,
+    templates=Depends(get_templates)
+):
+    """Get AI-powered matching suggestions for an item."""
+    from uuid import UUID
+    try:
+        uuid_obj = UUID(item_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid item ID")
+
+    suggestions = await get_smart_suggestions(uuid_obj)
+    
+    return templates.TemplateResponse(
+        "partials/suggestions.html",
+        {"request": request, "suggestions": suggestions, "item_id": item_id}
+    )

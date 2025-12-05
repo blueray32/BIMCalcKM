@@ -25,8 +25,10 @@ from sqlalchemy import func, select, text
 from bimcalc.db.connection import get_session
 from bimcalc.db.models import PriceItemModel
 from bimcalc.web.dependencies import get_org_project, get_templates
+from bimcalc.intelligence.predictor import predict_price_trend
 
 # Create router with prices tag
+# Trigger reload
 router = APIRouter(tags=["prices"])
 
 
@@ -481,12 +483,19 @@ async def price_detail(
         )
         price_history_list = history_result.scalars().all()
 
+        # Calculate trend
+        try:
+            trend = predict_price_trend(price_history_list)
+        except Exception:
+            trend = None
+
     return templates.TemplateResponse(
         "price_detail.html",
         {
             "request": request,
             "price": price,
             "price_history": price_history_list,
+            "trend": trend,
             "org_id": org_id,
             "project_id": project_id,
         },

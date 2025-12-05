@@ -44,6 +44,11 @@ from bimcalc.web.routes import (
     revisions,
     risk_dashboard,
     scenarios,
+    users,
+    webhooks,
+    search,
+    revit,
+    health,
 )
 
 __all__ = [
@@ -66,4 +71,9 @@ __all__ = [
     "classifications",  # Phase 3.18 - Classifications routes
     "analytics",  # Phase 3.19 - Analytics routes
     "risk_dashboard",  # Phase 3.20 - Risk Dashboard routes
+    "users",
+    "webhooks",
+    "search",  # Phase 3.21 - User management routes
+    "revit",
+    "health",
 ]

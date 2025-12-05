@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+
+{% block title %}Search Results - BIMCalc{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Search Results</h1>
+    <form action="/search" method="get" style="display: flex; gap: 1rem; max-width: 600px;">
+        <input type="text" name="q" value="{{ query or '' }}" placeholder="Search items, prices, docs..."
+            style="flex: 1;">
+        <button type="submit" class="btn btn-primary">Search</button>
+    </form>
+</div>
+
+{% if error %}
+<div class="alert alert-danger">{{ error }}</div>
+{% endif %}
+
+{% if query and not error %}
+<div class="search-results">
+    <div class="card">
+        <h3>Project Items</h3>
+        {% if results.items %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Family</th>
+                    <th>Type</th>
+                    <th>Class</th>
+                    <th>Relevance</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in results.items %}
+                <tr>
+                    <td>{{ item.family }}</td>
+                    <td>{{ item.type_name }}</td>
+                    <td>{{ item.classification_code }}</td>
+                    <td>{{ "%.1f"|format(item.similarity * 100) }}%</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p>No matching items found.</p>
+        {% endif %}
+    </div>
+
+    <div class="card" style="margin-top: 1rem;">
+        <h3>Price Catalog</h3>
+        {% if results.prices %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Description</th>
+                    <th>Vendor Code</th>
+                    <th>Price</th>
+                    <th>Relevance</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for price in results.prices %}
+                <tr>
+                    <td>{{ price.description }}</td>
+                    <td>{{ price.vendor_code }}</td>
+                    <td>{{ price.unit_price }} {{ price.currency }}</td>
+                    <td>{{ "%.1f"|format(price.similarity * 100) }}%</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p>No matching prices found.</p>
+        {% endif %}
+    </div>
+
+    <div class="card" style="margin-top: 1rem;">
+        <h3>Documents</h3>
+        {% if results.documents %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Title</th>
+                    <th>Type</th>
+                    <th>Relevance</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for doc in results.documents %}
+                <tr>
+                    <td>{{ doc.title }}</td>
+                    <td>{{ doc.doc_type }}</td>
+                    <td>{{ "%.1f"|format(doc.similarity * 100) }}%</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p>No matching documents found.</p>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+{% endblock %}

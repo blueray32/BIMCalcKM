@@ -186,13 +186,14 @@
                         style="cursor: pointer;">
                 </th>
                 <th>Classification</th>
-                <th>Flags</th>
-                <th>Documents</th>
-                <th>🤖 Recommended</th>
-                <th>Actions</th>
-                <th>Documents</th>
+                <th>Item</th>
+                <th>Candidate</th>
+                <th>Score</th>
+                <th>Docs</th>
+                <th style="min-width: 250px;">🤖 Smart Suggestions</th>
                 <th>Flags</th>
                 <th>Action</th>
+            </tr>
             </tr>
         </thead>
         <tbody>
@@ -322,7 +323,7 @@
                     hx-swap="innerHTML" style="font-size: 0.875rem;">
                     <span class="text-muted">Loading...</span>
                 </td>
-                <td id="recommendations-{{ record.item.id }}" hx-get="/api/items/{{ record.item.id }}/recommendations"
+                <td id="suggestions-{{ record.item.id }}" hx-get="/api/match/{{ record.item.id }}/suggestions"
                     hx-trigger="load" hx-swap="innerHTML" style="font-size: 0.875rem;">
                     <span class="text-muted">🤖 Analyzing...</span>
                 </td>
@@ -583,5 +584,52 @@
             e.target.form.requestSubmit();
         }
     });
+
+    // Smart Suggestions Handler
+    document.addEventListener('click', function (e) {
+        if (e.target.classList.contains('suggestion-btn')) {
+            const btn = e.target;
+            const itemId = btn.dataset.itemId;
+            const priceId = btn.dataset.priceId;
+            const desc = btn.dataset.description;
+            applySuggestion(itemId, priceId, desc);
+        }
+    });
+
+    async function applySuggestion(itemId, priceId, description) {
+        if (!confirm(`Approve suggestion: "${description}"?`)) return;
+
+        showLoading();
+
+        try {
+            const formData = new FormData();
+            formData.append('item_id', itemId);
+            formData.append('price_item_id', priceId);
+            formData.append('suggestion_description', description);
+
+            // Add current filters
+            const urlParams = new URLSearchParams(window.location.search);
+            for (const [key, value] of urlParams) {
+                formData.append(key, value);
+            }
+
+            const response = await fetch('/review/approve-suggestion', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (response.ok) {
+                window.location.reload();
+            } else {
+                const data = await response.json();
+                alert('Error: ' + (data.detail || 'Failed to approve suggestion'));
+                hideLoading();
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('An error occurred');
+            hideLoading();
+        }
+    }
 </script>
 {% endblock %}

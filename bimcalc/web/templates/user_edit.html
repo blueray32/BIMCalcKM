@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% block title %}{% if user %}Edit User{% else %}New User{% endif %} - BIMCalc{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>{% if user %}Edit User: {{ user.full_name }}{% else %}New User{% endif %}</h1>
+    <p>{% if user %}Update user details and permissions.{% else %}Create a new system user.{% endif %}</p>
+</div>
+
+<div class="card" style="max-width: 600px; margin: 0 auto;">
+    <form method="POST" action="{% if user %}/users/{{ user.id }}{% else %}/users/new{% endif %}">
+        <div class="form-group">
+            <label for="email">Email Address</label>
+            <input type="text" id="email" name="email" value="{{ user.email if user else '' }}" required>
+        </div>
+
+        <div class="form-group">
+            <label for="full_name">Full Name</label>
+            <input type="text" id="full_name" name="full_name" value="{{ user.full_name if user else '' }}" required>
+        </div>
+
+        <div class="form-group">
+            <label for="role">Role</label>
+            <select id="role" name="role" required>
+                <option value="viewer" {% if user and user.role=='viewer' %}selected{% endif %}>Viewer (Read-only)
+                </option>
+                <option value="manager" {% if user and user.role=='manager' %}selected{% endif %}>Manager (Edit access)
+                </option>
+                <option value="admin" {% if user and user.role=='admin' %}selected{% endif %}>Admin (Full access)
+                </option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="password">Password {% if user %}(Leave blank to keep unchanged){% endif %}</label>
+            <input type="password" id="password" name="password" {% if not user %}required{% endif %}
+                style="width: 100%; padding: 0.5rem 0.75rem; border: 1px solid var(--border-light); border-radius: 0.375rem; background: var(--bg-secondary); color: var(--text-primary);">
+        </div>
+
+        {% if user %}
+        <div class="form-group">
+            <label class="flex flex-center gap-2" style="cursor: pointer;">
+                <input type="checkbox" name="is_active" value="true" {% if user.is_active %}checked{% endif %}>
+                <span>Active Account</span>
+            </label>
+        </div>
+        {% endif %}
+
+        <div class="flex flex-between mt-2">
+            <a href="/users" class="btn"
+                style="background: var(--bg-tertiary); color: var(--text-secondary);">Cancel</a>
+            <button type="submit" class="btn btn-primary">{% if user %}Save Changes{% else %}Create User{% endif
+                %}</button>
+        </div>
+    </form>
+</div>
+{% endblock %}

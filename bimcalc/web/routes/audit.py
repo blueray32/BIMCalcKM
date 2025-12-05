@@ -14,11 +14,12 @@ from fastapi.responses import HTMLResponse
 from sqlalchemy import func, select
 
 from bimcalc.db.connection import get_session
-from bimcalc.db.models import ItemModel, MatchResultModel
+from bimcalc.db.models import ItemModel, MatchResultModel, AuditLogModel
 from bimcalc.web.dependencies import get_org_project, get_templates
+from bimcalc.web.auth import require_admin
 
 # Create router with audit tag
-router = APIRouter(tags=["audit"])
+router = APIRouter(prefix="/audit", tags=["audit"])
 
 
 # ============================================================================
@@ -26,7 +27,7 @@ router = APIRouter(tags=["audit"])
 # ============================================================================
 
 
-@router.get("/audit", response_class=HTMLResponse)
+@router.get("/", response_class=HTMLResponse)
 async def audit_trail(
     request: Request,
     org: str | None = None,
@@ -106,4 +107,43 @@ async def audit_trail(
             "total": total,
             "total_pages": (total + per_page - 1) // per_page,
         },
+    )
+
+
+@router.get("/logs", response_class=HTMLResponse)
+async def system_logs(
+    request: Request,
+    page: int = Query(default=1, ge=1),
+    username: str = Depends(require_admin),
+    templates=Depends(get_templates),
+):
+    """View system audit logs."""
+    per_page = 50
+    offset = (page - 1) * per_page
+    
+    async with get_session() as session:
+        stmt = (
+            select(AuditLogModel)
+            .order_by(AuditLogModel.timestamp.desc())
+            .limit(per_page)
+            .offset(offset)
+        )
+        result = await session.execute(stmt)
+        logs = result.scalars().all()
+        
+        # Count
+        count_result = await session.execute(select(func.count()).select_from(AuditLogModel))
+        total = count_result.scalar_one()
+        
+    return templates.TemplateResponse(
+        "audit_logs.html",
+        {
+            "request": request,
+            "logs": logs,
+            "username": username,
+            "page": page,
+            "per_page": per_page,
+            "total": total,
+            "total_pages": (total + per_page - 1) // per_page,
+        }
     )

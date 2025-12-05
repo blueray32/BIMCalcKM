@@ -7,6 +7,45 @@
     <title>{% block title %}BIMCalc Management Console{% endblock %}</title>
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
     <style>
+        /* Theme CSS Variables */
+        :root {
+            --bg-primary: #f5f7fa;
+            --bg-secondary: #ffffff;
+            --bg-tertiary: #f7fafc;
+            --bg-nav: #1a202c;
+            --text-primary: #2d3748;
+            --text-secondary: #4a5568;
+            --text-muted: #718096;
+            --text-nav: #cbd5e0;
+            --border-color: #e2e8f0;
+            --border-light: #cbd5e0;
+            --accent-primary: #4299e1;
+            --accent-hover: #3182ce;
+            --success: #48bb78;
+            --warning: #ed8936;
+            --danger: #f56565;
+            --shadow: rgba(0, 0, 0, 0.1);
+        }
+
+        [data-theme="dark"] {
+            --bg-primary: #1a202c;
+            --bg-secondary: #2d3748;
+            --bg-tertiary: #4a5568;
+            --bg-nav: #0d1117;
+            --text-primary: #f7fafc;
+            --text-secondary: #e2e8f0;
+            --text-muted: #a0aec0;
+            --text-nav: #e2e8f0;
+            --border-color: #4a5568;
+            --border-light: #718096;
+            --accent-primary: #63b3ed;
+            --accent-hover: #4299e1;
+            --success: #68d391;
+            --warning: #f6ad55;
+            --danger: #fc8181;
+            --shadow: rgba(0, 0, 0, 0.3);
+        }
+
         * {
             box-sizing: border-box;
             margin: 0;
@@ -15,16 +54,17 @@
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            background: #f5f7fa;
-            color: #2d3748;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            transition: background 0.3s ease, color 0.3s ease;
         }
 
         /* Navigation */
         nav {
-            background: #1a202c;
+            background: var(--bg-nav);
             color: white;
             padding: 0 2rem;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 2px 4px var(--shadow);
         }
 
         .nav-container {
@@ -51,7 +91,7 @@
         .nav-links a {
             display: block;
             padding: 1.25rem 1rem;
-            color: #cbd5e0;
+            color: var(--text-nav);
             text-decoration: none;
             transition: all 0.2s;
             border-bottom: 3px solid transparent;
@@ -79,9 +119,9 @@
             position: absolute;
             top: 100%;
             left: 0;
-            background: white;
+            background: var(--bg-secondary);
             border-radius: 0.375rem;
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            box-shadow: 0 10px 15px -3px var(--shadow);
             min-width: 200px;
             margin-top: 0;
             /* Remove gap */
@@ -118,8 +158,8 @@
         /* Project Selector */
         .project-selector {
             padding: 1rem 2rem;
-            background: white;
-            border-bottom: 1px solid #e2e8f0;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-color);
         }
 
         .project-selector .container {
@@ -133,20 +173,22 @@
         .project-selector label {
             font-size: 0.875rem;
             font-weight: 600;
-            color: #4a5568;
+            color: var(--text-secondary);
         }
 
         .project-selector select,
         .project-selector input {
             padding: 0.5rem 0.75rem;
-            border: 1px solid #cbd5e0;
+            border: 1px solid var(--border-light);
             border-radius: 0.375rem;
             font-size: 0.875rem;
+            background: var(--bg-secondary);
+            color: var(--text-primary);
         }
 
         .project-selector button {
             padding: 0.5rem 1rem;
-            background: #4299e1;
+            background: var(--accent-primary);
             color: white;
             border: none;
             border-radius: 0.375rem;
@@ -155,7 +197,7 @@
         }
 
         .project-selector button:hover {
-            background: #3182ce;
+            background: var(--accent-hover);
         }
 
         /* Main Content */
@@ -172,20 +214,20 @@
         .page-header h1 {
             font-size: 2rem;
             font-weight: 700;
-            color: #1a202c;
+            color: var(--text-primary);
             margin-bottom: 0.5rem;
         }
 
         .page-header p {
-            color: #718096;
+            color: var(--text-muted);
         }
 
         /* Cards */
         .card {
-            background: white;
+            background: var(--bg-secondary);
             border-radius: 0.5rem;
             padding: 1.5rem;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 1px 3px var(--shadow);
             margin-bottom: 1.5rem;
         }
 
@@ -194,7 +236,7 @@
             font-weight: 600;
             margin-bottom: 1rem;
             padding-bottom: 0.75rem;
-            border-bottom: 2px solid #e2e8f0;
+            border-bottom: 2px solid var(--border-color);
         }
 
         .card-body {
@@ -210,16 +252,16 @@
         }
 
         .stat-card {
-            background: white;
+            background: var(--bg-secondary);
             border-radius: 0.5rem;
             padding: 1.5rem;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 1px 3px var(--shadow);
         }
 
         .stat-card .label {
             font-size: 0.875rem;
             font-weight: 600;
-            color: #718096;
+            color: var(--text-muted);
             text-transform: uppercase;
             letter-spacing: 0.05em;
             margin-bottom: 0.5rem;
@@ -228,55 +270,56 @@
         .stat-card .value {
             font-size: 2.5rem;
             font-weight: 700;
-            color: #2d3748;
+            color: var(--text-primary);
         }
 
         .stat-card .description {
             margin-top: 0.5rem;
             font-size: 0.875rem;
-            color: #a0aec0;
+            color: var(--text-muted);
         }
 
         .stat-card.primary {
-            border-left: 4px solid #4299e1;
+            border-left: 4px solid var(--accent-primary);
         }
 
         .stat-card.success {
-            border-left: 4px solid #48bb78;
+            border-left: 4px solid var(--success);
         }
 
         .stat-card.warning {
-            border-left: 4px solid #ed8936;
+            border-left: 4px solid var(--warning);
         }
 
         .stat-card.danger {
-            border-left: 4px solid #f56565;
+            border-left: 4px solid var(--danger);
         }
 
         /* Tables */
         table {
             width: 100%;
             border-collapse: collapse;
-            background: white;
+            background: var(--bg-secondary);
             border-radius: 0.5rem;
             overflow: hidden;
         }
 
         th {
             text-align: left;
-            background: #f7fafc;
+            background: var(--bg-tertiary);
             padding: 0.75rem 1rem;
             font-size: 0.875rem;
             font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 0.05em;
-            color: #4a5568;
-            border-bottom: 2px solid #e2e8f0;
+            color: var(--text-secondary);
+            border-bottom: 2px solid var(--border-color);
         }
 
         td {
             padding: 1rem;
-            border-bottom: 1px solid #e2e8f0;
+            border-bottom: 1px solid var(--border-color);
+            color: var(--text-primary);
         }
 
         tr:last-child td {
@@ -284,7 +327,7 @@
         }
 
         tr:hover {
-            background: #f7fafc;
+            background: var(--bg-tertiary);
         }
 
         /* Buttons */
@@ -301,16 +344,16 @@
         }
 
         .btn-primary {
-            background: #4299e1;
+            background: var(--accent-primary);
             color: white;
         }
 
         .btn-primary:hover {
-            background: #3182ce;
+            background: var(--accent-hover);
         }
 
         .btn-success {
-            background: #48bb78;
+            background: var(--success);
             color: white;
         }
 
@@ -319,7 +362,7 @@
         }
 
         .btn-danger {
-            background: #f56565;
+            background: var(--danger);
             color: white;
         }
 
@@ -328,7 +371,7 @@
         }
 
         .btn:disabled {
-            background: #cbd5e0;
+            background: var(--border-light);
             cursor: not-allowed;
         }
 
@@ -341,7 +384,7 @@
             display: block;
             font-size: 0.875rem;
             font-weight: 600;
-            color: #4a5568;
+            color: var(--text-secondary);
             margin-bottom: 0.5rem;
         }
 
@@ -351,9 +394,11 @@
         .form-group textarea {
             width: 100%;
             padding: 0.5rem 0.75rem;
-            border: 1px solid #cbd5e0;
+            border: 1px solid var(--border-light);
             border-radius: 0.375rem;
             font-size: 1rem;
+            background: var(--bg-secondary);
+            color: var(--text-primary);
         }
 
         .form-group textarea {
@@ -635,6 +680,25 @@
                         %}class="active" {% endif %}>Prices</a></li>
                 <li><a href="/projects" {% if request.url.path=='/projects' %}class="active" {% endif %}>📁 Projects</a>
                 </li>
+                <li>
+                    <form action="/search" method="get" style="display: flex; align-items: center; padding: 1rem 0;">
+                        <input type="text" name="q" placeholder="Search..."
+                            style="padding: 0.25rem 0.5rem; border-radius: 4px; border: 1px solid var(--border-color); background: var(--bg-secondary); color: var(--text-primary);">
+                    </form>
+                </li>
+                <li>
+                    <button id="theme-toggle" onclick="toggleTheme()"
+                        style="background: none; border: none; cursor: pointer; padding: 1.25rem 0.75rem; font-size: 1.2rem;"
+                        title="Toggle dark mode">
+                        🌙
+                    </button>
+                </li>
+                <li><a href="/users" {% if request.url.path.startswith('/users') %}class="active" {% endif %}>👥
+                        Users</a></li>
+                <li><a href="/audit/logs" {% if request.url.path=='/audit/logs' %}class="active" {% endif %}>📜 Logs</a>
+                </li>
+                <li><a href="/webhooks" {% if request.url.path=='/webhooks' %}class="active" {% endif %}>🔌 Webhooks</a>
+                </li>
                 <li><a href="/logout" style="color: #fc8181;">Logout</a></li>
             </ul>
         </div>
@@ -644,12 +708,11 @@
     <div class="project-selector">
         <div class="container">
             <div class="flex flex-center gap-2">
-                <label style="font-weight: 600;">📁 Project:</label>
-                <select id="project-dropdown" onchange="switchProject()"
-                    style="padding: 8px 12px; border-radius: 4px; border: 1px solid #e2e8f0; min-width: 300px;">
+                <label>📁 Project:</label>
+                <select id="project-dropdown" onchange="switchProject()" style="min-width: 300px;">
                     <option value="">Loading projects...</option>
                 </select>
-                <span id="project-info" style="color: #718096; font-size: 14px;"></span>
+                <span id="project-info" class="text-muted" style="font-size: 14px;"></span>
             </div>
         </div>
     </div>
@@ -756,6 +819,34 @@
         document.body.addEventListener('htmx:sendError', function (evt) {
             showToast("Network Error: Could not reach the server.", 'error');
         });
+
+        // Theme Toggle System
+        function toggleTheme() {
+            const html = document.documentElement;
+            const currentTheme = html.getAttribute('data-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+
+            html.setAttribute('data-theme', newTheme);
+            localStorage.setItem('bimcalc-theme', newTheme);
+
+            // Update toggle button icon
+            const toggleBtn = document.getElementById('theme-toggle');
+            toggleBtn.textContent = newTheme === 'dark' ? '☀️' : '🌙';
+
+            showToast(`Switched to ${newTheme} mode`, 'info');
+        }
+
+        // Load saved theme on page load
+        (function () {
+            const savedTheme = localStorage.getItem('bimcalc-theme');
+            if (savedTheme) {
+                document.documentElement.setAttribute('data-theme', savedTheme);
+                const toggleBtn = document.getElementById('theme-toggle');
+                if (toggleBtn) {
+                    toggleBtn.textContent = savedTheme === 'dark' ? '☀️' : '🌙';
+                }
+            }
+        })();
     </script>
     {% block scripts %}{% endblock %}
 </body>

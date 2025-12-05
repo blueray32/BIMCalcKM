@@ -15,13 +15,15 @@ from datetime import datetime
 from typing import Literal
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, Form, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy import select
 
 from bimcalc.db.connection import get_session
-from bimcalc.db.models import MatchResultModel
-from bimcalc.models import FlagSeverity
+from bimcalc.db.models import MatchResultModel, ItemModel, PriceItemModel
+from bimcalc.models import FlagSeverity, MatchResult, MatchDecision
+from bimcalc.mapping.scd2 import MappingMemory
+from bimcalc.db.match_results import record_match_result
 from bimcalc.review import (
     approve_review_record,
     fetch_available_classifications,
@@ -29,6 +31,7 @@ from bimcalc.review import (
     fetch_review_record,
 )
 from bimcalc.web.dependencies import get_org_project, get_templates
+from bimcalc.notifications.slack import send_slack_notification
 
 # Create router with review tag
 router = APIRouter(tags=["review"])
@@ -231,6 +234,85 @@ async def reject_review(
     return RedirectResponse(url=f"/review?{query_string}", status_code=303)
 
 
+@router.post("/review/approve-suggestion")
+async def approve_suggestion(
+    item_id: UUID = Form(...),
+    price_item_id: UUID = Form(...),
+    suggestion_description: str = Form(...),
+    org: str | None = Form(None),
+    project: str | None = Form(None),
+    # Filters for redirect
+    flag: str | None = Form(None),
+    severity: str | None = Form(None),
+    unmapped_only: str | None = Form(None),
+    classification: str | None = Form(None),
+):
+    """Approve a smart suggestion."""
+    org_id, project_id = get_org_project(None, org, project)
+    
+    async with get_session() as session:
+        # Fetch Item
+        item = await session.get(ItemModel, item_id)
+        if not item:
+            raise HTTPException(status_code=404, detail="Item not found")
+            
+        # Fetch Price Item
+        price_item = await session.get(PriceItemModel, price_item_id)
+        if not price_item:
+            raise HTTPException(status_code=404, detail="Price item not found")
+            
+        # Write Mapping
+        mapping = MappingMemory(session)
+        if item.canonical_key:
+            await mapping.write(
+                org_id=org_id,
+                canonical_key=item.canonical_key,
+                price_item_id=price_item_id,
+                created_by="web-ui",
+                reason=f"Smart Suggestion: {suggestion_description}"
+            )
+            
+        # Record Match Result
+        match_result = MatchResult(
+            item_id=item_id,
+            price_item_id=price_item_id,
+            confidence_score=100.0, # User selected it
+            source="smart_suggestion",
+            flags=[], # We could compute flags, but user override implies acceptance
+            decision=MatchDecision.AUTO_ACCEPTED,
+            reason=f"User selected smart suggestion: {suggestion_description}",
+            created_by="web-ui",
+        )
+        await record_match_result(session, item_id, match_result)
+        
+        # Training Example
+        if price_item.classification_code:
+            from bimcalc.db.models import TrainingExampleModel
+            example = TrainingExampleModel(
+                org_id=org_id,
+                item_family=item.family,
+                item_type=item.type_name,
+                item_description=f"{item.family} {item.type_name}",
+                target_classification_code=price_item.classification_code,
+                source_item_id=item_id,
+                price_item_id=price_item_id,
+                feedback_type="correction", # Assumed correction/imputation
+                created_by="web-ui",
+            )
+            session.add(example)
+            
+        await session.commit()
+
+    # Redirect
+    redirect_url = f"/review?org={org_id}&project={project_id}"
+    if flag: redirect_url += f"&flag={flag}"
+    if severity: redirect_url += f"&severity={severity}"
+    if unmapped_only: redirect_url += f"&unmapped_only={unmapped_only}"
+    if classification: redirect_url += f"&classification={classification}"
+
+    return RedirectResponse(redirect_url, status_code=303)
+
+
 from pydantic import BaseModel
 from typing import List, Optional
 
@@ -246,6 +328,7 @@ class BulkUpdateRequest(BaseModel):
 @router.post("/api/matches/bulk-update")
 async def bulk_update_matches(
     request: BulkUpdateRequest,
+    background_tasks: BackgroundTasks,
     # username: str = Depends(require_auth) if AUTH_ENABLED else None, # Auth handled by middleware/dependency injection in real app
 ):
     """Bulk approve or reject matches.
@@ -300,5 +383,10 @@ async def bulk_update_matches(
                 processed_count += 1
 
         await session.commit()
+
+        if processed_count > 0:
+            emoji = "✅" if request.action == "approve" else "❌"
+            msg = f"{emoji} *Bulk {request.action.title()}*\nUser `{username}` {request.action}d {processed_count} items in {request.org_id}/{request.project_id}."
+            background_tasks.add_task(send_slack_notification, msg)
 
         return {"processed": processed_count, "action": request.action}

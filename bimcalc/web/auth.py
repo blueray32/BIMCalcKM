@@ -15,6 +15,10 @@ from datetime import datetime, timedelta
 import bcrypt
 import redis
 from fastapi import Cookie, HTTPException, Request
+from sqlalchemy import select
+
+from bimcalc.db.connection import get_session
+from bimcalc.db.models import UserModel
 
 logger = logging.getLogger(__name__)
 
@@ -76,11 +80,13 @@ def get_credentials() -> tuple[str, bytes]:
     return username, password_hash
 
 
-def create_session(username: str) -> str:
+def create_session(username: str, role: str = "viewer", user_id: str | None = None) -> str:
     """Create a new session for authenticated user.
 
     Args:
         username: Username of authenticated user
+        role: User role (admin, manager, viewer)
+        user_id: Database ID of user
 
     Returns:
         str: Session token
@@ -89,6 +95,8 @@ def create_session(username: str) -> str:
 
     session_data = {
         "username": username,
+        "role": role,
+        "user_id": user_id,
         "created_at": datetime.utcnow().isoformat(),
         "expires_at": (
             datetime.utcnow() + timedelta(hours=SESSION_EXPIRY_HOURS)
@@ -108,14 +116,14 @@ def create_session(username: str) -> str:
     return session_token
 
 
-def validate_session(session_token: str | None) -> str | None:
-    """Validate session token and return username if valid.
+def validate_session(session_token: str | None) -> dict | None:
+    """Validate session token and return session data if valid.
 
     Args:
         session_token: Session token from cookie
 
     Returns:
-        Optional[str]: Username if session valid, None otherwise
+        Optional[dict]: Session data (username, role, etc.) if valid, None otherwise
     """
     if not session_token:
         return None
@@ -134,7 +142,7 @@ def validate_session(session_token: str | None) -> str | None:
             if datetime.utcnow() > expires_at:
                 del _memory_sessions[session_token]
                 return None
-            return session_data["username"]
+            return session_data
         return None
 
     if not session_data_str:
@@ -149,7 +157,7 @@ def validate_session(session_token: str | None) -> str | None:
             redis_client.delete(f"session:{session_token}")
             return None
 
-        return session_data["username"]
+        return session_data
     except (json.JSONDecodeError, KeyError, ValueError):
         # Invalid session data
         redis_client.delete(f"session:{session_token}")
@@ -174,8 +182,8 @@ def require_auth(request: Request, session: str | None = Cookie(default=None)) -
     if auth_disabled:
         return "default_user"  # Return a default user when auth is disabled
 
-    username = validate_session(session)
-    if not username:
+    session_data = validate_session(session)
+    if not session_data:
         # Redirect to login page
         raise HTTPException(
             status_code=307,
@@ -183,7 +191,75 @@ def require_auth(request: Request, session: str | None = Cookie(default=None)) -
             headers={"Location": "/login"},
         )
 
-    return username
+    return session_data["username"]
+
+
+def require_admin(request: Request, session: str | None = Cookie(default=None)) -> str:
+    """Dependency to require admin role.
+
+    Args:
+        request: FastAPI request object
+        session: Session token from cookie
+
+    Returns:
+        str: Username of authenticated admin
+
+    Raises:
+        HTTPException: If not authenticated or not admin
+    """
+    # Check if authentication is disabled
+    auth_disabled = os.environ.get("BIMCALC_AUTH_DISABLED", "false").lower() == "true"
+    if auth_disabled:
+        return "default_admin"
+
+    session_data = validate_session(session)
+    if not session_data:
+        raise HTTPException(
+            status_code=307,
+            detail="Authentication required",
+            headers={"Location": "/login"},
+        )
+
+    if session_data.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    return session_data["username"]
+
+
+async def verify_credentials_db(email: str, password: str) -> tuple[bool, UserModel | None]:
+    """Verify credentials against database.
+
+    Args:
+        email: User email
+        password: User password
+
+    Returns:
+        tuple: (is_valid, user_object)
+    """
+    try:
+        async with get_session() as session:
+            stmt = select(UserModel).where(UserModel.email == email)
+            result = await session.execute(stmt)
+            user = result.scalars().first()
+
+            if not user:
+                return False, None
+
+            if not user.is_active:
+                return False, None
+
+            # Verify password
+            # Note: password_hash in DB is string, bcrypt needs bytes
+            if bcrypt.checkpw(password.encode(), user.password_hash.encode()):
+                # Update last login
+                user.last_login = datetime.utcnow()
+                await session.commit()
+                return True, user
+
+            return False, None
+    except Exception as e:
+        logger.error(f"Database auth failed: {e}")
+        return False, None
 
 
 def verify_credentials(username: str, password: str) -> bool:

@@ -37,6 +37,70 @@ class Base(DeclarativeBase):
     pass
 
 
+class UserModel(Base):
+    """User account for authentication and RBAC."""
+
+    __tablename__ = "users"
+
+    id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True), primary_key=True, default=uuid4
+    )
+    email: Mapped[str] = mapped_column(Text, unique=True, nullable=False, index=True)
+    password_hash: Mapped[str] = mapped_column(Text, nullable=False)
+    full_name: Mapped[str] = mapped_column(Text, nullable=False)
+    role: Mapped[str] = mapped_column(
+        Text, nullable=False, default="viewer"
+    )  # admin, manager, viewer
+    is_active: Mapped[bool] = mapped_column(default=True, nullable=False)
+    last_login: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            "role IN ('admin', 'manager', 'viewer')", name="check_role_valid"
+        ),
+    )
+
+
+class AuditLogModel(Base):
+    """System audit log for tracking user actions."""
+
+    __tablename__ = "audit_logs"
+
+    id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True), primary_key=True, default=uuid4
+    )
+    user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), index=True)
+    username: Mapped[str] = mapped_column(Text, nullable=False)
+    action: Mapped[str] = mapped_column(Text, nullable=False, index=True)
+    resource_type: Mapped[str | None] = mapped_column(Text)
+    resource_id: Mapped[str | None] = mapped_column(Text)
+    details: Mapped[dict | None] = mapped_column(JSON)
+    ip_address: Mapped[str | None] = mapped_column(Text)
+    timestamp: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False, index=True
+    )
+
+
+class WebhookModel(Base):
+    """Webhook subscription for external integrations."""
+
+    __tablename__ = "webhooks"
+
+    id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True), primary_key=True, default=uuid4
+    )
+    url: Mapped[str] = mapped_column(Text, nullable=False)
+    secret: Mapped[str] = mapped_column(Text, nullable=False)
+    events: Mapped[list[str]] = mapped_column(JSON, nullable=False)  # List of event types
+    is_active: Mapped[bool] = mapped_column(default=True, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
 class ItemModel(Base):
     """BIM item from Revit schedule or other source."""
 
@@ -86,12 +150,22 @@ class ItemModel(Base):
     # Flexible attributes for domain-specific data
     attributes: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
 
+    # Vector embedding for semantic search
+    embedding: Mapped[Vector] = mapped_column(Vector(1536))
+
     __table_args__ = (
         Index("idx_items_class", "classification_code"),  # CRITICAL for blocking
         Index("idx_items_canonical", "canonical_key"),  # CRITICAL for O(1) lookup
         Index(
             "idx_items_org_project_created", "org_id", "project_id", "created_at"
         ),  # Items list performance
+        Index(
+            "idx_items_embedding",
+            "embedding",
+            postgresql_using="hnsw",
+            postgresql_with={"m": 16, "ef_construction": 64},
+            postgresql_ops={"embedding": "vector_cosine_ops"},
+        ),
     )
 
 
@@ -164,6 +238,9 @@ class PriceItemModel(Base):
     vendor_note: Mapped[str | None] = mapped_column(Text)
     attributes: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
 
+    # Vector embedding for semantic search
+    embedding: Mapped[Vector] = mapped_column(Vector(1536))
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
@@ -201,6 +278,13 @@ class PriceItemModel(Base):
         Index("idx_price_current", "org_id", "item_code", "region", "is_current"),
         # Source tracking for operational monitoring
         Index("idx_price_source", "source_name", "last_updated"),
+        Index(
+            "idx_price_items_embedding",
+            "embedding",
+            postgresql_using="hnsw",
+            postgresql_with={"m": 16, "ef_construction": 64},
+            postgresql_ops={"embedding": "vector_cosine_ops"},
+        ),
     )
 
 

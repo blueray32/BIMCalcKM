@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+
+{% block title %}Webhooks - BIMCalc{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Webhooks</h1>
+    <p>Manage external event subscriptions.</p>
+</div>
+
+<div class="card">
+    <h3>Create Webhook</h3>
+    <form action="/webhooks/new" method="post" class="form-grid">
+        <div class="form-group">
+            <label for="url">Target URL</label>
+            <input type="url" id="url" name="url" required placeholder="https://example.com/webhook">
+        </div>
+        <div class="form-group">
+            <label for="events">Events (comma separated)</label>
+            <input type="text" id="events" name="events" required placeholder="item.matched, price.updated">
+            <small>Use * for all events.</small>
+        </div>
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Create Webhook</button>
+        </div>
+    </form>
+</div>
+
+<div class="card" style="margin-top: 2rem;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <h3>Active Webhooks</h3>
+        <form action="/webhooks/test" method="post">
+            <button type="submit" class="btn btn-secondary">⚡ Trigger Test Event</button>
+        </form>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>URL</th>
+                <th>Events</th>
+                <th>Secret</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for webhook in webhooks %}
+            <tr>
+                <td>{{ webhook.url }}</td>
+                <td>
+                    {% for event in webhook.events %}
+                    <span class="badge badge-info">{{ event }}</span>
+                    {% endfor %}
+                </td>
+                <td>
+                    <details>
+                        <summary>Show Secret</summary>
+                        <code>{{ webhook.secret }}</code>
+                    </details>
+                </td>
+                <td>
+                    {% if webhook.is_active %}
+                    <span class="badge badge-success">Active</span>
+                    {% else %}
+                    <span class="badge badge-danger">Inactive</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <form action="/webhooks/{{ webhook.id }}/delete" method="post"
+                        onsubmit="return confirm('Are you sure?');">
+                        <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

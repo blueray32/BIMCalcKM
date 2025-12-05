@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block title %}User Management - BIMCalc{% endblock %}
+
+{% block content %}
+<div class="page-header flex flex-between flex-center">
+    <div>
+        <h1>User Management</h1>
+        <p>Manage system users and roles.</p>
+    </div>
+    <a href="/users/new" class="btn btn-primary">➕ New User</a>
+</div>
+
+<div class="card">
+    <table>
+        <thead>
+            <tr>
+                <th>Full Name</th>
+                <th>Email</th>
+                <th>Role</th>
+                <th>Status</th>
+                <th>Last Login</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for user in users %}
+            <tr>
+                <td>{{ user.full_name }}</td>
+                <td>{{ user.email }}</td>
+                <td>
+                    <span
+                        class="badge {% if user.role == 'admin' %}badge-danger{% elif user.role == 'manager' %}badge-warning{% else %}badge-info{% endif %}">
+                        {{ user.role }}
+                    </span>
+                </td>
+                <td>
+                    {% if user.is_active %}
+                    <span class="badge badge-success">Active</span>
+                    {% else %}
+                    <span class="badge badge-danger">Inactive</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if user.last_login %}
+                    {{ user.last_login.strftime('%Y-%m-%d %H:%M') }}
+                    {% else %}
+                    <span class="text-muted">Never</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <a href="/users/{{ user.id }}" class="btn btn-primary"
+                        style="padding: 0.25rem 0.5rem; font-size: 0.75rem;">Edit</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

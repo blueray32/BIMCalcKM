@@ -151,6 +151,37 @@ class SendEmailRequest(BaseModel):
 
 
 # ============================================================================
+# Revit Integration Models
+# ============================================================================
+
+
+class RevitItemInput(BaseModel):
+    """Input schema for a single Revit element to be matched.
+
+    Used by: POST /api/revit/match
+    """
+
+    family: str
+    type_name: str
+    category: Optional[str] = None
+    element_id: str
+    parameters: Dict[str, str | float | int | bool] = {}
+
+
+class RevitMatchResponse(BaseModel):
+    """Response schema for a matched Revit element.
+
+    Used by: POST /api/revit/match
+    """
+
+    element_id: str
+    price_item_id: Optional[UUID] = None
+    confidence_score: float = 0.0
+    match_source: str  # "exact", "fuzzy", "none"
+    price_data: Optional[Dict] = None  # SKU, unit_price, etc.
+
+
+# ============================================================================
 # Exports
 # ============================================================================
 
@@ -168,6 +199,9 @@ __all__ = [
     # Reporting
     "ReportTemplateCreate",
     "SendEmailRequest",
+    # Revit Integration
+    "RevitItemInput",
+    "RevitMatchResponse",
 ]
 
 

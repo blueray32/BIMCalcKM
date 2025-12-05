@@ -41,6 +41,11 @@ from bimcalc.web.routes import (
     classifications,
     analytics,
     risk_dashboard,
+    users,
+    webhooks,
+    search,
+    revit,
+    health,
 )
 
 # Initialize structured logging
@@ -102,6 +107,11 @@ if os.environ.get("BIMCALC_CSRF_ENABLED", "false").lower() == "true":
     from bimcalc.web.csrf import CSRFMiddleware
     app.add_middleware(CSRFMiddleware)
 
+# Rate Limiting (optional - only enabled via env var)
+if os.environ.get("BIMCALC_RATE_LIMIT_ENABLED", "false").lower() == "true":
+    from bimcalc.web.rate_limit import RateLimitMiddleware
+    app.add_middleware(RateLimitMiddleware)
+
 # Prometheus Metrics
 Instrumentator().instrument(app).expose(app)
 
@@ -152,6 +162,11 @@ app.include_router(documents.router)
 app.include_router(classifications.router)
 app.include_router(analytics.router)
 app.include_router(risk_dashboard.router)
+app.include_router(users.router)
+app.include_router(webhooks.router)
+app.include_router(search.router)
+app.include_router(revit.router)
+app.include_router(health.router)
 
 
 # Legacy Redirects

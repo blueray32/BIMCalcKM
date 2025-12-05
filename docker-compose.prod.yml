@@ -1,130 +1,59 @@
 services:
-  db:
-    image: pgvector/pgvector:pg16
-    container_name: bimcalc-postgres
-    restart: always
-    environment:
-      POSTGRES_USER: bimcalc
-      POSTGRES_PASSWORD: changeme
-      POSTGRES_DB: bimcalc
-      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=en_US.UTF-8"
-      TZ: UTC
-    ports:
-      - "5432:5432"
-    volumes:
-      - db_data:/var/lib/postgresql/data
-      - ./scripts/postgres/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
-    healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U bimcalc -d bimcalc" ]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
-    networks:
-      - bimcalc-network
-
-  redis:
-    image: redis:7-alpine
-    container_name: bimcalc-redis
-    restart: always
-    ports:
-      - "6379:6379"
-    healthcheck:
-      test: [ "CMD", "redis-cli", "ping" ]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - bimcalc-network
-
-  browser:
-    image: ghcr.io/browserless/chromium:latest
-    restart: always
-    ports:
-      - 3000:3000
-    env_file: .env
-    environment:
-      TIMEOUT: 60000
-      CONCURRENT: 10
-      SCREEN_WIDTH: 1920
-      SCREEN_HEIGHT: 1080
-      SCREEN_DEPTH: 24
-    networks:
-      - bimcalc-network
-
   app:
     build: .
-    container_name: bimcalc-app
-    restart: always
+    command: uvicorn bimcalc.web.app_enhanced:app --host 0.0.0.0 --port 8000 --workers 4
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://bimcalc:bimcalc@db:5432/bimcalc
+      - REDIS_URL=redis://redis:6379/0
+      - LOG_LEVEL=INFO
+      - ENVIRONMENT=production
     depends_on:
       db:
         condition: service_healthy
       redis:
         condition: service_healthy
-      browser:
-        condition: service_started
-    env_file: .env
-    environment:
-      DATABASE_URL: postgresql+asyncpg://bimcalc:changeme@db:5432/bimcalc
-      REDIS_URL: redis://redis:6379
-      PLAYWRIGHT_CDP_URL: ws://browser:3000
-      BIMCALC_AUTH_DISABLED: "false"
-      LOG_LEVEL: INFO
-      # Email/SMTP Configuration (AWS SES)
-      SMTP_HOST: ${SMTP_HOST:-}
-      SMTP_PORT: ${SMTP_PORT:-587}
-      SMTP_USERNAME: ${SMTP_USERNAME:-}
-      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
-      SMTP_USE_TLS: ${SMTP_USE_TLS:-true}
-      FROM_EMAIL: ${FROM_EMAIL:-noreply@bimcalc.com}
-      FROM_NAME: ${FROM_NAME:-BIMCalc Reports}
-    command:
-      - "uvicorn"
-      - "bimcalc.web.app_enhanced:app"
-      - "--host"
-      - "0.0.0.0"
-      - "--port"
-      - "8001"
-      - "--reload"
-    ports:
-      - "8001:8001"
-    networks:
-      - bimcalc-network
+    restart: always
 
   worker:
     build: .
-    container_name: bimcalc-worker
-    restart: always
     command: arq bimcalc.worker.WorkerSettings
-    env_file: .env
     environment:
-      - DATABASE_URL=postgresql+asyncpg://bimcalc:changeme@db:5432/bimcalc
-      - REDIS_URL=redis://redis:6379
-      - PLAYWRIGHT_CDP_URL=ws://browser:3000
-      - BIMCALC_AUTH_DISABLED=false
-      - API_BASE_URL=http://app:8001
-      # Email/SMTP Configuration (AWS SES)
-      - SMTP_HOST=${SMTP_HOST:-}
-      - SMTP_PORT=${SMTP_PORT:-587}
-      - SMTP_USERNAME=${SMTP_USERNAME:-}
-      - SMTP_PASSWORD=${SMTP_PASSWORD:-}
-      - SMTP_USE_TLS=${SMTP_USE_TLS:-true}
-      - FROM_EMAIL=${FROM_EMAIL:-noreply@bimcalc.com}
-      - FROM_NAME=${FROM_NAME:-BIMCalc Reports}
+      - DATABASE_URL=postgresql+asyncpg://bimcalc:bimcalc@db:5432/bimcalc
+      - REDIS_URL=redis://redis:6379/0
+      - LOG_LEVEL=INFO
+      - ENVIRONMENT=production
     depends_on:
       db:
         condition: service_healthy
       redis:
         condition: service_healthy
-      browser:
-        condition: service_started
-    networks:
-      - bimcalc-network
+    restart: always
 
-networks:
-  bimcalc-network:
-    driver: bridge
+  db:
+    image: postgres:15
+    environment:
+      - POSTGRES_USER=bimcalc
+      - POSTGRES_PASSWORD=bimcalc
+      - POSTGRES_DB=bimcalc
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bimcalc"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: always
+
+  redis:
+    image: redis:7
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: always
 
 volumes:
-  db_data:
-  pgadmin_data:
+  postgres_data:

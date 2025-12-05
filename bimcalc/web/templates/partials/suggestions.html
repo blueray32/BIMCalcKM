@@ -1,0 +1,53 @@
+<div class="suggestions-list">
+    {% if suggestions %}
+    <div
+        style="font-size: 0.75rem; font-weight: 600; color: #718096; margin-bottom: 0.5rem; display: flex; justify-content: space-between; align-items: center;">
+        <span>🤖 AI Suggestions</span>
+        <span
+            style="font-size: 0.65rem; background: #ebf8ff; color: #2b6cb0; padding: 0.1rem 0.3rem; border-radius: 0.25rem;">Vector
+            Search</span>
+    </div>
+    {% for s in suggestions %}
+    <div class="suggestion-item"
+        style="border: 1px solid #e2e8f0; border-radius: 0.25rem; padding: 0.5rem; margin-bottom: 0.5rem; background: #f7fafc; transition: all 0.2s;">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+            <div style="flex: 1; margin-right: 0.5rem;">
+                <div style="font-weight: 600; color: #2d3748; font-size: 0.85rem;">{{ s.description }}</div>
+                <div style="font-size: 0.75rem; color: #718096; margin-top: 0.1rem;">
+                    {{ s.vendor_code }} • {{ s.sku }}
+                    {% if s.classification %}
+                    • <span style="background: #edf2f7; padding: 0 0.2rem; border-radius: 0.125rem;">{{ s.classification
+                        }}</span>
+                    {% endif %}
+                </div>
+                <div style="font-size: 0.8rem; color: #2b6cb0; font-weight: 600; margin-top: 0.2rem;">{{ s.price }}
+                </div>
+            </div>
+            <div style="text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 0.25rem;">
+                {% if s.similarity >= 0.9 %}
+                <div class="badge badge-success" style="font-size: 0.7rem;">{{ "%.0f"|format(s.similarity * 100) }}%
+                </div>
+                {% elif s.similarity >= 0.8 %}
+                <div class="badge badge-warning" style="font-size: 0.7rem;">{{ "%.0f"|format(s.similarity * 100) }}%
+                </div>
+                {% else %}
+                <div class="badge" style="font-size: 0.7rem; background: #cbd5e0; color: #4a5568;">{{
+                    "%.0f"|format(s.similarity * 100) }}%</div>
+                {% endif %}
+
+                <button type="button" class="btn btn-sm suggestion-btn"
+                    style="padding: 0.15rem 0.5rem; font-size: 0.75rem; background: white; border: 1px solid #4299e1; color: #4299e1; border-radius: 0.25rem; cursor: pointer;"
+                    data-item-id="{{ item_id }}" data-price-id="{{ s.id }}" data-description="{{ s.description }}"
+                    onmouseover="this.style.background='#ebf8ff'" onmouseout="this.style.background='white'">
+                    Select
+                </button>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+    {% else %}
+    <div style="font-size: 0.75rem; color: #718096; font-style: italic; text-align: center; padding: 0.5rem;">
+        No high-confidence suggestions found.
+    </div>
+    {% endif %}
+</div>
